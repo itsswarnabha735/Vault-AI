@@ -1,0 +1,6 @@
+# Sync Services
+
+This directory contains synchronization logic:
+- Supabase sync service
+- Conflict resolution
+- Data sanitization for cloud sync

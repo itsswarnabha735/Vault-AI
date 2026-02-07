@@ -1,0 +1,6 @@
+# Storage Services
+
+This directory contains storage-related services:
+- Dexie.js database configuration
+- OPFS file storage
+- IndexedDB utilities

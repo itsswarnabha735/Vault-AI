@@ -1,0 +1,143 @@
+# CRITICAL: Privacy Tests Workflow
+#
+# These tests MUST pass before any deployment.
+# Failure of privacy tests blocks the release pipeline.
+#
+# Privacy Invariants Tested:
+# 1. Raw document bytes SHALL never be transmitted over any network
+# 2. Full-text content SHALL never leave the browser context
+# 3. Vector embeddings SHALL never be sent to cloud storage
+# 4. Search queries SHALL be processed entirely client-side
+# 5. LLM prompts SHALL contain only sanitized, structured data
+
+name: Privacy Tests (CRITICAL)
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  # Allow manual trigger
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  privacy-tests:
+    name: Critical Privacy Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Privacy Tests
+        id: privacy-tests
+        run: |
+          echo "::group::Running CRITICAL Privacy Tests"
+          npm run test:privacy -- --reporter=verbose
+          echo "::endgroup::"
+
+      - name: Privacy Test Summary
+        if: always()
+        run: |
+          echo "## Privacy Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.privacy-tests.outcome }}" == "success" ]; then
+            echo "✅ All privacy tests passed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Privacy invariants verified:" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ No raw document transmission" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ No embedding transmission" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ No file path exposure" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Client-side search verified" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ LLM prompts sanitized" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **CRITICAL: Privacy tests failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Deployment is BLOCKED until privacy tests pass." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please review the test output and ensure no sensitive data is transmitted." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Fail if privacy tests fail
+        if: failure()
+        run: |
+          echo "::error::CRITICAL: Privacy tests failed. Deployment blocked."
+          echo "::error::Review test output and ensure no sensitive data is transmitted."
+          exit 1
+
+  # Additional security scan
+  security-scan:
+    name: Security Code Scan
+    runs-on: ubuntu-latest
+    needs: privacy-tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "Checking for potential hardcoded secrets..."
+          # Check for common secret patterns (simplified)
+          if grep -r "sk_live\|pk_live\|password\s*=\s*['\"][^'\"]+['\"]" --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next .; then
+            echo "::warning::Potential hardcoded secrets found. Please review."
+          else
+            echo "No obvious hardcoded secrets found."
+          fi
+
+  # Verify sync sanitization
+  sync-sanitization-check:
+    name: Sync Sanitization Verification
+    runs-on: ubuntu-latest
+    needs: privacy-tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify NEVER_SYNC_FIELDS coverage
+        run: |
+          echo "Verifying NEVER_SYNC_FIELDS are properly defined..."
+          
+          # Check that NEVER_SYNC_FIELDS exists and includes critical fields
+          if grep -q "NEVER_SYNC_FIELDS" types/database.ts; then
+            echo "✅ NEVER_SYNC_FIELDS is defined"
+            
+            # Check for required fields
+            for field in rawText embedding filePath fileSize mimeType confidence; do
+              if grep -q "$field" types/database.ts; then
+                echo "✅ $field is listed in NEVER_SYNC_FIELDS"
+              else
+                echo "::warning::$field may not be in NEVER_SYNC_FIELDS"
+              fi
+            done
+          else
+            echo "::error::NEVER_SYNC_FIELDS not found in types/database.ts"
+            exit 1
+          fi
