@@ -119,7 +119,7 @@ function SettingRow({
 
 export function AccountSettings({ className }: AccountSettingsProps) {
   const { user, signOut, isLoading: authLoading } = useAuth();
-  const { settings, isSaving } = useSettings();
+  const { settings: _settings, isSaving } = useSettings();
   const { currency, setCurrency, currencyInfo } = useCurrency();
   const { timezone, setTimezone, timezoneInfo } = useTimezone();
   const { theme, setTheme } = useTheme();

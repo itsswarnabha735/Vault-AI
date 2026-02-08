@@ -97,10 +97,16 @@ export interface UseDocumentProcessorReturn {
   validateFile: (file: File) => Promise<ValidationResult>;
 
   /** Process a single file */
-  processFile: (file: File, options?: WorkerProcessingOptions) => Promise<ProcessedDocumentResult>;
+  processFile: (
+    file: File,
+    options?: WorkerProcessingOptions
+  ) => Promise<ProcessedDocumentResult>;
 
   /** Process multiple files */
-  processFiles: (files: File[], options?: WorkerProcessingOptions) => Promise<ProcessedDocumentResult[]>;
+  processFiles: (
+    files: File[],
+    options?: WorkerProcessingOptions
+  ) => Promise<ProcessedDocumentResult[]>;
 
   /** Cancel processing of a specific file */
   cancelProcessing: (fileId: string) => void;
@@ -151,7 +157,8 @@ export function useDocumentProcessor(
   const [isInitializing, setIsInitializing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [processingState, setProcessingState] = useState<BatchProcessingState>(initialBatchState);
+  const [processingState, setProcessingState] =
+    useState<BatchProcessingState>(initialBatchState);
 
   // Refs
   const cancelledFileIds = useRef<Set<string>>(new Set());
@@ -172,7 +179,8 @@ export function useDocumentProcessor(
       await processingWorkerClient.initialize();
       setIsReady(true);
     } catch (err) {
-      const initError = err instanceof Error ? err : new Error('Failed to initialize worker');
+      const initError =
+        err instanceof Error ? err : new Error('Failed to initialize worker');
       setError(initError);
       onError?.(initError);
     } finally {
@@ -261,7 +269,10 @@ export function useDocumentProcessor(
    * Process a single file.
    */
   const processFile = useCallback(
-    async (file: File, opts?: WorkerProcessingOptions): Promise<ProcessedDocumentResult> => {
+    async (
+      file: File,
+      opts?: WorkerProcessingOptions
+    ): Promise<ProcessedDocumentResult> => {
       await initialize();
 
       setIsProcessing(true);
@@ -329,7 +340,8 @@ export function useDocumentProcessor(
         onProcessingComplete?.([result]);
         return result;
       } catch (err) {
-        const processError = err instanceof Error ? err : new Error('Processing failed');
+        const processError =
+          err instanceof Error ? err : new Error('Processing failed');
         setError(processError);
         onError?.(processError, file.name);
 
@@ -346,14 +358,24 @@ export function useDocumentProcessor(
         processingWorkerClient.setProgressCallback(null);
       }
     },
-    [initialize, handleProgress, processingOptions, onProcessingStart, onProcessingComplete, onError]
+    [
+      initialize,
+      handleProgress,
+      processingOptions,
+      onProcessingStart,
+      onProcessingComplete,
+      onError,
+    ]
   );
 
   /**
    * Process multiple files.
    */
   const processFiles = useCallback(
-    async (files: File[], opts?: WorkerProcessingOptions): Promise<ProcessedDocumentResult[]> => {
+    async (
+      files: File[],
+      opts?: WorkerProcessingOptions
+    ): Promise<ProcessedDocumentResult[]> => {
       if (files.length === 0) {
         return [];
       }
@@ -432,7 +454,8 @@ export function useDocumentProcessor(
             };
           });
         } catch (err) {
-          const processError = err instanceof Error ? err : new Error('Processing failed');
+          const processError =
+            err instanceof Error ? err : new Error('Processing failed');
           onError?.(processError, file.name);
 
           setProcessingState((prev) => ({
@@ -454,7 +477,14 @@ export function useDocumentProcessor(
 
       return results;
     },
-    [initialize, handleProgress, processingOptions, onProcessingStart, onProcessingComplete, onError]
+    [
+      initialize,
+      handleProgress,
+      processingOptions,
+      onProcessingStart,
+      onProcessingComplete,
+      onError,
+    ]
   );
 
   /**
@@ -551,19 +581,23 @@ export function useDocumentProcessor(
  */
 export function useFileValidator() {
   const [isValidating, setIsValidating] = useState(false);
-  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [validationResult, setValidationResult] =
+    useState<ValidationResult | null>(null);
 
-  const validate = useCallback(async (file: File): Promise<ValidationResult> => {
-    setIsValidating(true);
-    try {
-      await processingWorkerClient.initialize();
-      const result = await processingWorkerClient.validateFile(file);
-      setValidationResult(result);
-      return result;
-    } finally {
-      setIsValidating(false);
-    }
-  }, []);
+  const validate = useCallback(
+    async (file: File): Promise<ValidationResult> => {
+      setIsValidating(true);
+      try {
+        await processingWorkerClient.initialize();
+        const result = await processingWorkerClient.validateFile(file);
+        setValidationResult(result);
+        return result;
+      } finally {
+        setIsValidating(false);
+      }
+    },
+    []
+  );
 
   const reset = useCallback(() => {
     setValidationResult(null);

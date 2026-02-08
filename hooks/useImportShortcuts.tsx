@@ -168,7 +168,8 @@ export function ShortcutHints({
 }: ShortcutHintsProps) {
   if (!show) return null;
 
-  const isMac = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
+  const isMac =
+    typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
   const modKey = isMac ? '⌘' : 'Ctrl';
 
   const positionClasses: Record<string, string> = {
@@ -178,7 +179,8 @@ export function ShortcutHints({
     'top-left': 'top-4 left-4',
   };
 
-  const baseClasses = 'fixed z-50 flex flex-col gap-1 rounded-lg border border-border bg-background/95 p-2 text-xs shadow-lg backdrop-blur';
+  const baseClasses =
+    'fixed z-50 flex flex-col gap-1 rounded-lg border border-border bg-background/95 p-2 text-xs shadow-lg backdrop-blur';
   const posClass = positionClasses[position] || positionClasses['bottom-right'];
 
   return (

@@ -21,7 +21,6 @@ import {
   duplicateDetector,
   findDuplicates,
   DEFAULT_DUPLICATE_CONFIG,
-  type DuplicatePair,
 } from './duplicate-detector';
 import type {
   LocalTransaction,

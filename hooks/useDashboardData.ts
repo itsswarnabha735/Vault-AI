@@ -141,10 +141,7 @@ export function useBudgetStatus() {
       };
     }
 
-    const totalBudget = budgets.reduce(
-      (sum, b) => sum + b.budget.amount,
-      0
-    );
+    const totalBudget = budgets.reduce((sum, b) => sum + b.budget.amount, 0);
     const totalSpent = budgets.reduce((sum, b) => sum + b.spent, 0);
     const percentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 

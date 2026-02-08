@@ -185,7 +185,7 @@ export function createMockEmbedding(
 export function createDateString(daysFromNow: number = 0): string {
   const date = new Date();
   date.setDate(date.getDate() + daysFromNow);
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split('T')[0] ?? date.toISOString().slice(0, 10);
 }
 
 /**

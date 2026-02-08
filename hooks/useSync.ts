@@ -79,7 +79,10 @@ export interface UseSyncReturn {
   stop: () => void;
   pause: () => void;
   resume: () => void;
-  resolveConflict: (id: string, resolution: 'local' | 'remote') => Promise<void>;
+  resolveConflict: (
+    id: string,
+    resolution: 'local' | 'remote'
+  ) => Promise<void>;
   updateConfig: (config: Partial<SyncConfig>) => void;
 
   // Configuration
@@ -314,10 +317,7 @@ export function useSync(options?: { autoStart?: boolean }): UseSyncReturn {
     ]
   );
 
-  const stats = useMemo(
-    () => calculateSyncStats(syncHistory),
-    [syncHistory]
-  );
+  const stats = useMemo(() => calculateSyncStats(syncHistory), [syncHistory]);
 
   const timeSinceSync = useMemo(
     () => formatTimeSinceSync(lastSyncAt),
@@ -329,10 +329,7 @@ export function useSync(options?: { autoStart?: boolean }): UseSyncReturn {
     [syncState]
   );
 
-  const statusColor = useMemo(
-    () => getSyncStateColor(syncState),
-    [syncState]
-  );
+  const statusColor = useMemo(() => getSyncStateColor(syncState), [syncState]);
 
   // ============================================
   // Return Value
@@ -428,7 +425,10 @@ export function useSyncConflicts(): {
   conflicts: SyncConflict[];
   hasConflicts: boolean;
   count: number;
-  resolveConflict: (id: string, resolution: 'local' | 'remote') => Promise<void>;
+  resolveConflict: (
+    id: string,
+    resolution: 'local' | 'remote'
+  ) => Promise<void>;
 } {
   const conflicts = useSyncStore(selectPendingConflicts);
   const storeResolveConflict = useSyncStore((s) => s.resolveConflict);

@@ -101,7 +101,9 @@ export interface UseCitationsReturn {
   getCitationState: (transactionId: string) => CitationState | undefined;
 
   /** Load transaction for a citation */
-  loadTransactionFor: (transactionId: string) => Promise<LocalTransaction | null>;
+  loadTransactionFor: (
+    transactionId: string
+  ) => Promise<LocalTransaction | null>;
 
   /** Check if any citations have documents */
   hasAnyDocuments: boolean;
@@ -128,7 +130,11 @@ export function useCitation(
   citation: Citation,
   options: UseCitationOptions = {}
 ): UseCitationReturn {
-  const { autoLoad = true, autoLoadDocument = false, trackClicks = true } = options;
+  const {
+    autoLoad = true,
+    autoLoadDocument = false,
+    trackClicks = true,
+  } = options;
 
   // State
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
@@ -137,31 +143,29 @@ export function useCitation(
   const [error, setError] = useState<Error | null>(null);
 
   // Get transaction from database using live query
-  const transaction = useLiveQuery(
-    async () => {
-      if (!autoLoad) return null;
-      return db.transactions.get(citation.transactionId);
-    },
-    [citation.transactionId, autoLoad]
-  );
+  const transaction = useLiveQuery(async () => {
+    if (!autoLoad) return null;
+    return db.transactions.get(citation.transactionId);
+  }, [citation.transactionId, autoLoad]);
 
   // Derived state
   const hasDocument = !!transaction?.filePath;
 
   // Load transaction manually
-  const loadTransaction = useCallback(async (): Promise<LocalTransaction | null> => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const tx = await db.transactions.get(citation.transactionId);
-      return tx || null;
-    } catch (err) {
-      setError(err as Error);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [citation.transactionId]);
+  const loadTransaction =
+    useCallback(async (): Promise<LocalTransaction | null> => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const tx = await db.transactions.get(citation.transactionId);
+        return tx || null;
+      } catch (err) {
+        setError(err as Error);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    }, [citation.transactionId]);
 
   // Load document for preview
   const loadDocument = useCallback(async (): Promise<string | null> => {
@@ -205,7 +209,9 @@ export function useCitation(
 
       try {
         const thumbDir = await root.getDirectoryHandle('thumbnails');
-        const thumbHandle = await thumbDir.getFileHandle(`${citation.transactionId}.jpg`);
+        const thumbHandle = await thumbDir.getFileHandle(
+          `${citation.transactionId}.jpg`
+        );
         const file = await thumbHandle.getFile();
         const url = URL.createObjectURL(file);
         setThumbnailUrl(url);
@@ -272,7 +278,15 @@ export function useCitation(
       thumbnailUrl,
       error,
     }),
-    [citation, transaction, isLoading, hasDocument, documentUrl, thumbnailUrl, error]
+    [
+      citation,
+      transaction,
+      isLoading,
+      hasDocument,
+      documentUrl,
+      thumbnailUrl,
+      error,
+    ]
   );
 
   return {
@@ -300,7 +314,9 @@ export function useCitation(
  * ```
  */
 export function useCitations(citations: Citation[]): UseCitationsReturn {
-  const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
+  const [selectedCitation, setSelectedCitation] = useState<Citation | null>(
+    null
+  );
 
   // Get all transactions for citations
   const transactionIds = useMemo(
@@ -385,13 +401,10 @@ export function useCitations(citations: Citation[]): UseCitationsReturn {
 export function useTransactionForCitation(
   transactionId: TransactionId | string | null
 ) {
-  const transaction = useLiveQuery(
-    async () => {
-      if (!transactionId) return null;
-      return db.transactions.get(transactionId as TransactionId);
-    },
-    [transactionId]
-  );
+  const transaction = useLiveQuery(async () => {
+    if (!transactionId) return null;
+    return db.transactions.get(transactionId as TransactionId);
+  }, [transactionId]);
 
   const isLoading = transaction === undefined;
 
@@ -408,8 +421,8 @@ export function useTransactionForCitation(
 
 /**
  * Hook for citation click analytics.
- * 
- * Note: Currently returns placeholder data. 
+ *
+ * Note: Currently returns placeholder data.
  * Implement with proper analytics table for production use.
  */
 export function useCitationAnalytics() {
@@ -417,10 +430,7 @@ export function useCitationAnalytics() {
   // In production, this would use a dedicated analytics table or service
   const clickCounts = useMemo(() => new Map<string, number>(), []);
 
-  const mostClicked = useMemo(
-    () => [] as Array<[string, number]>,
-    []
-  );
+  const mostClicked = useMemo(() => [] as Array<[string, number]>, []);
 
   return {
     clickCounts,

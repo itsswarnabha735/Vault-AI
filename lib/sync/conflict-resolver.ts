@@ -17,14 +17,13 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/storage/db';
-import { getClient } from '@/lib/supabase/client';
 import type {
   LocalTransaction,
   TransactionId,
   CategoryId,
 } from '@/types/database';
-import type { TransactionRow } from '@/types/supabase';
-import type { SyncConflict, ConflictResolution } from '@/types/sync';
+import type { Transaction as TransactionRow } from '@/types/supabase';
+import type { ConflictResolution } from '@/types/sync';
 
 // ============================================
 // Types

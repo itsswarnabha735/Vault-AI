@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useRealtimeStatus, useRealtimeColor } from '@/hooks/useRealtime';
 import { useSyncStatus } from '@/hooks/useSync';
@@ -239,10 +239,19 @@ export interface ConnectionStatusProps {
 }
 
 export function ConnectionStatus({ className }: ConnectionStatusProps) {
-  const { connectionState, isConnected, isConnecting, hasError } =
-    useRealtimeStatus();
-  const { isOnline, isSyncing, pendingCount, timeSinceSync, statusMessage } =
-    useSyncStatus();
+  const {
+    connectionState,
+    isConnected: _isConnected,
+    isConnecting: _isConnecting,
+    hasError,
+  } = useRealtimeStatus();
+  const {
+    isOnline,
+    isSyncing,
+    pendingCount,
+    timeSinceSync,
+    statusMessage: _statusMessage,
+  } = useSyncStatus();
   const color = useRealtimeColor();
   const colors = colorConfig[color];
 

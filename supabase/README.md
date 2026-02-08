@@ -19,6 +19,7 @@ supabase/
 ### Prerequisites
 
 1. Install Supabase CLI:
+
    ```bash
    npm install -g supabase
    # or
@@ -33,11 +34,13 @@ supabase/
 ### Local Development
 
 1. Start local Supabase:
+
    ```bash
    supabase start
    ```
 
 2. The CLI will output local credentials. Add them to `.env.local`:
+
    ```env
    NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
    NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key>
@@ -54,11 +57,13 @@ supabase/
 1. Create a project at [supabase.com](https://supabase.com)
 
 2. Link your project:
+
    ```bash
    supabase link --project-ref YOUR_PROJECT_REF
    ```
 
 3. Deploy migrations:
+
    ```bash
    supabase db push
    ```
@@ -69,20 +74,21 @@ supabase/
 
 ### Tables
 
-| Table | Description |
-|-------|-------------|
-| `categories` | User spending categories |
-| `transactions` | Sanitized transaction data (no raw text!) |
-| `budgets` | Spending budget configurations |
-| `user_preferences` | User settings and preferences |
-| `sync_metadata` | Device sync tracking |
-| `audit_log` | Action audit trail |
+| Table              | Description                               |
+| ------------------ | ----------------------------------------- |
+| `categories`       | User spending categories                  |
+| `transactions`     | Sanitized transaction data (no raw text!) |
+| `budgets`          | Spending budget configurations            |
+| `user_preferences` | User settings and preferences             |
+| `sync_metadata`    | Device sync tracking                      |
+| `audit_log`        | Action audit trail                        |
 
 ### Privacy Notes
 
 ⚠️ **CRITICAL**: The Supabase database only stores sanitized, structured data.
 
 The following data is NEVER stored in Supabase:
+
 - Raw document text (`rawText`)
 - Vector embeddings (`embedding`)
 - File paths (`filePath`)
@@ -108,41 +114,42 @@ CREATE POLICY transactions_select_policy ON transactions
 
 ### Analytics Functions
 
-| Function | Description |
-|----------|-------------|
-| `get_spending_by_category(start_date, end_date)` | Spending breakdown by category |
-| `get_budget_status()` | Current status of all active budgets |
-| `get_monthly_trend(months_back)` | Monthly income/expense trend |
-| `get_top_vendors(start_date, end_date, limit_count)` | Top spending vendors |
-| `get_dashboard_summary()` | Dashboard summary statistics |
+| Function                                             | Description                          |
+| ---------------------------------------------------- | ------------------------------------ |
+| `get_spending_by_category(start_date, end_date)`     | Spending breakdown by category       |
+| `get_budget_status()`                                | Current status of all active budgets |
+| `get_monthly_trend(months_back)`                     | Monthly income/expense trend         |
+| `get_top_vendors(start_date, end_date, limit_count)` | Top spending vendors                 |
+| `get_dashboard_summary()`                            | Dashboard summary statistics         |
 
 ### Sync Functions
 
-| Function | Description |
-|----------|-------------|
-| `upsert_transaction(...)` | Insert/update with conflict detection |
-| `get_changes_since(since_timestamp)` | Get all changes for sync |
+| Function                             | Description                           |
+| ------------------------------------ | ------------------------------------- |
+| `upsert_transaction(...)`            | Insert/update with conflict detection |
+| `get_changes_since(since_timestamp)` | Get all changes for sync              |
 
 ### User Management Functions
 
-| Function | Description |
-|----------|-------------|
-| `initialize_user()` | Set up new user with defaults |
-| `create_default_categories()` | Create default category set |
-| `delete_user_data()` | GDPR-compliant data deletion |
+| Function                      | Description                   |
+| ----------------------------- | ----------------------------- |
+| `initialize_user()`           | Set up new user with defaults |
+| `create_default_categories()` | Create default category set   |
+| `delete_user_data()`          | GDPR-compliant data deletion  |
 
 ### Demo Functions
 
-| Function | Description |
-|----------|-------------|
-| `seed_demo_data(user_id)` | Seed demo data for testing |
-| `cleanup_demo_data(user_id)` | Remove demo data |
+| Function                     | Description                |
+| ---------------------------- | -------------------------- |
+| `seed_demo_data(user_id)`    | Seed demo data for testing |
+| `cleanup_demo_data(user_id)` | Remove demo data           |
 
 ## Migrations
 
 ### Creating New Migrations
 
 1. Create a new SQL file in `migrations/`:
+
    ```bash
    touch supabase/migrations/$(date +%Y%m%d%H%M%S)_description.sql
    ```
@@ -150,6 +157,7 @@ CREATE POLICY transactions_select_policy ON transactions
 2. Write your SQL changes
 
 3. Test locally:
+
    ```bash
    supabase db reset  # Reapplies all migrations
    ```
@@ -164,6 +172,7 @@ CREATE POLICY transactions_select_policy ON transactions
 Format: `YYYYMMDDHHMMSS_description.sql`
 
 Examples:
+
 - `20240101000001_initial_schema.sql`
 - `20240215143022_add_tags_table.sql`
 - `20240301120000_create_reporting_views.sql`
@@ -191,6 +200,7 @@ Vault-AI uses Supabase Auth with magic link authentication:
    - Confirm signup template
 
 3. **Set Site URL** in Authentication > URL Configuration:
+
    ```
    http://localhost:3000 (development)
    https://your-domain.com (production)
@@ -207,18 +217,21 @@ Vault-AI uses Supabase Auth with magic link authentication:
 ### Common Issues
 
 **RLS blocking access:**
+
 ```sql
 -- Check RLS policies
 SELECT * FROM pg_policies WHERE tablename = 'transactions';
 ```
 
 **Function not found:**
+
 ```sql
 -- Check function exists
 SELECT proname FROM pg_proc WHERE proname = 'get_spending_by_category';
 ```
 
 **Connection issues:**
+
 - Verify credentials in `.env.local`
 - Check Supabase project status at supabase.com
 

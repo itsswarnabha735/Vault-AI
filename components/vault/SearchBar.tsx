@@ -247,7 +247,7 @@ export function SearchResultsSummary({
     <p className={cn('text-sm text-muted-foreground', className)}>
       Found <span className="font-medium text-foreground">{count}</span>{' '}
       {count === 1 ? 'result' : 'results'} for{' '}
-      <span className="font-medium text-foreground">"{query}"</span>
+      <span className="font-medium text-foreground">&quot;{query}&quot;</span>
       {searchTimeMs !== undefined && (
         <span className="ml-1">({searchTimeMs}ms)</span>
       )}

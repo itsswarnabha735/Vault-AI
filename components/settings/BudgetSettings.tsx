@@ -18,8 +18,6 @@ import {
   Trash2,
   Loader2,
   Wallet,
-  CalendarDays,
-  DollarSign,
   TrendingUp,
   Check,
 } from 'lucide-react';
@@ -505,7 +503,7 @@ function DeleteConfirmDialog({
 // ============================================
 
 export function BudgetSettings({ className }: BudgetSettingsProps) {
-  const budgets = useBudgets();
+  const { data: budgets, isLoading: budgetsLoading } = useBudgets();
   const { data: categories, isLoading: categoriesLoading } = useCategories();
   const { addBudget, updateBudget, deleteBudget } = useBudgetActions();
   const { currencyInfo } = useCurrency();
@@ -516,7 +514,7 @@ export function BudgetSettings({ className }: BudgetSettingsProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isLoading = budgets === undefined || categoriesLoading;
+  const isLoading = budgetsLoading || categoriesLoading;
   const currencySymbol = currencyInfo?.symbol || '$';
 
   // Map categories by ID for quick lookup

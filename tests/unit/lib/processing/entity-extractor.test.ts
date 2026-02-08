@@ -39,7 +39,12 @@ async function extractEntities(text: string): Promise<ExtractedEntities> {
   // MM/DD/YYYY
   const mmddyyyyPattern = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
   const mmddyyyyMatch = text.match(mmddyyyyPattern);
-  if (mmddyyyyMatch && mmddyyyyMatch[1] && mmddyyyyMatch[2] && mmddyyyyMatch[3]) {
+  if (
+    mmddyyyyMatch &&
+    mmddyyyyMatch[1] &&
+    mmddyyyyMatch[2] &&
+    mmddyyyyMatch[3]
+  ) {
     const month = mmddyyyyMatch[1].padStart(2, '0');
     const day = mmddyyyyMatch[2].padStart(2, '0');
     const year = mmddyyyyMatch[3];
@@ -66,7 +71,12 @@ async function extractEntities(text: string): Promise<ExtractedEntities> {
     const monthNamePattern =
       /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})/i;
     const monthNameMatch = text.match(monthNamePattern);
-    if (monthNameMatch && monthNameMatch[1] && monthNameMatch[2] && monthNameMatch[3]) {
+    if (
+      monthNameMatch &&
+      monthNameMatch[1] &&
+      monthNameMatch[2] &&
+      monthNameMatch[3]
+    ) {
       const months: Record<string, string> = {
         january: '01',
         february: '02',
@@ -95,9 +105,14 @@ async function extractEntities(text: string): Promise<ExtractedEntities> {
 
   // Amount extraction patterns - process in priority order (highest first)
   // Priority 3: Total: $XXX.XX (highest priority) - excludes Subtotal
-  const totalPattern = /(?:^|[^a-z])(?:grand\s+total|total|amount\s+due)\s*[:=]?\s*\$?\s*([\d,]+\.?\d*)/gim;
+  const totalPattern =
+    /(?:^|[^a-z])(?:grand\s+total|total|amount\s+due)\s*[:=]?\s*\$?\s*([\d,]+\.?\d*)/gim;
   const totalMatches = [...text.matchAll(totalPattern)];
-  let bestAmount: { value: number; confidence: number; priority: number } | null = null;
+  let bestAmount: {
+    value: number;
+    confidence: number;
+    priority: number;
+  } | null = null;
 
   for (const match of totalMatches) {
     if (match[1]) {
@@ -105,7 +120,9 @@ async function extractEntities(text: string): Promise<ExtractedEntities> {
       if (!isNaN(value) && value > 0 && value < 1000000) {
         // Check if this is not a subtotal
         const matchIndex = match.index || 0;
-        const precedingText = text.substring(Math.max(0, matchIndex - 5), matchIndex).toLowerCase();
+        const precedingText = text
+          .substring(Math.max(0, matchIndex - 5), matchIndex)
+          .toLowerCase();
         if (!precedingText.includes('sub')) {
           if (!bestAmount || 3 > bestAmount.priority) {
             bestAmount = { value, confidence: 1.0, priority: 3 };
@@ -148,12 +165,16 @@ async function extractEntities(text: string): Promise<ExtractedEntities> {
   }
 
   if (bestAmount) {
-    result.amount = { value: bestAmount.value, confidence: bestAmount.confidence };
+    result.amount = {
+      value: bestAmount.value,
+      confidence: bestAmount.confidence,
+    };
   }
 
   // Vendor extraction - use regex with capture groups
   // From/Merchant/Vendor/Store pattern
-  const vendorLabelPattern = /(?:from|merchant|vendor|store|shop)\s*[:=]\s*([A-Za-z][A-Za-z0-9\s&'.-]*)/i;
+  const vendorLabelPattern =
+    /(?:from|merchant|vendor|store|shop)\s*[:=]\s*([A-Za-z][A-Za-z0-9\s&'.-]*)/i;
   const vendorLabelMatch = text.match(vendorLabelPattern);
   if (vendorLabelMatch && vendorLabelMatch[1]) {
     const vendorName = vendorLabelMatch[1].trim();
@@ -271,7 +292,9 @@ describe('Entity Extractor', () => {
     });
 
     it('ignores amounts over 1 million', async () => {
-      const result = await extractEntities('Total: $1,500,000.00 (invalid large amount)');
+      const result = await extractEntities(
+        'Total: $1,500,000.00 (invalid large amount)'
+      );
       expect(result.amount).toBeNull();
     });
 

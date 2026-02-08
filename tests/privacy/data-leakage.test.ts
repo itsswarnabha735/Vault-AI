@@ -185,7 +185,10 @@ describe('CRITICAL: Privacy - Data Leakage Prevention', () => {
         }),
       ];
 
-      const prompt = createSafeLLMPrompt('Show me bank transactions', transactions);
+      const prompt = createSafeLLMPrompt(
+        'Show me bank transactions',
+        transactions
+      );
 
       expect(prompt).not.toContain('SSN');
       expect(prompt).not.toContain('123-45-6789');
@@ -427,7 +430,9 @@ describe('CRITICAL: Privacy - Database Sync Integration', () => {
         (tx) => tx.syncStatus === 'pending'
       );
 
-      const sanitizedPayloads = pending.map((tx) => createSyncableTransaction(tx));
+      const sanitizedPayloads = pending.map((tx) =>
+        createSyncableTransaction(tx)
+      );
 
       // Simulate network request
       for (const payload of sanitizedPayloads) {

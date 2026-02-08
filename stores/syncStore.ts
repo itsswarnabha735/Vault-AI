@@ -159,8 +159,7 @@ export const useSyncStore = create<SyncStore>()(
             syncState,
             // Clear progress when leaving syncing state
             syncProgress: syncState === 'syncing' ? 0 : null,
-            currentOperation:
-              syncState === 'syncing' ? 'Starting...' : null,
+            currentOperation: syncState === 'syncing' ? 'Starting...' : null,
           },
           false,
           'setSyncState'
@@ -244,8 +243,7 @@ export const useSyncStore = create<SyncStore>()(
           'removeConflict'
         ),
 
-      clearConflicts: () =>
-        set({ conflicts: [] }, false, 'clearConflicts'),
+      clearConflicts: () => set({ conflicts: [] }, false, 'clearConflicts'),
 
       resolveConflict: (id, resolution) =>
         set(
@@ -283,8 +281,7 @@ export const useSyncStore = create<SyncStore>()(
       // History Management
       // ============================================
 
-      clearHistory: () =>
-        set({ syncHistory: [] }, false, 'clearHistory'),
+      clearHistory: () => set({ syncHistory: [] }, false, 'clearHistory'),
 
       // ============================================
       // Reset
@@ -358,9 +355,8 @@ export const selectConflictCount = (state: SyncStore) =>
 export const selectSyncHistory = (state: SyncStore) => state.syncHistory;
 
 /** Select last N sync entries */
-export const selectRecentSyncs =
-  (count: number) => (state: SyncStore) =>
-    state.syncHistory.slice(0, count);
+export const selectRecentSyncs = (count: number) => (state: SyncStore) =>
+  state.syncHistory.slice(0, count);
 
 /** Select sync config */
 export const selectConfig = (state: SyncStore) => state.config;

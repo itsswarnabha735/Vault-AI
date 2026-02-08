@@ -24,14 +24,16 @@ test.describe('Application Loading', () => {
 });
 
 test.describe('Authentication Flow', () => {
-  test('should redirect unauthenticated users to login or show 404', async ({ page }) => {
+  test('should redirect unauthenticated users to login or show 404', async ({
+    page,
+  }) => {
     await page.goto('/dashboard');
 
     // Should redirect to login or show login prompt or 404 (if route not implemented)
     const url = page.url();
-    const is404 = await page.locator('text=404').count() > 0;
+    const is404 = (await page.locator('text=404').count()) > 0;
     const isRedirected = /login|auth|\/$/i.test(url);
-    
+
     expect(isRedirected || is404).toBe(true);
   });
 
@@ -70,7 +72,11 @@ test.describe('Vault (Document Browser)', () => {
 
     // Look for common vault elements: search bar or document list
     const hasVaultElements =
-      (await page.locator('[role="searchbox"], input[type="search"], [data-testid*="search"], .search-input, h1, main').count()) > 0;
+      (await page
+        .locator(
+          '[role="searchbox"], input[type="search"], [data-testid*="search"], .search-input, h1, main'
+        )
+        .count()) > 0;
     expect(hasVaultElements).toBe(true);
   });
 });
@@ -96,7 +102,11 @@ test.describe('Chat Interface', () => {
     // If on chat page, verify content
     // Look for: h1 heading, main element, or chat-specific elements
     const hasChatElements =
-      (await page.locator('h1, main, [role="main"], textarea, input[type="text"], [role="textbox"], [data-testid*="chat"], header').count()) > 0;
+      (await page
+        .locator(
+          'h1, main, [role="main"], textarea, input[type="text"], [role="textbox"], [data-testid*="chat"], header'
+        )
+        .count()) > 0;
 
     // Also check if we get a 404 or error page
     const is404 = (await page.locator('text=404, text=not found').count()) > 0;
@@ -185,18 +195,24 @@ test.describe('Privacy Indicators', () => {
     // Look for privacy indicators or vault content
     // This test verifies the vault page loads with authentication
     const hasVaultContent =
-      (await page.locator('main, [role="main"], h1, [data-testid*="vault"]').count()) > 0;
+      (await page
+        .locator('main, [role="main"], h1, [data-testid*="vault"]')
+        .count()) > 0;
     expect(hasVaultContent).toBe(true);
 
     // If there are documents, check for privacy badges
     const localBadge = page.getByText(/local|on device|private/i);
-    const documentsExist = await page.locator('[data-testid*="document"], .document-card, article').count();
+    const documentsExist = await page
+      .locator('[data-testid*="document"], .document-card, article')
+      .count();
 
     if (documentsExist > 0) {
       // If documents exist, we should see privacy indicators
-      await expect(localBadge.first()).toBeVisible({ timeout: 5000 }).catch(() => {
-        // No privacy badges yet - this is acceptable for empty state
-      });
+      await expect(localBadge.first())
+        .toBeVisible({ timeout: 5000 })
+        .catch(() => {
+          // No privacy badges yet - this is acceptable for empty state
+        });
     }
   });
 });

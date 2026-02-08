@@ -10,12 +10,9 @@
  */
 
 import { db } from '@/lib/storage/db';
-import { opfsService } from '@/lib/storage/opfs-service';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   LocalTransaction,
-  Category,
-  Budget,
   TransactionId,
   CategoryId,
   BudgetId,
@@ -360,7 +357,7 @@ class ImportServiceImpl implements ImportService {
     const format = await this.detectFormat(file);
     const errors: string[] = [];
     const warnings: string[] = [];
-    let preview = undefined;
+    let preview: ValidationResult['preview'] = undefined;
 
     if (format === 'unknown') {
       return {

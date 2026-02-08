@@ -53,7 +53,10 @@ beforeEach(() => {
         });
         bodyString = entries.join('; ');
         contentType = 'multipart/form-data';
-      } else if (init.body instanceof ArrayBuffer || init.body instanceof Blob) {
+      } else if (
+        init.body instanceof ArrayBuffer ||
+        init.body instanceof Blob
+      ) {
         bodyString = '[BINARY_DATA]';
       } else {
         bodyString = JSON.stringify(init.body);
@@ -127,8 +130,13 @@ const mockDocumentProcessor = {
 describe('CRITICAL: Privacy - Document Upload', () => {
   describe('File Upload Prevention', () => {
     it('MUST NOT upload document bytes to any server', async () => {
-      const sensitiveContent = 'sensitive document content with SSN 123-45-6789 and medical records';
-      const testFile = createMockFile('sensitive.pdf', 'application/pdf', sensitiveContent);
+      const sensitiveContent =
+        'sensitive document content with SSN 123-45-6789 and medical records';
+      const testFile = createMockFile(
+        'sensitive.pdf',
+        'application/pdf',
+        sensitiveContent
+      );
 
       await mockDocumentProcessor.processDocument(testFile);
 
@@ -159,7 +167,11 @@ describe('CRITICAL: Privacy - Document Upload', () => {
     });
 
     it('MUST NOT send binary data to any endpoint', async () => {
-      const testFile = createMockFile('binary.pdf', 'application/pdf', 'binary content');
+      const testFile = createMockFile(
+        'binary.pdf',
+        'application/pdf',
+        'binary content'
+      );
 
       await mockDocumentProcessor.processDocument(testFile);
 
@@ -208,7 +220,11 @@ describe('CRITICAL: Privacy - Document Upload', () => {
 
   describe('Processing Results', () => {
     it('MUST process documents entirely client-side', async () => {
-      const testFile = createMockFile('local-process.pdf', 'application/pdf', 'test content');
+      const testFile = createMockFile(
+        'local-process.pdf',
+        'application/pdf',
+        'test content'
+      );
 
       const result = await mockDocumentProcessor.processDocument(testFile);
 
@@ -229,7 +245,11 @@ describe('CRITICAL: Privacy - Document Upload', () => {
     });
 
     it('MUST NOT send extracted text to any external service', async () => {
-      const testFile = createMockFile('extract.pdf', 'application/pdf', 'Secret financial data');
+      const testFile = createMockFile(
+        'extract.pdf',
+        'application/pdf',
+        'Secret financial data'
+      );
 
       const result = await mockDocumentProcessor.processDocument(testFile);
 
@@ -243,7 +263,11 @@ describe('CRITICAL: Privacy - Document Upload', () => {
     });
 
     it('MUST NOT send embeddings to any external service', async () => {
-      const testFile = createMockFile('embed.pdf', 'application/pdf', 'content');
+      const testFile = createMockFile(
+        'embed.pdf',
+        'application/pdf',
+        'content'
+      );
 
       const result = await mockDocumentProcessor.processDocument(testFile);
 
@@ -263,9 +287,21 @@ describe('CRITICAL: Privacy - Document Upload', () => {
   describe('Multiple File Upload', () => {
     it('MUST process batch uploads without any network file transmission', async () => {
       const files = [
-        createMockFile('doc1.pdf', 'application/pdf', 'Confidential: Employee salaries'),
-        createMockFile('doc2.pdf', 'application/pdf', 'Private: Medical diagnosis'),
-        createMockFile('doc3.pdf', 'application/pdf', 'Secret: Bank account 123456'),
+        createMockFile(
+          'doc1.pdf',
+          'application/pdf',
+          'Confidential: Employee salaries'
+        ),
+        createMockFile(
+          'doc2.pdf',
+          'application/pdf',
+          'Private: Medical diagnosis'
+        ),
+        createMockFile(
+          'doc3.pdf',
+          'application/pdf',
+          'Secret: Bank account 123456'
+        ),
       ];
 
       for (const file of files) {
@@ -289,7 +325,11 @@ describe('CRITICAL: Privacy - Document Upload', () => {
     it('MUST handle large files without uploading', async () => {
       // Create a "large" file (simulated)
       const largeContent = 'A'.repeat(10000);
-      const largeFile = createMockFile('large.pdf', 'application/pdf', largeContent);
+      const largeFile = createMockFile(
+        'large.pdf',
+        'application/pdf',
+        largeContent
+      );
 
       await mockDocumentProcessor.processDocument(largeFile);
 
@@ -302,7 +342,11 @@ describe('CRITICAL: Privacy - Document Upload', () => {
     });
 
     it('MUST handle image files without uploading', async () => {
-      const imageFile = createMockFile('receipt.png', 'image/png', 'fake image data');
+      const imageFile = createMockFile(
+        'receipt.png',
+        'image/png',
+        'fake image data'
+      );
 
       await mockDocumentProcessor.processDocument(imageFile);
 
@@ -342,7 +386,11 @@ describe('CRITICAL: Privacy - File Input Sanitization', () => {
   });
 
   it('MUST NOT read file as data URL for transmission', async () => {
-    const file = createMockFile('test.pdf', 'application/pdf', 'secret content');
+    const file = createMockFile(
+      'test.pdf',
+      'application/pdf',
+      'secret content'
+    );
 
     // Read file locally (simulated)
     const reader = new FileReader();

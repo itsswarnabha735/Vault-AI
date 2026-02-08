@@ -152,7 +152,9 @@ describe('CRITICAL: Privacy - Sync Engine', () => {
         currency: 'USD',
       };
 
-      const sanitized = mockSyncEngine.sanitizeForSync(transactionWithAllFields);
+      const sanitized = mockSyncEngine.sanitizeForSync(
+        transactionWithAllFields
+      );
 
       for (const sensitiveField of NEVER_SYNC_FIELDS) {
         expect(sanitized).not.toHaveProperty(sensitiveField);
@@ -271,7 +273,9 @@ describe('CRITICAL: Privacy - Sync Conflict Resolution', () => {
     };
 
     // Local-only data should be preserved
-    expect(resolved.rawText).toBe('Local sensitive data that must be preserved');
+    expect(resolved.rawText).toBe(
+      'Local sensitive data that must be preserved'
+    );
     expect(resolved.embedding).toBe(localTransaction.embedding);
     expect(resolved.filePath).toBe('/local/path.pdf');
 

@@ -62,7 +62,9 @@ class MockDatabase {
   }
 
   async getPending(): Promise<LocalTransaction[]> {
-    return Array.from(this.transactions.values()).filter((tx) => tx.syncStatus === 'pending');
+    return Array.from(this.transactions.values()).filter(
+      (tx) => tx.syncStatus === 'pending'
+    );
   }
 
   async update(id: string, changes: Partial<LocalTransaction>): Promise<void> {
@@ -143,7 +145,9 @@ class MockSyncEngine {
 
         if (remoteVersion) {
           // Check for conflicts
-          const remoteUpdated = new Date(remoteVersion.server_updated_at as string);
+          const remoteUpdated = new Date(
+            remoteVersion.server_updated_at as string
+          );
           const localUpdated = tx.updatedAt;
 
           if (remoteUpdated > localUpdated) {
@@ -185,7 +189,9 @@ class MockSyncEngine {
       }
     } catch (error) {
       result.success = false;
-      result.errors.push(error instanceof Error ? error.message : 'Unknown error');
+      result.errors.push(
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
 
     return result;
@@ -199,12 +205,16 @@ class MockSyncEngine {
     transactionId: string,
     resolution: 'local' | 'remote' | 'merge'
   ): Promise<void> {
-    const conflict = this.conflicts.find((c) => c.transactionId === transactionId);
+    const conflict = this.conflicts.find(
+      (c) => c.transactionId === transactionId
+    );
     if (!conflict) return;
 
     if (resolution === 'local') {
       // Keep local, force sync
-      await this.db.update(transactionId, { syncStatus: 'pending' as SyncStatus });
+      await this.db.update(transactionId, {
+        syncStatus: 'pending' as SyncStatus,
+      });
     } else if (resolution === 'remote') {
       // Accept remote (merge non-local fields)
       await this.db.update(transactionId, {
@@ -248,9 +258,18 @@ describe('Sync Engine', () => {
   describe('Upload Operations', () => {
     it('uploads only pending transactions', async () => {
       await db.bulkAdd([
-        createTransaction({ id: createTransactionId('1'), syncStatus: 'pending' }),
-        createTransaction({ id: createTransactionId('2'), syncStatus: 'synced' }),
-        createTransaction({ id: createTransactionId('3'), syncStatus: 'pending' }),
+        createTransaction({
+          id: createTransactionId('1'),
+          syncStatus: 'pending',
+        }),
+        createTransaction({
+          id: createTransactionId('2'),
+          syncStatus: 'synced',
+        }),
+        createTransaction({
+          id: createTransactionId('3'),
+          syncStatus: 'pending',
+        }),
       ]);
 
       const result = await syncEngine.syncNow();
@@ -259,7 +278,12 @@ describe('Sync Engine', () => {
     });
 
     it('marks transactions as synced after successful upload', async () => {
-      await db.add(createTransaction({ id: createTransactionId('1'), syncStatus: 'pending' }));
+      await db.add(
+        createTransaction({
+          id: createTransactionId('1'),
+          syncStatus: 'pending',
+        })
+      );
 
       await syncEngine.syncNow();
 
@@ -269,21 +293,38 @@ describe('Sync Engine', () => {
 
     it('sets lastSyncAttempt after sync', async () => {
       const before = new Date();
-      await db.add(createTransaction({ id: createTransactionId('1'), syncStatus: 'pending' }));
+      await db.add(
+        createTransaction({
+          id: createTransactionId('1'),
+          syncStatus: 'pending',
+        })
+      );
 
       await syncEngine.syncNow();
 
       const tx = await db.get(createTransactionId('1'));
       expect(tx?.lastSyncAttempt).toBeDefined();
-      expect(tx?.lastSyncAttempt!.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(tx?.lastSyncAttempt!.getTime()).toBeGreaterThanOrEqual(
+        before.getTime()
+      );
     });
   });
 
   describe('Download Operations', () => {
     it('downloads new remote transactions', async () => {
       mockSupabaseResponse([
-        { id: 'remote-1', amount: 100, vendor: 'Remote Store', date: '2024-01-15' },
-        { id: 'remote-2', amount: 200, vendor: 'Another Store', date: '2024-01-16' },
+        {
+          id: 'remote-1',
+          amount: 100,
+          vendor: 'Remote Store',
+          date: '2024-01-15',
+        },
+        {
+          id: 'remote-2',
+          amount: 200,
+          vendor: 'Another Store',
+          date: '2024-01-16',
+        },
       ]);
 
       const result = await syncEngine.syncNow();
@@ -296,10 +337,15 @@ describe('Sync Engine', () => {
 
     it('does not duplicate existing transactions', async () => {
       await db.add(
-        createTransaction({ id: createTransactionId('existing-1'), syncStatus: 'synced' })
+        createTransaction({
+          id: createTransactionId('existing-1'),
+          syncStatus: 'synced',
+        })
       );
 
-      mockSupabaseResponse([{ id: 'existing-1', amount: 100, vendor: 'Store', date: '2024-01-15' }]);
+      mockSupabaseResponse([
+        { id: 'existing-1', amount: 100, vendor: 'Store', date: '2024-01-15' },
+      ]);
 
       const result = await syncEngine.syncNow();
 
@@ -311,7 +357,12 @@ describe('Sync Engine', () => {
     it('handles offline state', async () => {
       syncEngine.setOnline(false);
 
-      await db.add(createTransaction({ id: createTransactionId('1'), syncStatus: 'pending' }));
+      await db.add(
+        createTransaction({
+          id: createTransactionId('1'),
+          syncStatus: 'pending',
+        })
+      );
 
       const result = await syncEngine.syncNow();
 
@@ -424,7 +475,10 @@ describe('Sync Engine', () => {
       ]);
 
       await syncEngine.syncNow();
-      await syncEngine.resolveConflict(createTransactionId('resolve-local'), 'local');
+      await syncEngine.resolveConflict(
+        createTransactionId('resolve-local'),
+        'local'
+      );
 
       const tx = await db.get(createTransactionId('resolve-local'));
       expect(tx?.amount).toBe(100); // Local value preserved
@@ -451,7 +505,10 @@ describe('Sync Engine', () => {
       ]);
 
       await syncEngine.syncNow();
-      await syncEngine.resolveConflict(createTransactionId('resolve-remote'), 'remote');
+      await syncEngine.resolveConflict(
+        createTransactionId('resolve-remote'),
+        'remote'
+      );
 
       const tx = await db.get(createTransactionId('resolve-remote'));
       expect(tx?.amount).toBe(200); // Remote value applied
@@ -479,7 +536,10 @@ describe('Sync Engine', () => {
       await syncEngine.syncNow();
       expect(syncEngine.getConflicts()).toHaveLength(1);
 
-      await syncEngine.resolveConflict(createTransactionId('remove-conflict'), 'local');
+      await syncEngine.resolveConflict(
+        createTransactionId('remove-conflict'),
+        'local'
+      );
       expect(syncEngine.getConflicts()).toHaveLength(0);
     });
   });
@@ -528,7 +588,10 @@ describe('Sync Engine', () => {
       ]);
 
       await syncEngine.syncNow();
-      await syncEngine.resolveConflict(createTransactionId('preserve-local'), 'remote');
+      await syncEngine.resolveConflict(
+        createTransactionId('preserve-local'),
+        'remote'
+      );
 
       const updated = await db.get(createTransactionId('preserve-local'));
 
@@ -558,7 +621,10 @@ describe('Sync Engine', () => {
 
     it('marks transactions for sync', async () => {
       await db.add(
-        createTransaction({ id: createTransactionId('mark-sync'), syncStatus: 'synced' })
+        createTransaction({
+          id: createTransactionId('mark-sync'),
+          syncStatus: 'synced',
+        })
       );
 
       await syncEngine.markForSync(createTransactionId('mark-sync'));

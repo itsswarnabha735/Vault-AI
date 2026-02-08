@@ -87,7 +87,7 @@ interface FieldDiffRowProps {
 // Helper Functions
 // ============================================
 
-function formatTimestamp(date: Date): string {
+function _formatTimestamp(date: Date): string {
   return format(date, 'MMM d, yyyy h:mm a');
 }
 
@@ -238,7 +238,7 @@ function ConflictVersion({
 /**
  * Displays a row comparing a field between two versions.
  */
-function FieldDiffRow({
+function _FieldDiffRow({
   displayName,
   localValue,
   remoteValue,
@@ -319,14 +319,14 @@ export function ConflictDialog({
   // Navigation handlers
   const handlePrevious = React.useCallback(() => {
     if (currentIndex > 0) {
-      const prevConflict = unresolvedConflicts[currentIndex - 1];
+      const _prevConflict = unresolvedConflicts[currentIndex - 1];
       // Would need to update hook state - skip for now
     }
   }, [currentIndex, unresolvedConflicts]);
 
   const handleNext = React.useCallback(() => {
     if (currentIndex < unresolvedConflicts.length - 1) {
-      const nextConflict = unresolvedConflicts[currentIndex + 1];
+      const _nextConflict = unresolvedConflicts[currentIndex + 1];
       // Would need to update hook state - skip for now
     }
   }, [currentIndex, unresolvedConflicts]);

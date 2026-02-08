@@ -106,8 +106,9 @@ setup('authenticate', async ({ page }) => {
  * This is the recommended approach for E2E tests.
  */
 async function authenticateWithMockAuth(page: import('@playwright/test').Page) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
-  const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
+  const projectRef = new URL(supabaseUrl).hostname.split('.')[0] ?? 'localhost';
 
   // Create mock session
   const session = createMockSession();
@@ -135,10 +136,10 @@ async function authenticateWithMockAuth(page: import('@playwright/test').Page) {
   // Inject the session into localStorage (how Supabase stores it client-side)
   const storageKey = `sb-${projectRef}-auth-token`;
   await page.evaluate(
-    ([key, sessionData]) => {
+    ({ key, sessionData }) => {
       localStorage.setItem(key, JSON.stringify(sessionData));
     },
-    [storageKey, session]
+    { key: storageKey, sessionData: session }
   );
 
   // Set session cookies for SSR auth
@@ -204,9 +205,9 @@ async function authenticateWithRealAuth(page: import('@playwright/test').Page) {
   await submitButton.click();
 
   // Wait for magic link message
-  await expect(
-    page.getByText(/check your email|magic link|sent/i)
-  ).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(/check your email|magic link|sent/i)).toBeVisible(
+    { timeout: 10000 }
+  );
 
   // At this point, you would need to:
   // 1. Check the email inbox (e.g., using Mailhog, Mailtrap, or similar)
@@ -226,8 +227,9 @@ async function authenticateWithRealAuth(page: import('@playwright/test').Page) {
 export async function isAuthenticated(
   page: import('@playwright/test').Page
 ): Promise<boolean> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
-  const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
+  const projectRef = new URL(supabaseUrl).hostname.split('.')[0] ?? 'localhost';
   const storageKey = `sb-${projectRef}-auth-token`;
 
   const hasSession = await page.evaluate((key) => {

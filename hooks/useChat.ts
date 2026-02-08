@@ -35,7 +35,10 @@ export interface UseChatOptions {
   onMessageSent?: (message: ChatMessage) => void;
 
   /** Callback when response is received */
-  onResponseReceived?: (response: { text: string; citations: Citation[] }) => void;
+  onResponseReceived?: (response: {
+    text: string;
+    citations: Citation[];
+  }) => void;
 
   /** Callback on error */
   onError?: (error: Error) => void;
@@ -174,7 +177,8 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const lastUserMessageRef = useRef<string | null>(null);
 
   // Derived state
-  const isLoading = loadingState === 'processing' || loadingState === 'streaming';
+  const isLoading =
+    loadingState === 'processing' || loadingState === 'streaming';
   const canSendMessage = inputText.trim().length > 0 && !isLoading;
   const error = lastError
     ? { message: lastError.message, code: lastError.code }

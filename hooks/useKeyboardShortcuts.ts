@@ -81,7 +81,12 @@ export function useKeyboardShortcuts(
 ) {
   const {
     enabled = true,
-    excludeSelectors = ['input', 'textarea', 'select', '[contenteditable="true"]'],
+    excludeSelectors = [
+      'input',
+      'textarea',
+      'select',
+      '[contenteditable="true"]',
+    ],
   } = options;
 
   // Store shortcuts in ref to avoid stale closures

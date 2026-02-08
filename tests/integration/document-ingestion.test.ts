@@ -71,9 +71,14 @@ const mockEntityExtractor = {
             }
           : null,
         amount: amountMatch
-          ? { value: parseFloat(amountMatch[1].replace(',', '')), confidence: 0.95 }
+          ? {
+              value: parseFloat(amountMatch[1].replace(',', '')),
+              confidence: 0.95,
+            }
           : null,
-        vendor: vendorMatch ? { value: vendorMatch[1].trim(), confidence: 0.85 } : null,
+        vendor: vendorMatch
+          ? { value: vendorMatch[1].trim(), confidence: 0.85 }
+          : null,
       };
     }
   ),
@@ -95,11 +100,13 @@ const mockEmbeddingService = {
 const mockOPFSService = {
   savedFiles: new Map<string, Blob>(),
 
-  saveFile: vi.fn(async (file: File, transactionId: string): Promise<string> => {
-    const path = `/vault-ai/documents/${transactionId}/${file.name}`;
-    mockOPFSService.savedFiles.set(path, file);
-    return path;
-  }),
+  saveFile: vi.fn(
+    async (file: File, transactionId: string): Promise<string> => {
+      const path = `/vault-ai/documents/${transactionId}/${file.name}`;
+      mockOPFSService.savedFiles.set(path, file);
+      return path;
+    }
+  ),
 
   getFile: vi.fn(async (path: string): Promise<Blob | null> => {
     return mockOPFSService.savedFiles.get(path) || null;
@@ -116,15 +123,20 @@ const mockOPFSService = {
 const mockDatabase = {
   transactions: new Map<string, ReturnType<typeof createTransaction>>(),
 
-  add: vi.fn(async (tx: ReturnType<typeof createTransaction>): Promise<string> => {
-    mockDatabase.transactions.set(tx.id, tx);
-    return tx.id;
-  }),
+  add: vi.fn(
+    async (tx: ReturnType<typeof createTransaction>): Promise<string> => {
+      mockDatabase.transactions.set(tx.id, tx);
+      return tx.id;
+    }
+  ),
 
   get: vi.fn(async (id: string) => mockDatabase.transactions.get(id)),
 
   update: vi.fn(
-    async (id: string, changes: Partial<ReturnType<typeof createTransaction>>) => {
+    async (
+      id: string,
+      changes: Partial<ReturnType<typeof createTransaction>>
+    ) => {
       const tx = mockDatabase.transactions.get(id);
       if (tx) {
         mockDatabase.transactions.set(id, { ...tx, ...changes });
@@ -421,7 +433,8 @@ describe('Document Ingestion Flow', () => {
       seedTestTransactions(5);
 
       // Search for the specific document
-      const queryEmbedding = await mockEmbeddingService.embed('ACME STORE receipt');
+      const queryEmbedding =
+        await mockEmbeddingService.embed('ACME STORE receipt');
       const results = mockVectorSearch.search(queryEmbedding, 3);
 
       expect(results.length).toBe(3);
@@ -432,7 +445,9 @@ describe('Document Ingestion Flow', () => {
       seedTestTransactions(5);
 
       // Process our target document
-      const result = await processDocument(await loadTestFile('sample-receipt.pdf'));
+      const result = await processDocument(
+        await loadTestFile('sample-receipt.pdf')
+      );
 
       // Search with exact embedding should return our document first
       const searchResults = mockVectorSearch.search(result.embedding, 1);
@@ -452,7 +467,9 @@ describe('Document Ingestion Flow', () => {
     });
 
     it('handles embedding service failure', async () => {
-      mockEmbeddingService.embed.mockRejectedValueOnce(new Error('Embedding failed'));
+      mockEmbeddingService.embed.mockRejectedValueOnce(
+        new Error('Embedding failed')
+      );
 
       const file = await loadTestFile('sample-receipt.pdf');
 

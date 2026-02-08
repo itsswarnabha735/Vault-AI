@@ -18,6 +18,7 @@ import {
   selectSyncStatus,
   getSyncStateMessage,
 } from '@/stores/syncStore';
+import type { SyncEngineState } from '@/types/sync';
 import { usePendingSync } from '@/hooks/useLocalDB';
 import { cn } from '@/lib/utils';
 
@@ -142,7 +143,7 @@ function SyncStatusIndicator({
         />
       )}
       <span>
-        {getSyncStateMessage(state as any)}
+        {getSyncStateMessage(state as SyncEngineState)}
         {pendingCount > 0 && !isSyncing && ` (${pendingCount} pending)`}
       </span>
     </div>

@@ -6,7 +6,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createTransaction, createTransactions, createSafeLLMPrompt } from '../factories';
+import {
+  createTransaction,
+  createTransactions,
+  createSafeLLMPrompt,
+} from '../factories';
 
 // ============================================
 // Mock LLM API Calls
@@ -96,13 +100,17 @@ describe('CRITICAL: Privacy - LLM Prompt Construction', () => {
     it('MUST NOT include OCR output in prompts', () => {
       const transactions = [
         createTransaction({
-          rawText: 'OCR Result: Bank account number: 1234567890, Routing: 987654321',
+          rawText:
+            'OCR Result: Bank account number: 1234567890, Routing: 987654321',
           vendor: 'Bank',
           amount: 1000,
         }),
       ];
 
-      const prompt = createSafeLLMPrompt('Show bank transactions', transactions);
+      const prompt = createSafeLLMPrompt(
+        'Show bank transactions',
+        transactions
+      );
 
       expect(prompt).not.toContain('1234567890');
       expect(prompt).not.toContain('987654321');
@@ -272,7 +280,10 @@ describe('CRITICAL: Privacy - LLM API Integration', () => {
         category: tx.category,
       }));
 
-      const prompt = mockLLMService.buildSafePrompt('Analyze spending', safeData);
+      const prompt = mockLLMService.buildSafePrompt(
+        'Analyze spending',
+        safeData
+      );
       await mockLLMService.generateResponse(prompt);
 
       // Verify the captured request

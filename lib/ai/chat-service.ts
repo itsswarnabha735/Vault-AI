@@ -363,7 +363,7 @@ class ChatServiceImpl implements ChatService {
       verifySafePayload(promptContext);
 
       // 7. Stream response
-      let fullText = '';
+      let _fullText = '';
       const llmClient = getLLMClient();
 
       if (llmClient.isReady()) {
@@ -371,7 +371,7 @@ class ChatServiceImpl implements ChatService {
         const llmResponse = await llmClient.generateStream(
           prompt,
           (chunk, done) => {
-            fullText += chunk;
+            _fullText += chunk;
             onChunk(chunk, done);
           }
         );

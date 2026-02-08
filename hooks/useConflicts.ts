@@ -52,7 +52,10 @@ export interface UseConflictsReturn {
   openFirstUnresolved: () => void;
 
   /** Resolve a conflict */
-  resolveConflict: (conflictId: string, resolution: 'local' | 'remote') => Promise<void>;
+  resolveConflict: (
+    conflictId: string,
+    resolution: 'local' | 'remote'
+  ) => Promise<void>;
 
   /** Resolve the currently selected conflict */
   resolveSelected: (resolution: 'local' | 'remote') => Promise<void>;
@@ -67,7 +70,9 @@ export interface UseConflictsReturn {
   clearResolved: () => Promise<void>;
 
   /** Get conflict details for a transaction */
-  getConflictForTransaction: (transactionId: TransactionId) => DetailedConflict | undefined;
+  getConflictForTransaction: (
+    transactionId: TransactionId
+  ) => DetailedConflict | undefined;
 
   /** Current auto-resolve strategy */
   autoResolveStrategy: AutoResolveStrategy;
@@ -122,7 +127,9 @@ export interface ConflictFieldDiff {
 export function useConflicts(): UseConflictsReturn {
   // State
   const [conflicts, setConflicts] = useState<DetailedConflict[]>([]);
-  const [selectedConflictId, setSelectedConflictId] = useState<string | null>(null);
+  const [selectedConflictId, setSelectedConflictId] = useState<string | null>(
+    null
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -184,8 +191,9 @@ export function useConflicts(): UseConflictsReturn {
   }, []);
 
   const openFirstUnresolved = useCallback(() => {
-    if (unresolvedConflicts.length > 0) {
-      openDialog(unresolvedConflicts[0].id);
+    const firstConflict = unresolvedConflicts[0];
+    if (firstConflict) {
+      openDialog(firstConflict.id);
     }
   }, [unresolvedConflicts, openDialog]);
 
@@ -203,15 +211,20 @@ export function useConflicts(): UseConflictsReturn {
 
         // If this was the selected conflict, move to next or close
         if (conflictId === selectedConflictId) {
-          const remaining = unresolvedConflicts.filter((c) => c.id !== conflictId);
-          if (remaining.length > 0) {
-            setSelectedConflictId(remaining[0].id);
+          const remaining = unresolvedConflicts.filter(
+            (c) => c.id !== conflictId
+          );
+          const nextConflict = remaining[0];
+          if (nextConflict) {
+            setSelectedConflictId(nextConflict.id);
           } else {
             closeDialog();
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to resolve conflict'));
+        setError(
+          err instanceof Error ? err : new Error('Failed to resolve conflict')
+        );
         console.error('[useConflicts] Resolution error:', err);
       } finally {
         setIsLoading(false);
@@ -342,7 +355,9 @@ export function useConflictCount(): {
 /**
  * Hook for getting field differences for a conflict.
  */
-export function useConflictDiffs(conflict: DetailedConflict | null): ConflictFieldDiff[] {
+export function useConflictDiffs(
+  conflict: DetailedConflict | null
+): ConflictFieldDiff[] {
   return useMemo(() => {
     if (!conflict) return [];
 

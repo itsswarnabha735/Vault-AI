@@ -70,33 +70,41 @@ export {
 export type {
   // Database Schema
   Database,
-  // User Profiles
-  UserProfileRow,
-  UserProfileInsert,
-  UserProfileUpdate,
-  // Transactions
-  TransactionRow,
+  // Tables helper
+  Tables,
+  InsertTables,
+  UpdateTables,
+  // Transactions (aliased to avoid conflicts with database types)
+  Transaction as SupabaseTransaction,
   TransactionInsert,
   TransactionUpdate,
-  // Categories
-  CategoryRow,
+  // Categories (aliased to avoid conflicts with database types)
+  Category as SupabaseCategory,
   CategoryInsert,
   CategoryUpdate,
-  // Budgets
-  BudgetRow,
+  // Budgets (aliased to avoid conflicts with database types)
+  Budget as SupabaseBudget,
   BudgetInsert,
   BudgetUpdate,
+  // User Preferences (aliased to avoid conflicts with database types)
+  UserPreferences as SupabaseUserPreferences,
+  UserPreferencesInsert,
+  UserPreferencesUpdate,
+  // Sync Metadata
+  SyncMetadata,
+  SyncMetadataInsert,
+  SyncMetadataUpdate,
   // Function Returns
-  CategorySpending,
-  MonthlyTotal,
-  // Query Options
-  TransactionQueryOptions,
-  // Client Types
-  TypedSupabaseClient,
-  // Realtime
-  RealtimeTransactionPayload,
-  RealtimeCategoryPayload,
-  RealtimeBudgetPayload,
+  SpendingByCategory,
+  BudgetStatus as SupabaseBudgetStatus,
+  MonthlyTrend,
+  TopVendor,
+  DashboardSummary,
+  ChangesResult,
+  UpsertResult,
+  // Audit Log
+  AuditLog,
+  AuditLogInsert,
 } from './supabase';
 
 // ============================================

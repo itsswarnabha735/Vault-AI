@@ -24,8 +24,10 @@ interface IndexStats {
 }
 
 class VectorSearchServiceImpl {
-  private vectors: Map<string, { vector: Float32Array; metadata?: Record<string, unknown> }> =
-    new Map();
+  private vectors: Map<
+    string,
+    { vector: Float32Array; metadata?: Record<string, unknown> }
+  > = new Map();
   private dimensions: number = 384;
   private lastUpdated: Date = new Date();
 
@@ -35,9 +37,15 @@ class VectorSearchServiceImpl {
     this.lastUpdated = new Date();
   }
 
-  addVector(id: string, vector: Float32Array, metadata?: Record<string, unknown>): void {
+  addVector(
+    id: string,
+    vector: Float32Array,
+    metadata?: Record<string, unknown>
+  ): void {
     if (vector.length !== this.dimensions) {
-      throw new Error(`Vector dimension mismatch: expected ${this.dimensions}, got ${vector.length}`);
+      throw new Error(
+        `Vector dimension mismatch: expected ${this.dimensions}, got ${vector.length}`
+      );
     }
     this.vectors.set(id, { vector, metadata });
     this.lastUpdated = new Date();
@@ -84,11 +92,13 @@ class VectorSearchServiceImpl {
 
   async saveIndex(): Promise<string> {
     // Simulate serialization
-    const data = Array.from(this.vectors.entries()).map(([id, { vector, metadata }]) => ({
-      id,
-      vector: Array.from(vector),
-      metadata,
-    }));
+    const data = Array.from(this.vectors.entries()).map(
+      ([id, { vector, metadata }]) => ({
+        id,
+        vector: Array.from(vector),
+        metadata,
+      })
+    );
     return JSON.stringify(data);
   }
 
@@ -301,9 +311,15 @@ describe('Vector Search Service', () => {
 
   describe('Filtered Search', () => {
     it('applies filter to results', () => {
-      vectorSearch.addVector('food-1', createRandomVector(), { category: 'food' });
-      vectorSearch.addVector('food-2', createRandomVector(), { category: 'food' });
-      vectorSearch.addVector('transport-1', createRandomVector(), { category: 'transport' });
+      vectorSearch.addVector('food-1', createRandomVector(), {
+        category: 'food',
+      });
+      vectorSearch.addVector('food-2', createRandomVector(), {
+        category: 'food',
+      });
+      vectorSearch.addVector('transport-1', createRandomVector(), {
+        category: 'transport',
+      });
 
       const results = vectorSearch.searchWithFilter(
         createRandomVector(),
@@ -318,7 +334,9 @@ describe('Vector Search Service', () => {
     });
 
     it('returns empty when no items match filter', () => {
-      vectorSearch.addVector('item-1', createRandomVector(), { category: 'food' });
+      vectorSearch.addVector('item-1', createRandomVector(), {
+        category: 'food',
+      });
 
       const results = vectorSearch.searchWithFilter(
         createRandomVector(),
@@ -332,8 +350,12 @@ describe('Vector Search Service', () => {
 
   describe('Persistence', () => {
     it('saves and loads index', async () => {
-      vectorSearch.addVector('test-1', createRandomVector(), { label: 'first' });
-      vectorSearch.addVector('test-2', createRandomVector(), { label: 'second' });
+      vectorSearch.addVector('test-1', createRandomVector(), {
+        label: 'first',
+      });
+      vectorSearch.addVector('test-2', createRandomVector(), {
+        label: 'second',
+      });
 
       const serialized = await vectorSearch.saveIndex();
 

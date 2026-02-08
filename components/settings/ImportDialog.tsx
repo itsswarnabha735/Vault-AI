@@ -22,7 +22,6 @@ import {
   AlertCircle,
   AlertTriangle,
   X,
-  Info,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils/index';
@@ -217,7 +216,7 @@ export function ImportDialog({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [conflictResolution, setConflictResolution] =
     useState<ConflictResolution>('skip');
-  const [mergeCategories, setMergeCategories] = useState(true);
+  const [mergeCategories, _setMergeCategories] = useState(true);
 
   const {
     validateFile,

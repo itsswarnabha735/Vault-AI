@@ -20,17 +20,13 @@ import type {
   CategoryId,
 } from '@/types/database';
 import type {
-  SyncEngineState,
   SyncEngineStatus,
   SyncResult,
   SyncConflict,
   SyncError as SyncErrorType,
   SyncConfig,
-  DEFAULT_SYNC_CONFIG,
-  SyncEventType,
-  ConflictResolution,
 } from '@/types/sync';
-import type { TransactionInsert, TransactionRow } from '@/types/supabase';
+import type { TransactionInsert, Transaction as TransactionRow } from '@/types/supabase';
 
 // ============================================
 // Types
@@ -709,7 +705,10 @@ class SyncEngineImpl implements SyncEngine {
       this.emitConflict(conflict);
 
       if (this.config.autoResolveConflicts) {
-        await this.resolveConflict(conflict.id, this.config.defaultResolution);
+        const resolution = this.config.defaultResolution;
+        if (resolution === 'local' || resolution === 'remote') {
+          await this.resolveConflict(conflict.id, resolution);
+        }
       }
       return;
     }

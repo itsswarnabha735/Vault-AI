@@ -8,7 +8,7 @@
  * - Vendor statistics calculation
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock the database before importing the detector
 vi.mock('@/lib/storage/db', () => {
@@ -37,7 +37,6 @@ vi.mock('@/lib/storage/db', () => {
 
 import {
   DEFAULT_AMOUNT_ANOMALY_CONFIG,
-  type AmountAnomalyConfig,
   type VendorStats,
 } from './amount-detector';
 

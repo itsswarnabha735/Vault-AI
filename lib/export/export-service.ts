@@ -238,7 +238,9 @@ function escapeCSV(value: string | number | null | undefined): string {
 /**
  * Get category name by ID.
  */
-async function getCategoryName(categoryId: CategoryId | null): Promise<string> {
+async function _getCategoryName(
+  categoryId: CategoryId | null
+): Promise<string> {
   if (!categoryId) {
     return '';
   }

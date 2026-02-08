@@ -19,8 +19,6 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Calendar,
-  X,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils/index';

@@ -250,7 +250,7 @@ export class SyncStateMachine {
    */
   private updateContextForTransition(
     trigger: SyncTrigger,
-    newState: SyncEngineState
+    _newState: SyncEngineState
   ): void {
     switch (trigger) {
       case 'SYNC_SUCCESS':

@@ -61,7 +61,7 @@ export function createTransaction(
     filePath: `/test/documents/${id}.pdf`,
     fileSize: 1024,
     mimeType: 'application/pdf',
-    date: now.toISOString().split('T')[0],
+    date: now.toISOString().split('T')[0] ?? now.toISOString().slice(0, 10),
     amount: 99.99,
     vendor: 'Test Store',
     category: null,
@@ -92,7 +92,7 @@ export function createTransactions(
     return createTransaction({
       amount: 50 + index * 10,
       vendor: `Vendor ${index + 1}`,
-      date: date.toISOString().split('T')[0],
+      date: date.toISOString().split('T')[0] ?? date.toISOString().slice(0, 10),
       ...baseOverrides,
     });
   });
@@ -212,7 +212,7 @@ export function createBudget(overrides?: Partial<Budget>): Budget {
     categoryId: null,
     amount: 500,
     period: 'monthly',
-    startDate: now.toISOString().split('T')[0],
+    startDate: now.toISOString().split('T')[0] ?? now.toISOString().slice(0, 10),
     isActive: true,
     createdAt: now,
     updatedAt: now,
@@ -483,7 +483,11 @@ export function createMockEmbedding(dimension: number = 384): Float32Array {
 // Re-export ID creators from types
 // ============================================
 
-export { createTransactionId, createCategoryId, createBudgetId } from '@/types/database';
+export {
+  createTransactionId,
+  createCategoryId,
+  createBudgetId,
+} from '@/types/database';
 
 // ============================================
 // Export Type Helpers

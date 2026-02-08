@@ -15,9 +15,6 @@ import React, { useState, useCallback } from 'react';
 import {
   Download,
   Upload,
-  FileText,
-  FileJson,
-  FileArchive,
   Trash2,
   Loader2,
   AlertTriangle,
@@ -66,7 +63,7 @@ export interface ExportSettingsProps {
 // Helper Functions
 // ============================================
 
-function formatBytes(bytes: number): string {
+function _formatBytes(bytes: number): string {
   if (bytes === 0) {
     return '0 B';
   }
@@ -84,12 +81,17 @@ interface StorageInfoProps {
   dbStats:
     | { transactionCount: number; categoryCount: number; budgetCount: number }
     | undefined;
-  opfsStats: { used: number; quota: number } | null;
+  opfsStats: {
+    totalBytes: number;
+    quotaBytes: number | null;
+    totalBytesFormatted: string;
+    quotaBytesFormatted: string | null;
+  } | null;
 }
 
 function StorageInfo({ dbStats, opfsStats }: StorageInfoProps) {
-  const usedPercentage = opfsStats
-    ? Math.round((opfsStats.used / opfsStats.quota) * 100)
+  const usedPercentage = opfsStats?.quotaBytes
+    ? Math.round((opfsStats.totalBytes / opfsStats.quotaBytes) * 100)
     : 0;
 
   return (
@@ -120,8 +122,8 @@ function StorageInfo({ dbStats, opfsStats }: StorageInfoProps) {
             Local Storage
           </span>
           <span className="text-muted-foreground">
-            {opfsStats ? formatBytes(opfsStats.used) : '0 B'} /{' '}
-            {opfsStats ? formatBytes(opfsStats.quota) : 'Unknown'}
+            {opfsStats?.totalBytesFormatted || '0 B'} /{' '}
+            {opfsStats?.quotaBytesFormatted || 'Unknown'}
           </span>
         </div>
         <Progress value={usedPercentage} className="h-2" />
@@ -143,7 +145,7 @@ function ActionButton({
   label,
   description,
   onClick,
-  variant = 'outline',
+  variant: _variant = 'outline',
 }: ActionButtonProps) {
   return (
     <button
@@ -167,8 +169,8 @@ function ActionButton({
 // ============================================
 
 export function ExportSettings({ className }: ExportSettingsProps) {
-  const dbStats = useDbStats();
-  const opfsStats = useOPFSStorage();
+  const { data: dbStats } = useDbStats();
+  const { stats: opfsStats } = useOPFSStorage();
 
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -194,7 +196,6 @@ export function ExportSettings({ className }: ExportSettingsProps) {
         db.budgets.clear(),
         db.anomalies.clear(),
         db.searchHistory.clear(),
-        db.documents.clear(),
       ]);
 
       // TODO: Clear OPFS files as well

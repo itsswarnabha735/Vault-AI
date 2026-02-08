@@ -17,13 +17,9 @@ import {
 } from '@supabase/supabase-js';
 import { getClient } from '@/lib/supabase/client';
 import { db } from '@/lib/storage/db';
-import type {
-  LocalTransaction,
-  TransactionId,
-  CategoryId,
-} from '@/types/database';
-import type { TransactionRow } from '@/types/supabase';
-import type { RealtimeStatus, RealtimeChange } from '@/types/sync';
+import type { TransactionId, CategoryId } from '@/types/database';
+import type { Transaction as TransactionRow } from '@/types/supabase';
+import type { RealtimeStatus } from '@/types/sync';
 
 // ============================================
 // Types
@@ -698,7 +694,7 @@ class RealtimeManagerImpl implements RealtimeManager {
 
   private setConnectionState(state: ConnectionState): void {
     if (this.connectionState !== state) {
-      const wasConnected = this.connectionState === 'connected';
+      const _wasConnected = this.connectionState === 'connected';
       this.connectionState = state;
       const isConnected = state === 'connected';
 

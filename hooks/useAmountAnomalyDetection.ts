@@ -132,7 +132,11 @@ export interface UseAmountAnomalyDetectionReturn {
 export function useAmountAnomalyDetection(
   options: UseAmountAnomalyDetectionOptions = {}
 ): UseAmountAnomalyDetectionReturn {
-  const { autoCheck = true, config: initialConfig, onAnomalyDetected } = options;
+  const {
+    autoCheck = true,
+    config: initialConfig,
+    onAnomalyDetected,
+  } = options;
 
   // State
   const [isLoading, setIsLoading] = useState(false);
@@ -220,10 +224,7 @@ export function useAmountAnomalyDetection(
 
         if (result.isAnomaly) {
           // Create an alert
-          await amountAnomalyDetector.createAmountAlert(
-            transaction.id,
-            result
-          );
+          await amountAnomalyDetector.createAmountAlert(transaction.id, result);
 
           // Notify callback
           if (onAnomalyDetected) {

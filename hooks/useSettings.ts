@@ -25,7 +25,9 @@ import { DEFAULT_USER_SETTINGS } from '@/types/database';
 /**
  * Settings update payload.
  */
-export type SettingsUpdate = Partial<Omit<UserSettings, 'id' | 'userId' | 'updatedAt'>>;
+export type SettingsUpdate = Partial<
+  Omit<UserSettings, 'id' | 'userId' | 'updatedAt'>
+>;
 
 /**
  * Return type for the useSettings hook.
@@ -76,10 +78,26 @@ export const CURRENCY_OPTIONS = [
  */
 export const TIMEZONE_OPTIONS = [
   // Americas
-  { value: 'America/New_York', label: 'Eastern Time (US & Canada)', region: 'Americas' },
-  { value: 'America/Chicago', label: 'Central Time (US & Canada)', region: 'Americas' },
-  { value: 'America/Denver', label: 'Mountain Time (US & Canada)', region: 'Americas' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (US & Canada)', region: 'Americas' },
+  {
+    value: 'America/New_York',
+    label: 'Eastern Time (US & Canada)',
+    region: 'Americas',
+  },
+  {
+    value: 'America/Chicago',
+    label: 'Central Time (US & Canada)',
+    region: 'Americas',
+  },
+  {
+    value: 'America/Denver',
+    label: 'Mountain Time (US & Canada)',
+    region: 'Americas',
+  },
+  {
+    value: 'America/Los_Angeles',
+    label: 'Pacific Time (US & Canada)',
+    region: 'Americas',
+  },
   { value: 'America/Anchorage', label: 'Alaska', region: 'Americas' },
   { value: 'Pacific/Honolulu', label: 'Hawaii', region: 'Americas' },
   { value: 'America/Toronto', label: 'Toronto', region: 'Americas' },
@@ -126,7 +144,11 @@ export const DATE_FORMAT_OPTIONS = [
 /**
  * Theme options.
  */
-export const THEME_OPTIONS: Array<{ value: Theme; label: string; icon: string }> = [
+export const THEME_OPTIONS: Array<{
+  value: Theme;
+  label: string;
+  icon: string;
+}> = [
   { value: 'light', label: 'Light', icon: '☀️' },
   { value: 'dark', label: 'Dark', icon: '🌙' },
   { value: 'system', label: 'System', icon: '💻' },
@@ -235,7 +257,8 @@ export function useSettings(): UseSettingsReturn {
         applyTheme(updates.theme);
       }
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to update settings');
+      const error =
+        err instanceof Error ? err : new Error('Failed to update settings');
       setError(error);
       throw error;
     } finally {
@@ -254,7 +277,8 @@ export function useSettings(): UseSettingsReturn {
       await db.settings.put(getDefaultSettings());
       applyTheme('system');
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to reset settings');
+      const error =
+        err instanceof Error ? err : new Error('Failed to reset settings');
       setError(error);
       throw error;
     } finally {
@@ -281,7 +305,9 @@ export function useSettings(): UseSettingsReturn {
  */
 function applyTheme(theme: Theme): void {
   const root = document.documentElement;
-  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const systemPrefersDark = window.matchMedia(
+    '(prefers-color-scheme: dark)'
+  ).matches;
 
   if (theme === 'dark' || (theme === 'system' && systemPrefersDark)) {
     root.classList.add('dark');
@@ -304,7 +330,9 @@ export function useTheme(): {
   // Determine resolved theme
   useEffect(() => {
     const updateResolvedTheme = () => {
-      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const systemPrefersDark = window.matchMedia(
+        '(prefers-color-scheme: dark)'
+      ).matches;
 
       if (settings.theme === 'system') {
         setResolvedTheme(systemPrefersDark ? 'dark' : 'light');

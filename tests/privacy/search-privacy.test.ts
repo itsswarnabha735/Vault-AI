@@ -8,7 +8,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createTransaction, createTransactions, createTransactionId } from '../factories';
+import {
+  createTransaction,
+  createTransactions,
+  createTransactionId,
+} from '../factories';
 
 // ============================================
 // Test Setup
@@ -355,12 +359,16 @@ describe('CRITICAL: Privacy - Search Operations', () => {
         {
           id: 'medical-1',
           content: 'Medical diagnosis details',
-          embedding: await mockEmbeddingService.embedText('Medical diagnosis details'),
+          embedding: await mockEmbeddingService.embedText(
+            'Medical diagnosis details'
+          ),
         },
         {
           id: 'financial-1',
           content: 'Bank account statements',
-          embedding: await mockEmbeddingService.embedText('Bank account statements'),
+          embedding: await mockEmbeddingService.embedText(
+            'Bank account statements'
+          ),
         },
       ];
 

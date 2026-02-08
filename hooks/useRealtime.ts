@@ -17,7 +17,7 @@ import {
 } from '@/lib/sync/realtime';
 import { useAuth } from '@/hooks/useAuth';
 import type { RealtimeStatus } from '@/types/sync';
-import type { TransactionRow } from '@/types/supabase';
+import type { Transaction as TransactionRow } from '@/types/supabase';
 
 // ============================================
 // Types
@@ -122,7 +122,9 @@ function formatTimeSinceEvent(lastEventAt: Date | null): string | null {
  * }
  * ```
  */
-export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn {
+export function useRealtime(
+  options: UseRealtimeOptions = {}
+): UseRealtimeReturn {
   const { autoConnect = true, debug = false, onChange } = options;
 
   // Get current user
@@ -132,7 +134,8 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
   const managerRef = useRef<RealtimeManager | null>(null);
 
   // State
-  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>('disconnected');
   const [lastEventAt, setLastEventAt] = useState<Date | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
@@ -281,7 +284,8 @@ export function useRealtimeStatus(): {
   isConnecting: boolean;
   hasError: boolean;
 } {
-  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>('disconnected');
 
   useEffect(() => {
     const manager = getRealtimeManager();

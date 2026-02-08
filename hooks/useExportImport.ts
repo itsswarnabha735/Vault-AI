@@ -53,7 +53,10 @@ export interface UseExportReturn {
   lastResult: ExportResult | null;
 
   /** Export transactions */
-  exportTransactions: (format: ExportFormat, filters?: ExportFilters) => Promise<ExportResult>;
+  exportTransactions: (
+    format: ExportFormat,
+    filters?: ExportFilters
+  ) => Promise<ExportResult>;
 
   /** Export documents */
   exportDocuments: () => Promise<ExportResult>;
@@ -105,10 +108,16 @@ export interface UseImportReturn {
   validateFile: (file: File) => Promise<ValidationResult>;
 
   /** Import from backup */
-  importBackup: (file: File, options?: Partial<ImportOptions>) => Promise<ImportResult>;
+  importBackup: (
+    file: File,
+    options?: Partial<ImportOptions>
+  ) => Promise<ImportResult>;
 
   /** Import from CSV */
-  importCSV: (file: File, options?: Partial<ImportOptions>) => Promise<ImportResult>;
+  importCSV: (
+    file: File,
+    options?: Partial<ImportOptions>
+  ) => Promise<ImportResult>;
 
   /** Cancel ongoing import */
   cancel: () => void;
@@ -146,10 +155,13 @@ export interface UseImportReturn {
 export function useExport(options: UseExportOptions = {}): UseExportReturn {
   const { onComplete, onError, autoDownload = true } = options;
 
-  const [progress, setProgress] = useState<ExportProgress>(exportService.getProgress());
+  const [progress, setProgress] = useState<ExportProgress>(
+    exportService.getProgress()
+  );
   const [lastResult, setLastResult] = useState<ExportResult | null>(null);
 
-  const isExporting = progress.stage === 'exporting' || progress.stage === 'compressing';
+  const isExporting =
+    progress.stage === 'exporting' || progress.stage === 'compressing';
 
   // Subscribe to progress updates
   useEffect(() => {
@@ -161,7 +173,10 @@ export function useExport(options: UseExportOptions = {}): UseExportReturn {
    * Export transactions.
    */
   const exportTransactions = useCallback(
-    async (format: ExportFormat, filters?: ExportFilters): Promise<ExportResult> => {
+    async (
+      format: ExportFormat,
+      filters?: ExportFilters
+    ): Promise<ExportResult> => {
       try {
         const result = await exportService.exportTransactions(format, filters);
         setLastResult(result);
@@ -188,27 +203,28 @@ export function useExport(options: UseExportOptions = {}): UseExportReturn {
   /**
    * Export documents.
    */
-  const exportDocumentsHandler = useCallback(async (): Promise<ExportResult> => {
-    try {
-      const result = await exportService.exportDocuments();
-      setLastResult(result);
+  const exportDocumentsHandler =
+    useCallback(async (): Promise<ExportResult> => {
+      try {
+        const result = await exportService.exportDocuments();
+        setLastResult(result);
 
-      if (result.success) {
-        if (autoDownload) {
-          downloadExportResult(result);
+        if (result.success) {
+          if (autoDownload) {
+            downloadExportResult(result);
+          }
+          onComplete?.(result);
+        } else {
+          onError?.(result.error || 'Export failed');
         }
-        onComplete?.(result);
-      } else {
-        onError?.(result.error || 'Export failed');
-      }
 
-      return result;
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Export failed';
-      onError?.(error);
-      return { success: false, error };
-    }
-  }, [autoDownload, onComplete, onError]);
+        return result;
+      } catch (err) {
+        const error = err instanceof Error ? err.message : 'Export failed';
+        onError?.(error);
+        return { success: false, error };
+      }
+    }, [autoDownload, onComplete, onError]);
 
   /**
    * Export complete backup.
@@ -299,7 +315,9 @@ export function useExport(options: UseExportOptions = {}): UseExportReturn {
 export function useImport(options: UseImportOptions = {}): UseImportReturn {
   const { onComplete, onError, defaultOptions } = options;
 
-  const [progress, setProgress] = useState<ImportProgress>(importService.getProgress());
+  const [progress, setProgress] = useState<ImportProgress>(
+    importService.getProgress()
+  );
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [lastResult, setLastResult] = useState<ImportResult | null>(null);
 
@@ -314,17 +332,23 @@ export function useImport(options: UseImportOptions = {}): UseImportReturn {
   /**
    * Validate a file before import.
    */
-  const validateFileHandler = useCallback(async (file: File): Promise<ValidationResult> => {
-    const result = await importService.validateFile(file);
-    setValidation(result);
-    return result;
-  }, []);
+  const validateFileHandler = useCallback(
+    async (file: File): Promise<ValidationResult> => {
+      const result = await importService.validateFile(file);
+      setValidation(result);
+      return result;
+    },
+    []
+  );
 
   /**
    * Import from backup.
    */
   const importBackupHandler = useCallback(
-    async (file: File, options?: Partial<ImportOptions>): Promise<ImportResult> => {
+    async (
+      file: File,
+      options?: Partial<ImportOptions>
+    ): Promise<ImportResult> => {
       try {
         const mergedOptions = {
           ...DEFAULT_IMPORT_OPTIONS,
@@ -332,7 +356,10 @@ export function useImport(options: UseImportOptions = {}): UseImportReturn {
           ...options,
         };
 
-        const result = await importService.importFromBackup(file, mergedOptions);
+        const result = await importService.importFromBackup(
+          file,
+          mergedOptions
+        );
         setLastResult(result);
 
         if (result.success) {
@@ -355,7 +382,10 @@ export function useImport(options: UseImportOptions = {}): UseImportReturn {
    * Import from CSV.
    */
   const importCSVHandler = useCallback(
-    async (file: File, options?: Partial<ImportOptions>): Promise<ImportResult> => {
+    async (
+      file: File,
+      options?: Partial<ImportOptions>
+    ): Promise<ImportResult> => {
       try {
         const mergedOptions = {
           ...DEFAULT_IMPORT_OPTIONS,
@@ -363,7 +393,10 @@ export function useImport(options: UseImportOptions = {}): UseImportReturn {
           ...options,
         };
 
-        const result = await importService.importTransactionsCSV(file, mergedOptions);
+        const result = await importService.importTransactionsCSV(
+          file,
+          mergedOptions
+        );
         setLastResult(result);
 
         if (result.success) {

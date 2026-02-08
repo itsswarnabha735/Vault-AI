@@ -61,7 +61,10 @@ export interface UseDuplicateDetectionOptions {
   onDuplicateDetected?: (result: DuplicateResult) => void;
 
   /** Callback when an alert is resolved */
-  onAlertResolved?: (alertId: AnomalyAlertId, action: DuplicateResolution) => void;
+  onAlertResolved?: (
+    alertId: AnomalyAlertId,
+    action: DuplicateResolution
+  ) => void;
 
   /** Auto-refresh interval in ms (0 to disable) */
   refreshInterval?: number;
@@ -90,9 +93,7 @@ export interface UseDuplicateDetectionReturn {
   resolvingIds: Set<string>;
 
   /** Check a single transaction for duplicates */
-  checkTransaction: (
-    transaction: LocalTransaction
-  ) => Promise<DuplicateResult>;
+  checkTransaction: (transaction: LocalTransaction) => Promise<DuplicateResult>;
 
   /** Check multiple transactions for duplicates (batch) */
   checkTransactions: (
@@ -141,7 +142,10 @@ export function useDuplicateDetection(
   const [error, setError] = useState<Error | null>(null);
   const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set());
   const [alertTransactions, setAlertTransactions] = useState<
-    Map<string, { original: LocalTransaction | null; new: LocalTransaction | null }>
+    Map<
+      string,
+      { original: LocalTransaction | null; new: LocalTransaction | null }
+    >
   >(new Map());
 
   // Configure detector on mount or config change
@@ -198,7 +202,9 @@ export function useDuplicateDetection(
 
         setAlertTransactions(transactionMap);
       } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to load transactions'));
+        setError(
+          err instanceof Error ? err : new Error('Failed to load transactions')
+        );
       } finally {
         setIsLoading(false);
       }
@@ -258,7 +264,9 @@ export function useDuplicateDetection(
         return result;
       } catch (err) {
         const checkError =
-          err instanceof Error ? err : new Error('Failed to check for duplicates');
+          err instanceof Error
+            ? err
+            : new Error('Failed to check for duplicates');
         setError(checkError);
         throw checkError;
       } finally {
@@ -311,7 +319,9 @@ export function useDuplicateDetection(
         return pairs;
       } catch (err) {
         const checkError =
-          err instanceof Error ? err : new Error('Failed to check for duplicates');
+          err instanceof Error
+            ? err
+            : new Error('Failed to check for duplicates');
         setError(checkError);
         throw checkError;
       } finally {
@@ -325,7 +335,10 @@ export function useDuplicateDetection(
    * Resolve a duplicate alert.
    */
   const resolveAlert = useCallback(
-    async (alertId: AnomalyAlertId, resolution: DuplicateResolution): Promise<void> => {
+    async (
+      alertId: AnomalyAlertId,
+      resolution: DuplicateResolution
+    ): Promise<void> => {
       setResolvingIds((prev) => new Set(prev).add(alertId));
       setError(null);
 
@@ -377,11 +390,14 @@ export function useDuplicateDetection(
   /**
    * Block sync for a transaction until alert is resolved.
    */
-  const blockSync = useCallback(async (transactionId: TransactionId): Promise<void> => {
-    await db.transactions.update(transactionId, {
-      syncStatus: 'local-only',
-    });
-  }, []);
+  const blockSync = useCallback(
+    async (transactionId: TransactionId): Promise<void> => {
+      await db.transactions.update(transactionId, {
+        syncStatus: 'local-only',
+      });
+    },
+    []
+  );
 
   /**
    * Configure detection sensitivity.
@@ -464,7 +480,9 @@ export function useDuplicateCount(): number {
 /**
  * Hook to check if a specific transaction has a duplicate alert.
  */
-export function useHasDuplicateAlert(transactionId: TransactionId | null): boolean {
+export function useHasDuplicateAlert(
+  transactionId: TransactionId | null
+): boolean {
   const hasAlert = useLiveQuery(
     async () => {
       if (!transactionId) return false;

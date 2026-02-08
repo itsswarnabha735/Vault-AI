@@ -302,12 +302,15 @@ export const useChatStore = create<ChatStore>()(
           deleteSession: (sessionId) => {
             set(
               (state) => {
-                const { [sessionId]: deleted, ...remainingSessions } = state.sessions;
+                const { [sessionId]: deleted, ...remainingSessions } =
+                  state.sessions;
                 const isCurrentSession = state.currentSessionId === sessionId;
 
                 return {
                   sessions: remainingSessions,
-                  currentSessionId: isCurrentSession ? null : state.currentSessionId,
+                  currentSessionId: isCurrentSession
+                    ? null
+                    : state.currentSessionId,
                   messages: isCurrentSession ? [] : state.messages,
                 };
               },
@@ -402,7 +405,11 @@ export const useChatStore = create<ChatStore>()(
             return message;
           },
 
-          addAssistantMessage: (content, citations = [], suggestedFollowups = []) => {
+          addAssistantMessage: (
+            content,
+            citations = [],
+            suggestedFollowups = []
+          ) => {
             const message: ChatMessage = {
               id: uuidv4(),
               role: 'assistant',
@@ -421,9 +428,10 @@ export const useChatStore = create<ChatStore>()(
                 if (currentSessionId && state.sessions[currentSessionId]) {
                   return {
                     messages,
-                    suggestedQueries: suggestedFollowups.length > 0
-                      ? suggestedFollowups
-                      : state.suggestedQueries,
+                    suggestedQueries:
+                      suggestedFollowups.length > 0
+                        ? suggestedFollowups
+                        : state.suggestedQueries,
                     sessions: {
                       ...state.sessions,
                       [currentSessionId]: {
@@ -437,9 +445,10 @@ export const useChatStore = create<ChatStore>()(
 
                 return {
                   messages,
-                  suggestedQueries: suggestedFollowups.length > 0
-                    ? suggestedFollowups
-                    : state.suggestedQueries,
+                  suggestedQueries:
+                    suggestedFollowups.length > 0
+                      ? suggestedFollowups
+                      : state.suggestedQueries,
                 };
               },
               false,
@@ -478,8 +487,7 @@ export const useChatStore = create<ChatStore>()(
           setInputText: (text) =>
             set({ inputText: text }, false, 'setInputText'),
 
-          clearInputText: () =>
-            set({ inputText: '' }, false, 'clearInputText'),
+          clearInputText: () => set({ inputText: '' }, false, 'clearInputText'),
 
           // ============================================
           // Loading State Management
@@ -575,7 +583,11 @@ export const useChatStore = create<ChatStore>()(
           // ============================================
 
           togglePanel: () =>
-            set((state) => ({ isPanelOpen: !state.isPanelOpen }), false, 'togglePanel'),
+            set(
+              (state) => ({ isPanelOpen: !state.isPanelOpen }),
+              false,
+              'togglePanel'
+            ),
 
           setPanelOpen: (isPanelOpen) =>
             set({ isPanelOpen }, false, 'setPanelOpen'),

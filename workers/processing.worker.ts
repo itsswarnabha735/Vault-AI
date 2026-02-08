@@ -161,7 +161,9 @@ class ProcessingWorker {
   private tesseract: typeof import('tesseract.js') | null = null;
   private tesseractWorker: import('tesseract.js').Worker | null = null;
   private cancelled = new Set<string>();
-  private progressCallback: ((progress: WorkerProcessingProgress) => void) | null = null;
+  private progressCallback:
+    | ((progress: WorkerProcessingProgress) => void)
+    | null = null;
 
   /**
    * Initialize the processing worker.
@@ -240,7 +242,9 @@ class ProcessingWorker {
       destroy(): Promise<void>;
     }
 
-    const loadingTask = this.pdfjs.getDocument({ data: arrayBuffer }) as unknown as {
+    const loadingTask = this.pdfjs.getDocument({
+      data: arrayBuffer,
+    }) as unknown as {
       promise: Promise<PDFDoc>;
     };
     const pdfDoc = await loadingTask.promise;
@@ -365,7 +369,9 @@ class ProcessingWorker {
       destroy(): Promise<void>;
     }
 
-    const loadingTask = this.pdfjs.getDocument({ data: arrayBuffer }) as unknown as {
+    const loadingTask = this.pdfjs.getDocument({
+      data: arrayBuffer,
+    }) as unknown as {
       promise: Promise<PDFDoc>;
     };
     const pdfDoc = await loadingTask.promise;
@@ -408,8 +414,8 @@ class ProcessingWorker {
     const description = this.generateDescription(text);
 
     return {
-      date: dates.length > 0 ? dates[0] ?? null : null,
-      amount: amounts.length > 0 ? amounts[0] ?? null : null,
+      date: dates.length > 0 ? (dates[0] ?? null) : null,
+      amount: amounts.length > 0 ? (amounts[0] ?? null) : null,
       vendor,
       description,
       currency,
@@ -487,7 +493,11 @@ class ProcessingWorker {
         pageCount = pdfResult.pageCount;
 
         // OCR if needed
-        if (forceOCR || pdfResult.isImageBased || rawText.length < minTextForNoOCR) {
+        if (
+          forceOCR ||
+          pdfResult.isImageBased ||
+          rawText.length < minTextForNoOCR
+        ) {
           this.reportProgress({
             fileId,
             fileName: file.name,
@@ -496,14 +506,18 @@ class ProcessingWorker {
           });
 
           const imageData = await this.renderPDFPageToImage(file, 1, 2.0);
-          const ocrResult = await this.performOCR(imageData, ocrLanguage, (progress) => {
-            this.reportProgress({
-              fileId,
-              fileName: file.name,
-              stage: 'ocr',
-              progress,
-            });
-          });
+          const ocrResult = await this.performOCR(
+            imageData,
+            ocrLanguage,
+            (progress) => {
+              this.reportProgress({
+                fileId,
+                fileName: file.name,
+                stage: 'ocr',
+                progress,
+              });
+            }
+          );
 
           rawText = ocrResult.text;
           ocrUsed = true;
@@ -517,14 +531,18 @@ class ProcessingWorker {
           progress: 0,
         });
 
-        const ocrResult = await this.performOCR(file, ocrLanguage, (progress) => {
-          this.reportProgress({
-            fileId,
-            fileName: file.name,
-            stage: 'ocr',
-            progress,
-          });
-        });
+        const ocrResult = await this.performOCR(
+          file,
+          ocrLanguage,
+          (progress) => {
+            this.reportProgress({
+              fileId,
+              fileName: file.name,
+              stage: 'ocr',
+              progress,
+            });
+          }
+        );
 
         rawText = ocrResult.text;
         ocrUsed = true;
@@ -629,7 +647,9 @@ class ProcessingWorker {
     });
   }
 
-  private extractDates(text: string): Array<{ value: string; confidence: number }> {
+  private extractDates(
+    text: string
+  ): Array<{ value: string; confidence: number }> {
     const dates: Array<{ value: string; confidence: number }> = [];
     const seen = new Set<string>();
 
@@ -663,7 +683,9 @@ class ProcessingWorker {
     return dates;
   }
 
-  private extractAmounts(text: string): Array<{ value: number; confidence: number }> {
+  private extractAmounts(
+    text: string
+  ): Array<{ value: number; confidence: number }> {
     const amounts: Array<{ value: number; confidence: number }> = [];
     const seen = new Set<number>();
 
@@ -678,7 +700,8 @@ class ProcessingWorker {
     }
 
     // Total keyword
-    const totalPattern = /(?:Total|Amount|Due)(?:\s*:|\s+is)?\s*\$?\s*([\d,]+(?:\.\d{2})?)/gi;
+    const totalPattern =
+      /(?:Total|Amount|Due)(?:\s*:|\s+is)?\s*\$?\s*([\d,]+(?:\.\d{2})?)/gi;
     for (const match of text.matchAll(totalPattern)) {
       const amount = parseFloat((match[1] ?? '0').replace(/,/g, ''));
       if (!isNaN(amount) && amount > 0 && !seen.has(amount)) {
@@ -690,9 +713,12 @@ class ProcessingWorker {
     return amounts.sort((a, b) => b.confidence - a.confidence);
   }
 
-  private extractVendor(text: string): { value: string; confidence: number } | null {
+  private extractVendor(
+    text: string
+  ): { value: string; confidence: number } | null {
     // Check for vendor keywords
-    const keywordPattern = /(?:From|Merchant|Vendor|Store)(?:\s*:)?\s+([A-Z][A-Za-z0-9\s&'.,-]+?)(?:\n|$)/gi;
+    const keywordPattern =
+      /(?:From|Merchant|Vendor|Store)(?:\s*:)?\s+([A-Z][A-Za-z0-9\s&'.,-]+?)(?:\n|$)/gi;
     for (const match of text.matchAll(keywordPattern)) {
       const vendor = (match[1] ?? '').trim();
       if (vendor.length >= 2 && vendor.length <= 50) {
@@ -725,7 +751,7 @@ class ProcessingWorker {
     if (text.includes('₹')) return 'INR';
 
     const match = text.match(/\b(USD|EUR|GBP|CAD|AUD|JPY|CNY|INR)\b/i);
-    return match ? match[1]?.toUpperCase() ?? 'USD' : 'USD';
+    return match ? (match[1]?.toUpperCase() ?? 'USD') : 'USD';
   }
 
   private generateDescription(text: string): string {
@@ -743,7 +769,10 @@ class ProcessingWorker {
     return description || 'No description available';
   }
 
-  private calculateConfidence(entities: ExtractedEntities, ocrUsed: boolean): number {
+  private calculateConfidence(
+    entities: ExtractedEntities,
+    ocrUsed: boolean
+  ): number {
     const scores: number[] = [];
 
     if (entities.date) scores.push(entities.date.confidence);

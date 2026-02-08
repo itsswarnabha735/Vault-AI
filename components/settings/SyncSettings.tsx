@@ -15,7 +15,6 @@ import React, { useState, useCallback } from 'react';
 import {
   RefreshCw,
   Pause,
-  Play,
   Shield,
   Cloud,
   CloudOff,
@@ -24,15 +23,12 @@ import {
   AlertCircle,
   Clock,
   AlertTriangle,
-  Bell,
-  Sliders,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+// formatDistanceToNow was previously used for lastSyncAt, now using timeSinceSync
 
 import { cn } from '@/lib/utils/index';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -60,7 +56,7 @@ export interface SyncSettingsProps {
 // Sub-components
 // ============================================
 
-function SyncStatusBadge({ state }: { state: string }) {
+function _SyncStatusBadge({ state }: { state: string }) {
   const config: Record<
     string,
     {
@@ -109,7 +105,7 @@ function SettingRow({ label, description, children }: SettingRowProps) {
 // ============================================
 
 export function SyncSettings({ className }: SyncSettingsProps) {
-  const { syncNow, pauseSync, resumeSync } = useSync();
+  const { syncNow, pause, resume } = useSync();
   const syncStatus = useSyncStatus();
   const { syncEnabled, setSyncEnabled } = useSyncSettings();
   const {
@@ -122,10 +118,8 @@ export function SyncSettings({ className }: SyncSettingsProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [thresholdValue, setThresholdValue] = useState(anomalyThreshold);
 
-  // Format last sync time
-  const lastSyncText = syncStatus.lastSyncAt
-    ? formatDistanceToNow(syncStatus.lastSyncAt, { addSuffix: true })
-    : 'Never';
+  // Format last sync time - using timeSinceSync from useSyncStatus
+  const lastSyncText = syncStatus.timeSinceSync || 'Never';
 
   /**
    * Handle manual sync.
@@ -145,13 +139,13 @@ export function SyncSettings({ className }: SyncSettingsProps) {
   const handleSyncToggle = useCallback(
     async (enabled: boolean) => {
       if (enabled) {
-        await resumeSync();
+        await resume();
       } else {
-        await pauseSync();
+        await pause();
       }
       await setSyncEnabled(enabled);
     },
-    [pauseSync, resumeSync, setSyncEnabled]
+    [pause, resume, setSyncEnabled]
   );
 
   /**
@@ -164,8 +158,8 @@ export function SyncSettings({ className }: SyncSettingsProps) {
     [setAnomalyThreshold]
   );
 
-  const isPaused = syncStatus.state === 'paused';
-  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  const isPaused = syncStatus.statusMessage === 'Paused';
+  const isOnline = syncStatus.isOnline;
 
   return (
     <div className={cn('space-y-6', className)}>
@@ -187,18 +181,18 @@ export function SyncSettings({ className }: SyncSettingsProps) {
               <div
                 className={cn(
                   'flex h-12 w-12 items-center justify-center rounded-full',
-                  syncStatus.state === 'synced'
+                  syncStatus.statusColor === 'green'
                     ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400'
-                    : syncStatus.state === 'error'
+                    : syncStatus.statusColor === 'red'
                       ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400'
                       : 'bg-muted text-muted-foreground'
                 )}
               >
-                {syncStatus.state === 'syncing' ? (
+                {syncStatus.isSyncing ? (
                   <RefreshCw className="h-6 w-6 animate-spin" />
-                ) : syncStatus.state === 'synced' ? (
+                ) : syncStatus.statusColor === 'green' ? (
                   <CheckCircle2 className="h-6 w-6" />
-                ) : syncStatus.state === 'error' ? (
+                ) : syncStatus.statusColor === 'red' ? (
                   <AlertCircle className="h-6 w-6" />
                 ) : (
                   <Cloud className="h-6 w-6" />
@@ -207,7 +201,17 @@ export function SyncSettings({ className }: SyncSettingsProps) {
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-medium">Sync Status</p>
-                  <SyncStatusBadge state={syncStatus.state} />
+                  <Badge
+                    variant={
+                      syncStatus.statusColor === 'green'
+                        ? 'default'
+                        : syncStatus.statusColor === 'red'
+                          ? 'destructive'
+                          : 'secondary'
+                    }
+                  >
+                    {syncStatus.statusMessage}
+                  </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Last synced: {lastSyncText}
@@ -235,11 +239,13 @@ export function SyncSettings({ className }: SyncSettingsProps) {
           </div>
 
           {/* Sync Error Display */}
-          {syncStatus.state === 'error' && syncStatus.error && (
+          {syncStatus.statusColor === 'red' && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Sync Error</AlertTitle>
-              <AlertDescription>{syncStatus.error}</AlertDescription>
+              <AlertDescription>
+                There was an error syncing your data. Please try again.
+              </AlertDescription>
             </Alert>
           )}
 
@@ -272,9 +278,7 @@ export function SyncSettings({ className }: SyncSettingsProps) {
           >
             <Switch
               checked={isPaused}
-              onCheckedChange={(paused) =>
-                paused ? pauseSync() : resumeSync()
-              }
+              onCheckedChange={(paused) => (paused ? pause() : resume())}
               disabled={!syncEnabled}
             />
           </SettingRow>

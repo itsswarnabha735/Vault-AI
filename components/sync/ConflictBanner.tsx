@@ -13,6 +13,7 @@ import { AlertTriangle, X, ChevronRight, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/index';
 import { useConflicts, useConflictCount } from '@/hooks/useConflicts';
+import type { TransactionId } from '@/types/database';
 
 // ============================================
 // Types
@@ -83,6 +84,7 @@ export function ConflictBanner({
 
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [autoHide, autoHideDelay, hasConflicts, isVisible]);
 
   // Don't render if no conflicts or dismissed
@@ -298,7 +300,7 @@ export function TransactionConflictWarning({
   className?: string;
 }) {
   const { getConflictForTransaction, openDialog } = useConflicts();
-  const conflict = getConflictForTransaction(transactionId as any);
+  const conflict = getConflictForTransaction(transactionId as TransactionId);
 
   if (!conflict) {
     return null;

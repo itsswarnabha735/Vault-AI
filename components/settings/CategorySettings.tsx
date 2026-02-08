@@ -19,7 +19,6 @@ import {
   GripVertical,
   Tag,
   Check,
-  X,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils/index';
@@ -41,15 +40,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCategories, useCategoryActions } from '@/hooks/useLocalDB';
-import type { Category, CategoryId } from '@/types/database';
+import { useAuthContext } from '@/components/providers/AuthProvider';
+import type { Category, UserId } from '@/types/database';
 
 // ============================================
 // Types
@@ -401,7 +395,8 @@ function DeleteConfirmDialog({
 // ============================================
 
 export function CategorySettings({ className }: CategorySettingsProps) {
-  const categories = useCategories();
+  const { user } = useAuthContext();
+  const { data: categories, isLoading: categoriesLoading } = useCategories();
   const { addCategory, updateCategory, deleteCategory } = useCategoryActions();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -412,7 +407,7 @@ export function CategorySettings({ className }: CategorySettingsProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isLoading = categories === undefined;
+  const isLoading = categoriesLoading;
 
   /**
    * Open add dialog.
@@ -455,9 +450,13 @@ export function CategorySettings({ className }: CategorySettingsProps) {
         } else {
           // Add new
           await addCategory({
+            userId: (user?.id ?? '') as UserId,
             name: data.name,
             icon: data.icon,
             color: data.color,
+            parentId: null,
+            sortOrder: categories.length,
+            isDefault: false,
           });
         }
         setDialogOpen(false);
