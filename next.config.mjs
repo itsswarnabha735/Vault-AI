@@ -5,9 +5,6 @@ const nextConfig = {
   // Disable X-Powered-By header for security
   poweredByHeader: false,
   
-  // Enable standalone output for optimized Vercel deployment
-  output: 'standalone',
-  
   // Enable WebAssembly support for ML models
   webpack: (config, { isServer }) => {
     // WebAssembly support
