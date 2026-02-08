@@ -2,6 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   
+  // Disable X-Powered-By header for security
+  poweredByHeader: false,
+  
+  // Enable standalone output for optimized Vercel deployment
+  output: 'standalone',
+  
   // Enable WebAssembly support for ML models
   webpack: (config, { isServer }) => {
     // WebAssembly support
@@ -104,6 +110,16 @@ const nextConfig = {
   images: {
     domains: [],
     formats: ['image/avif', 'image/webp'],
+    // Use unoptimized for OPFS/blob images that are stored locally
+    unoptimized: process.env.NODE_ENV === 'production',
+  },
+  
+  // Experimental features for better performance
+  experimental: {
+    // Enable server actions if needed
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
 };
 

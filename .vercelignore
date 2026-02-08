@@ -1,0 +1,46 @@
+# Vercel Ignore File
+# Files and directories listed here will be excluded from the deployment
+
+# Development files
+.env.local
+.env.development.local
+.env.test.local
+
+# Test files
+tests/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+vitest.config.ts
+playwright.config.ts
+
+# Documentation
+*.md
+!README.md
+docs/
+Docs/
+
+# IDE and editor files
+.vscode/
+.cursor/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Local development
+supabase/
+scripts/
+
+# Build artifacts (handled by Vercel)
+.next/
+out/
+coverage/
+node_modules/
+
+# Misc
+*.log
+.DS_Store
+Thumbs.db

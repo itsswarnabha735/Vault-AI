@@ -1,0 +1,196 @@
+# Vercel Deployment Workflow
+#
+# This workflow handles:
+# 1. Type checking, linting, and unit tests
+# 2. CRITICAL privacy tests (must pass)
+# 3. Build verification
+# 4. Preview deployments for PRs
+# 5. Production deployment for main branch
+
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Allow manual trigger
+  workflow_dispatch:
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  NODE_VERSION: '20'
+
+jobs:
+  # ============================================
+  # Test & Validate
+  # ============================================
+  test:
+    name: Test & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type Check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit Tests
+        run: npm run test:unit
+
+      - name: Privacy Tests (CRITICAL)
+        id: privacy-tests
+        run: |
+          echo "::group::Running CRITICAL Privacy Tests"
+          npm run test:privacy -- --reporter=verbose
+          echo "::endgroup::"
+
+      - name: Privacy Test Summary
+        if: always()
+        run: |
+          echo "## Privacy Test Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.privacy-tests.outcome }}" == "success" ]; then
+            echo "✅ All privacy tests passed - deployment can proceed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **CRITICAL: Privacy tests failed - deployment BLOCKED**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Build
+        run: npm run build
+        env:
+          # Required for build
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: .next
+          retention-days: 1
+
+  # ============================================
+  # Deploy Preview (Pull Requests)
+  # ============================================
+  deploy-preview:
+    name: Deploy Preview
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel (Preview)
+        id: deploy-preview
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "preview_url=$url" >> $GITHUB_OUTPUT
+          echo "## 🔍 Preview Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Preview URL:** $url" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🚀 Preview Deployment Ready
+              
+              **Preview URL:** ${{ steps.deploy-preview.outputs.preview_url }}
+              
+              ### ✅ Pre-deployment Checks Passed
+              - Type checking
+              - Linting
+              - Unit tests
+              - **Privacy tests (CRITICAL)**
+              - Build verification`
+            })
+
+  # ============================================
+  # Deploy Production (Main Branch)
+  # ============================================
+  deploy-production:
+    name: Deploy Production
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: ${{ steps.deploy-production.outputs.production_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel (Production)
+        id: deploy-production
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "production_url=$url" >> $GITHUB_OUTPUT
+          echo "## 🚀 Production Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Production URL:** $url" >> $GITHUB_STEP_SUMMARY
+
+      - name: Production Deployment Summary
+        run: |
+          echo "### ✅ Production Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**All checks passed:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Type checking" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Linting" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Unit tests" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Privacy tests (CRITICAL)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Build verification" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Production deployment" >> $GITHUB_STEP_SUMMARY
