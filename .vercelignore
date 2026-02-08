@@ -30,8 +30,8 @@ Docs/
 .git/
 .gitignore
 
-# Local development
-supabase/
+# Local development (Supabase CLI config at project root)
+/supabase/
 scripts/
 
 # Build artifacts (handled by Vercel)
