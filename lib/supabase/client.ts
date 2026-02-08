@@ -14,6 +14,17 @@ function getSupabaseConfig() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
+    // During build/static generation, env vars may not be available
+    // Return placeholder values that will be replaced at runtime
+    if (typeof window === 'undefined') {
+      console.warn(
+        'Supabase environment variables not available during build. This is expected for static generation.'
+      );
+      return {
+        supabaseUrl: 'https://placeholder.supabase.co',
+        supabaseAnonKey: 'placeholder-key',
+      };
+    }
     throw new Error(
       'Missing Supabase environment variables. Please check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
     );
