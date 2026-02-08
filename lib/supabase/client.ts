@@ -9,29 +9,34 @@ import { createBrowserClient } from '@supabase/ssr';
 import type { Database } from '@/types/supabase';
 
 // Environment variable validation
-function getSupabaseConfig() {
+function getSupabaseConfig(): { supabaseUrl: string; supabaseAnonKey: string; isConfigured: boolean } {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    // During build/static generation, env vars may not be available
-    // Return placeholder values that will be replaced at runtime
+    // During build/static generation or if env vars not configured
+    // Return placeholder values - the app will show appropriate errors
     if (typeof window === 'undefined') {
       console.warn(
         'Supabase environment variables not available during build. This is expected for static generation.'
       );
-      return {
-        supabaseUrl: 'https://placeholder.supabase.co',
-        supabaseAnonKey: 'placeholder-key',
-      };
+    } else {
+      console.error(
+        'Missing Supabase environment variables. Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel.'
+      );
     }
-    throw new Error(
-      'Missing Supabase environment variables. Please check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-    );
+    return {
+      supabaseUrl: 'https://placeholder.supabase.co',
+      supabaseAnonKey: 'placeholder-key',
+      isConfigured: false,
+    };
   }
 
-  return { supabaseUrl, supabaseAnonKey };
+  return { supabaseUrl, supabaseAnonKey, isConfigured: true };
 }
+
+// Track if Supabase is properly configured
+let isSupabaseConfigured = false;
 
 /**
  * Create a Supabase client for use in the browser.
@@ -52,8 +57,17 @@ function getSupabaseConfig() {
  * ```
  */
 export function createClient() {
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
+  const { supabaseUrl, supabaseAnonKey, isConfigured } = getSupabaseConfig();
+  isSupabaseConfigured = isConfigured;
   return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey);
+}
+
+/**
+ * Check if Supabase is properly configured with environment variables.
+ * @returns true if environment variables are set
+ */
+export function isConfigured(): boolean {
+  return isSupabaseConfigured;
 }
 
 // Singleton instance for direct import
