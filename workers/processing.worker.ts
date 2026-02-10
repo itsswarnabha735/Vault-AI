@@ -175,7 +175,8 @@ function preprocessImageForOCR(imageData: ImageData): ImageData {
   // Step 2: Find min/max for contrast stretching (clip 1% outliers)
   const histogram = new Array<number>(256).fill(0);
   for (let i = 0; i < grayscale.length; i++) {
-    histogram[grayscale[i] ?? 0]++;
+    const grayVal = grayscale[i] ?? 0;
+    histogram[grayVal] = (histogram[grayVal] ?? 0) + 1;
   }
 
   const totalPixels = width * height;
@@ -410,7 +411,7 @@ class ProcessingWorker {
                 next &&
                 item.transform &&
                 next.transform &&
-                Math.abs(item.transform[5] - next.transform[5]) > 2
+                Math.abs((item.transform[5] ?? 0) - (next.transform[5] ?? 0)) > 2
               ) {
                 text += '\n';
               } else {
@@ -479,7 +480,7 @@ class ProcessingWorker {
 
         // Set optimized parameters for receipt/invoice OCR
         await this.tesseractWorker.setParameters({
-          tessedit_pageseg_mode: '3', // Fully automatic page segmentation
+          tessedit_pageseg_mode: '3' as import('tesseract.js').PSM, // PSM.AUTO
           preserve_interword_spaces: '1', // Preserve spacing structure
         });
 

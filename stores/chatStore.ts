@@ -664,7 +664,7 @@ export const useChatStore = create<ChatStore>()(
                 }
               }
             }
-            return state as ChatState & ChatActions;
+            return state as unknown as ChatState & ChatActions;
           },
           partialize: (state) => ({
             // Persist sessions (which contain messages), current session, and preferences
