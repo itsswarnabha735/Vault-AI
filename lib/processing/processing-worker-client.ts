@@ -199,7 +199,8 @@ function _preprocessImageForOCR(imageData: ImageData): ImageData {
   // Step 2: Find min/max for contrast stretching (ignore top/bottom 1% as outliers)
   const histogram = new Array<number>(256).fill(0);
   for (let i = 0; i < grayscale.length; i++) {
-    histogram[grayscale[i] ?? 0]++;
+    const grayVal = grayscale[i] ?? 0;
+    histogram[grayVal] = (histogram[grayVal] ?? 0) + 1;
   }
 
   const totalPixels = width * height;
