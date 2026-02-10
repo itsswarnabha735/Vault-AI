@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -69,9 +69,18 @@ export function ProcessingProgress({
     error,
   } = processor;
 
-  // Start processing when ready
+  // Guard: prevent re-triggering processFiles after it completes
+  const hasStartedRef = useRef(false);
+
+  // Reset the guard when files change (new upload)
   useEffect(() => {
-    if (isReady && files.length > 0 && !isProcessing) {
+    hasStartedRef.current = false;
+  }, [files]);
+
+  // Start processing when ready — only once per file set
+  useEffect(() => {
+    if (isReady && files.length > 0 && !isProcessing && !hasStartedRef.current) {
+      hasStartedRef.current = true;
       processFiles(files);
     }
   }, [isReady, files, isProcessing, processFiles]);

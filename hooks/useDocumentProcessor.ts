@@ -163,6 +163,7 @@ export function useDocumentProcessor(
   // Refs
   const cancelledFileIds = useRef<Set<string>>(new Set());
   const resultsRef = useRef<ProcessedDocumentResult[]>([]);
+  const processingGuardRef = useRef(false); // Prevents concurrent processFiles calls
 
   /**
    * Initialize the worker.
@@ -380,6 +381,13 @@ export function useDocumentProcessor(
         return [];
       }
 
+      // Prevent concurrent calls (e.g., from React re-renders during async onComplete)
+      if (processingGuardRef.current) {
+        console.log('[useDocumentProcessor] Skipping duplicate processFiles call');
+        return [];
+      }
+      processingGuardRef.current = true;
+
       await initialize();
 
       setIsProcessing(true);
@@ -473,8 +481,15 @@ export function useDocumentProcessor(
       }));
 
       processingWorkerClient.setProgressCallback(null);
-      onProcessingComplete?.(results);
 
+      // Call onComplete and wait for it (it may be async, e.g., LLM parsing)
+      try {
+        await onProcessingComplete?.(results);
+      } catch (e) {
+        console.error('[useDocumentProcessor] onProcessingComplete error:', e);
+      }
+
+      processingGuardRef.current = false;
       return results;
     },
     [
@@ -541,6 +556,7 @@ export function useDocumentProcessor(
   const reset = useCallback(() => {
     cancelledFileIds.current.clear();
     resultsRef.current = [];
+    processingGuardRef.current = false;
     setIsProcessing(false);
     setError(null);
     setProcessingState(initialBatchState);

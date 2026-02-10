@@ -9,13 +9,13 @@
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Plus, Upload, RefreshCw } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '@/components/providers/AuthProvider';
 import { useKeyboardShortcutsContextOptional } from '@/components/providers/KeyboardShortcutsProvider';
 import {
   useSyncStore,
-  selectSyncStatus,
   getSyncStateMessage,
 } from '@/stores/syncStore';
 import type { SyncEngineState } from '@/types/sync';
@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
  */
 export function DashboardHeader() {
   const { user } = useAuthContext();
-  const syncStatus = useSyncStore(selectSyncStatus);
+  const syncState = useSyncStore(useShallow((state) => state.syncState));
   const { data: pendingSync } = usePendingSync();
   const shortcutsContext = useKeyboardShortcutsContextOptional();
 
@@ -43,10 +43,10 @@ export function DashboardHeader() {
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-vault-text-primary">
           {greeting}, {userName}!
         </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-vault-text-secondary">
           {format(today, 'EEEE, MMMM d, yyyy')}
         </p>
       </div>
@@ -54,7 +54,7 @@ export function DashboardHeader() {
       <div className="flex items-center gap-3">
         {/* Sync Status */}
         <SyncStatusIndicator
-          state={syncStatus.state}
+          state={syncState}
           pendingCount={pendingSync.count}
         />
 
@@ -115,15 +115,13 @@ function SyncStatusIndicator({
     <div
       className={cn(
         'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm',
-        hasError && 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
-        isOffline &&
-          'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-        isSyncing &&
-          'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+        hasError && 'bg-vault-danger-muted text-vault-danger-text',
+        isOffline && 'bg-vault-bg-surface text-vault-text-tertiary',
+        isSyncing && 'bg-vault-info-muted text-vault-info-text',
         !hasError &&
           !isOffline &&
           !isSyncing &&
-          'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+          'bg-vault-success-muted text-vault-success-text'
       )}
     >
       {isSyncing ? (
@@ -132,13 +130,13 @@ function SyncStatusIndicator({
         <div
           className={cn(
             'h-2 w-2 rounded-full',
-            hasError && 'bg-red-500',
-            isOffline && 'bg-gray-400',
-            isSyncing && 'bg-blue-500',
+            hasError && 'bg-vault-danger',
+            isOffline && 'bg-vault-text-tertiary',
+            isSyncing && 'bg-vault-info',
             !hasError &&
               !isOffline &&
               !isSyncing &&
-              'animate-pulse bg-emerald-500'
+              'animate-pulse bg-vault-success'
           )}
         />
       )}

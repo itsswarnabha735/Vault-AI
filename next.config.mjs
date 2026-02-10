@@ -14,12 +14,6 @@ const nextConfig = {
       layers: true,
     };
 
-    // Web Workers support
-    config.module.rules.push({
-      test: /\.worker\.(js|ts)$/,
-      use: { loader: 'worker-loader' },
-    });
-
     // Handle WASM files
     config.module.rules.push({
       test: /\.wasm$/,
@@ -62,13 +56,13 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
               "worker-src 'self' blob:",
               "child-src 'self' blob:",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://*.googleapis.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://*.googleapis.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com https://huggingface.co https://*.huggingface.co https://*.hf.co",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'"

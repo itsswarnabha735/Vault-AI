@@ -535,6 +535,17 @@ export function useDbStats() {
 // ============================================
 
 /**
+ * Default value for pending sync data.
+ * Hoisted to module scope to avoid creating a new object on every render.
+ */
+const PENDING_SYNC_DEFAULT = {
+  count: 0,
+  pendingCount: 0,
+  errorCount: 0,
+  transactions: [] as LocalTransaction[],
+} as const;
+
+/**
  * Hook to get count of pending sync items.
  * Uses live query - updates automatically when data changes.
  *
@@ -557,12 +568,7 @@ export function usePendingSync() {
   }, []);
 
   return {
-    data: pending ?? {
-      count: 0,
-      pendingCount: 0,
-      errorCount: 0,
-      transactions: [],
-    },
+    data: pending ?? PENDING_SYNC_DEFAULT,
     isLoading: pending === undefined,
   };
 }

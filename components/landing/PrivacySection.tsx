@@ -34,7 +34,7 @@ const cloudData = [
 
 export function PrivacySection() {
   return (
-    <section id="privacy" className="bg-muted/30 py-20">
+    <section id="privacy" className="bg-vault-bg-secondary py-20">
       <div className="mx-auto max-w-6xl px-4">
         {/* Section Header */}
         <motion.div
@@ -44,16 +44,16 @@ export function PrivacySection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-green-500/10 px-4 py-2 text-green-600 dark:text-green-400">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-vault-success-muted px-4 py-2 text-vault-success">
             <Shield className="h-5 w-5" />
             <span className="font-medium">Local-First Architecture</span>
           </div>
-          <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
+          <h2 className="mb-4 font-display text-3xl font-bold sm:text-4xl">
             Privacy That&apos;s Built In,
             <br />
-            <span className="text-primary">Not Bolted On</span>
+            <span className="text-vault-gold">Not Bolted On</span>
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+          <p className="mx-auto max-w-2xl text-lg text-vault-text-secondary">
             We designed Vault-AI from the ground up with a simple principle:
             your sensitive data never leaves your device. Ever.
           </p>
@@ -63,19 +63,19 @@ export function PrivacySection() {
         <div className="mb-16 grid gap-8 md:grid-cols-2">
           {/* What Stays Local */}
           <motion.div
-            className="rounded-xl border border-green-500/30 bg-card p-6 sm:p-8"
+            className="rounded-xl border border-vault-success/30 bg-vault-bg-elevated p-6 sm:p-8"
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
             <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
-                <Shield className="h-6 w-6 text-green-500" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-vault-success-muted">
+                <Shield className="h-6 w-6 text-vault-success" />
               </div>
               <div>
                 <h3 className="text-xl font-semibold">Stays on Your Device</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-vault-text-secondary">
                   Never uploaded, never shared
                 </p>
               </div>
@@ -91,16 +91,16 @@ export function PrivacySection() {
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10 transition-transform group-hover:scale-110">
-                    <Check className="h-4 w-4 text-green-500" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-vault-success-muted transition-transform group-hover:scale-110">
+                    <Check className="h-4 w-4 text-vault-success" />
                   </div>
                   <span className="text-sm sm:text-base">{item.text}</span>
                 </motion.li>
               ))}
             </ul>
 
-            <div className="mt-6 rounded-lg border border-green-500/20 bg-green-500/5 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-400">
+            <div className="mt-6 rounded-lg border border-vault-success/20 bg-vault-success-muted p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-vault-success-text">
                 <Lock className="h-4 w-4" />
                 Protected by browser&apos;s Origin Private File System
               </div>
@@ -109,21 +109,21 @@ export function PrivacySection() {
 
           {/* What Syncs */}
           <motion.div
-            className="rounded-xl border border-blue-500/30 bg-card p-6 sm:p-8"
+            className="rounded-xl border border-vault-info/30 bg-vault-bg-elevated p-6 sm:p-8"
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
             <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10">
-                <Cloud className="h-6 w-6 text-blue-500" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-vault-info-muted">
+                <Cloud className="h-6 w-6 text-vault-info" />
               </div>
               <div>
                 <h3 className="text-xl font-semibold">
                   Syncs to Cloud (Optional)
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-vault-text-secondary">
                   Encrypted, minimal data only
                 </p>
               </div>
@@ -139,16 +139,16 @@ export function PrivacySection() {
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 transition-transform group-hover:scale-110">
-                    <Info className="h-4 w-4 text-blue-500" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-vault-info-muted transition-transform group-hover:scale-110">
+                    <Info className="h-4 w-4 text-vault-info" />
                   </div>
                   <span className="text-sm sm:text-base">{item.text}</span>
                 </motion.li>
               ))}
             </ul>
 
-            <div className="mt-6 rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400">
+            <div className="mt-6 rounded-lg border border-vault-info/20 bg-vault-info-muted p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-vault-info-text">
                 <Server className="h-4 w-4" />
                 Sync is optional—works fully offline too
               </div>
@@ -164,33 +164,33 @@ export function PrivacySection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <div className="rounded-xl border bg-card p-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
-              <EyeOff className="h-8 w-8 text-red-500" />
+          <div className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-vault-bg-elevated p-6 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-vault-danger-muted">
+              <EyeOff className="h-8 w-8 text-vault-danger" />
             </div>
             <h4 className="mb-2 font-semibold">No Data Mining</h4>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-vault-text-secondary">
               We can&apos;t see your documents because they never reach our
               servers.
             </p>
           </div>
 
-          <div className="rounded-xl border bg-card p-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-              <Lock className="h-8 w-8 text-green-500" />
+          <div className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-vault-bg-elevated p-6 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-vault-success-muted">
+              <Lock className="h-8 w-8 text-vault-success" />
             </div>
             <h4 className="mb-2 font-semibold">End-to-End Encrypted</h4>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-vault-text-secondary">
               Even synced data is encrypted with keys only you control.
             </p>
           </div>
 
-          <div className="rounded-xl border bg-card p-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-500/10">
-              <Eye className="h-8 w-8 text-purple-500" />
+          <div className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-vault-bg-elevated p-6 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-vault-gold-muted">
+              <Eye className="h-8 w-8 text-vault-gold" />
             </div>
             <h4 className="mb-2 font-semibold">Open & Auditable</h4>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-vault-text-secondary">
               Our privacy tests run on every deploy. Verify our claims yourself.
             </p>
           </div>

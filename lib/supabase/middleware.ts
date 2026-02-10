@@ -84,13 +84,21 @@ export async function updateSession(
 /**
  * Routes that don't require authentication.
  */
-export const publicRoutes = ['/', '/login', '/callback', '/auth/callback'];
+export const publicRoutes = [
+  '/',
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/callback',
+  '/auth/callback',
+];
 
 /**
  * Routes that require authentication.
  * Uses prefix matching.
  */
-export const protectedRoutePrefixes = ['/vault', '/chat', '/settings'];
+export const protectedRoutePrefixes = ['/vault', '/chat', '/settings', '/dashboard'];
 
 /**
  * Check if a path is a protected route.

@@ -33,7 +33,7 @@ export function Header() {
       className={cn(
         'fixed left-0 right-0 top-0 z-50 transition-all duration-300',
         isScrolled
-          ? 'border-b bg-background/80 shadow-sm backdrop-blur-lg'
+          ? 'border-b border-[rgba(255,255,255,0.06)] bg-vault-bg-secondary/80 shadow-sm backdrop-blur-lg'
           : 'bg-transparent'
       )}
     >
@@ -42,11 +42,11 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="group flex items-center gap-2">
             <div className="relative">
-              <Shield className="h-8 w-8 text-primary" />
-              <Vault className="absolute bottom-0 right-0 h-4 w-4 translate-x-1 translate-y-1 text-primary" />
+              <Shield className="h-8 w-8 text-vault-gold" />
+              <Vault className="absolute bottom-0 right-0 h-4 w-4 translate-x-1 translate-y-1 text-vault-gold" />
             </div>
             <span className="text-xl font-bold">
-              Vault<span className="text-primary">AI</span>
+              Vault<span className="text-vault-gold">AI</span>
             </span>
           </Link>
 
@@ -56,7 +56,7 @@ export function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                className="text-sm font-medium text-vault-text-secondary transition-colors hover:text-vault-text-primary"
               >
                 {link.label}
               </Link>
@@ -96,20 +96,20 @@ export function Header() {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="border-b bg-background md:hidden"
+            className="border-b border-[rgba(255,255,255,0.06)] bg-vault-bg-secondary md:hidden"
           >
             <nav className="space-y-2 px-4 py-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="block py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="block py-2 text-sm font-medium text-vault-text-secondary transition-colors hover:text-vault-text-primary"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.label}
                 </Link>
               ))}
-              <div className="space-y-2 border-t pt-4">
+              <div className="space-y-2 border-t border-[rgba(255,255,255,0.06)] pt-4">
                 <Button variant="outline" className="w-full" asChild>
                   <Link href="/login">Sign In</Link>
                 </Button>

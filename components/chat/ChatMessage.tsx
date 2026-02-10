@@ -4,11 +4,14 @@
  * Single message bubble in the chat thread.
  * Handles user and assistant messages with different styling.
  * Displays citations and suggested follow-ups for assistant messages.
+ * Renders assistant messages with full Markdown support.
  */
 
 'use client';
 
 import { useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { formatRelativeDate } from '@/lib/utils';
 import type { ChatMessage as ChatMessageType, Citation } from '@/types/ai';
@@ -77,11 +80,6 @@ export function ChatMessage({
     return null;
   }, [message.timestamp]);
 
-  // Render message content with markdown-like formatting
-  const formattedContent = useMemo(() => {
-    return formatMessageContent(message.content);
-  }, [message.content]);
-
   return (
     <div
       className={cn(
@@ -131,12 +129,20 @@ export function ChatMessage({
             {/* Message content */}
             <div
               className={cn(
-                'whitespace-pre-wrap break-words',
-                isAssistant && 'prose prose-sm dark:prose-invert max-w-none'
+                'break-words',
+                isAssistant
+                  ? 'prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-pre:my-2 prose-code:rounded prose-code:bg-background/50 prose-code:px-1 prose-code:py-0.5 prose-code:text-xs'
+                  : 'whitespace-pre-wrap'
               )}
             >
-              {formattedContent}
-              {isStreaming && <InlineTypingIndicator className="ml-1" />}
+              {isAssistant ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {message.content}
+                </ReactMarkdown>
+              ) : (
+                message.content
+              )}
+              {isStreaming && <InlineTypingIndicator className="ml-1 inline-block" />}
             </div>
 
             {/* Citations for assistant messages */}
@@ -194,19 +200,6 @@ export function ChatMessage({
       </div>
     </div>
   );
-}
-
-// ============================================
-// Helpers
-// ============================================
-
-/**
- * Format message content with basic markdown-like formatting.
- */
-function formatMessageContent(content: string): React.ReactNode {
-  // For now, just return the content as-is
-  // TODO: Add markdown parsing if needed
-  return content;
 }
 
 // ============================================

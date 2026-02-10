@@ -172,8 +172,9 @@ export function useSync(options?: { autoStart?: boolean }): UseSyncReturn {
     }))
   );
 
-  // Get conflicts from store
-  const conflicts = useSyncStore(selectPendingConflicts);
+  // Get conflicts from store (useShallow prevents infinite re-renders
+  // since .filter() creates a new array reference on every call)
+  const conflicts = useSyncStore(useShallow(selectPendingConflicts));
 
   // ============================================
   // Engine Setup & Cleanup
@@ -430,7 +431,7 @@ export function useSyncConflicts(): {
     resolution: 'local' | 'remote'
   ) => Promise<void>;
 } {
-  const conflicts = useSyncStore(selectPendingConflicts);
+  const conflicts = useSyncStore(useShallow(selectPendingConflicts));
   const storeResolveConflict = useSyncStore((s) => s.resolveConflict);
 
   const resolveConflict = useCallback(

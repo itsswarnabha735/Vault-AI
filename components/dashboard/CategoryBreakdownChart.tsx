@@ -99,7 +99,7 @@ export function CategoryBreakdownChart() {
                     y="50%"
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    className="fill-foreground text-lg font-bold"
+                    className="fill-vault-text-primary font-mono text-lg font-bold"
                   >
                     {formatCurrency(totalSpending)}
                   </text>
@@ -114,8 +114,8 @@ export function CategoryBreakdownChart() {
                   key={item.categoryId ?? 'uncategorized'}
                   href={`/vault?category=${item.categoryId ?? ''}`}
                   className={cn(
-                    'flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800',
-                    activeIndex === index && 'bg-gray-50 dark:bg-gray-800'
+                    'flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-vault-bg-hover',
+                    activeIndex === index && 'bg-vault-bg-surface'
                   )}
                   onMouseEnter={() => setActiveIndex(index)}
                   onMouseLeave={() => setActiveIndex(null)}
@@ -129,10 +129,10 @@ export function CategoryBreakdownChart() {
                     <span className="text-sm font-medium">{item.name}</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-medium">
+                    <div className="font-mono text-sm font-medium">
                       {formatCurrency(item.value)}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-vault-text-secondary">
                       {item.percentage.toFixed(1)}%
                     </div>
                   </div>
@@ -141,7 +141,7 @@ export function CategoryBreakdownChart() {
               {chartData.length > 6 && (
                 <Link
                   href="/vault"
-                  className="block text-center text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                  className="block text-center text-xs text-vault-gold hover:text-vault-gold-secondary"
                 >
                   +{chartData.length - 6} more categories
                 </Link>
@@ -163,7 +163,7 @@ function EmptyState() {
   return (
     <div className="flex h-[200px] flex-col items-center justify-center text-center">
       <svg
-        className="h-12 w-12 text-gray-300 dark:text-gray-600"
+        className="h-12 w-12 text-vault-text-secondary/40"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -181,10 +181,10 @@ function EmptyState() {
           d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
         />
       </svg>
-      <p className="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+      <p className="mt-3 text-sm font-medium text-vault-text-secondary">
         No category data yet
       </p>
-      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+      <p className="mt-1 text-xs text-vault-text-secondary/70">
         Categorize transactions to see breakdown
       </p>
     </div>

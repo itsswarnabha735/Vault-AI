@@ -494,7 +494,7 @@ class RealtimeManagerImpl implements RealtimeManager {
       vendor: record.vendor,
       category: record.category_id as CategoryId | null,
       note: record.note || '',
-      currency: record.currency || 'USD',
+      currency: record.currency || 'INR',
       // Metadata
       confidence: 0,
       isManuallyEdited: false,
@@ -554,7 +554,7 @@ class RealtimeManagerImpl implements RealtimeManager {
         vendor: newRecord.vendor,
         category: newRecord.category_id as CategoryId | null,
         note: newRecord.note || '',
-        currency: newRecord.currency || 'USD',
+        currency: newRecord.currency || 'INR',
         updatedAt: new Date(newRecord.client_updated_at),
         syncStatus: 'synced',
         lastSyncAttempt: new Date(),

@@ -17,7 +17,7 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // Navy/Blue Finance Theme
+        // Obsidian & Gold Design System
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -51,27 +51,36 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // Custom Finance Colors
-        navy: {
-          50: '#f0f4f8',
-          100: '#d9e2ec',
-          200: '#bcccdc',
-          300: '#9fb3c8',
-          400: '#829ab1',
-          500: '#627d98',
-          600: '#486581',
-          700: '#334e68',
-          800: '#243b53',
-          900: '#102a43',
-          950: '#0a1929',
-        },
+        // Vault Design System - Background Scale
         vault: {
-          primary: '#1e40af', // Blue-800
-          secondary: '#7c3aed', // Violet-600
-          accent: '#06b6d4', // Cyan-500
-          success: '#10b981', // Emerald-500
-          warning: '#f59e0b', // Amber-500
-          danger: '#ef4444', // Red-500
+          'bg-primary': '#0A0C10',
+          'bg-secondary': '#12151C',
+          'bg-tertiary': '#1A1E28',
+          'bg-elevated': '#1E2330',
+          'bg-surface': '#242938',
+          'bg-hover': '#2A3042',
+          // Accent Gold
+          gold: '#C8A44E',
+          'gold-secondary': '#D4B86A',
+          'gold-muted': 'rgba(200,164,78,0.15)',
+          'gold-glow': 'rgba(200,164,78,0.08)',
+          // Text
+          'text-primary': '#E8ECF4',
+          'text-secondary': '#8B92A5',
+          'text-tertiary': '#5C6378',
+          // Semantic
+          success: '#34D399',
+          'success-muted': 'rgba(52,211,153,0.12)',
+          'success-text': '#6EE7B7',
+          warning: '#FBBF24',
+          'warning-muted': 'rgba(251,191,36,0.12)',
+          'warning-text': '#FCD34D',
+          danger: '#F87171',
+          'danger-muted': 'rgba(248,113,113,0.12)',
+          'danger-text': '#FCA5A5',
+          info: '#60A5FA',
+          'info-muted': 'rgba(96,165,250,0.12)',
+          'info-text': '#93C5FD',
         },
         chart: {
           '1': 'hsl(var(--chart-1))',
@@ -92,13 +101,54 @@ const config: Config = {
         },
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        xs: '4px',
+        sm: '6px',
+        md: '10px',
+        lg: '14px',
+        xl: '20px',
+        full: '9999px',
       },
       fontFamily: {
-        sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-geist-mono)', 'monospace'],
+        sans: ['var(--font-dm-sans)', 'Helvetica Neue', 'sans-serif'],
+        display: ['var(--font-playfair)', 'Georgia', 'serif'],
+        mono: ['var(--font-jetbrains)', 'Fira Code', 'monospace'],
+      },
+      fontSize: {
+        // Design System Type Scale
+        'display': ['48px', { lineHeight: '1.1', letterSpacing: '-0.03em', fontWeight: '700' }],
+        'h1': ['32px', { lineHeight: '1.3', letterSpacing: '-0.02em', fontWeight: '600' }],
+        'h2': ['22px', { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '600' }],
+        'h3': ['16px', { lineHeight: '1.3', letterSpacing: '0', fontWeight: '600' }],
+        'body': ['14px', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'caption': ['12px', { lineHeight: '1.6', letterSpacing: '0.01em', fontWeight: '400' }],
+        'label': ['12px', { lineHeight: '1.6', letterSpacing: '0.03em', fontWeight: '500' }],
+        'mono-data': ['13px', { lineHeight: '1.6', letterSpacing: '0.02em', fontWeight: '500' }],
+      },
+      spacing: {
+        // Design System 4px base
+        '0.5': '2px',
+        '1': '4px',
+        '2': '8px',
+        '3': '12px',
+        '4': '16px',
+        '5': '20px',
+        '6': '24px',
+        '7': '28px',
+        '8': '32px',
+        '9': '36px',
+        '10': '40px',
+        '11': '44px',
+        '12': '48px',
+        '14': '56px',
+        '16': '64px',
+        '20': '80px',
+      },
+      boxShadow: {
+        'sm': '0 1px 3px rgba(0,0,0,0.4)',
+        'md': '0 4px 16px rgba(0,0,0,0.5)',
+        'lg': '0 12px 40px rgba(0,0,0,0.6)',
+        'glow': '0 0 30px rgba(200,164,78,0.1)',
+        'inner': 'inset 0 1px 0 rgba(255,255,255,0.04)',
       },
       keyframes: {
         'accordion-down': {
@@ -139,7 +189,11 @@ const config: Config = {
         },
         pulse: {
           '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.5' },
+          '50%': { opacity: '0.6' },
+        },
+        'vault-pulse': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.6' },
         },
       },
       animation: {
@@ -152,7 +206,8 @@ const config: Config = {
         'slide-in-from-left': 'slide-in-from-left 0.3s ease-out',
         'slide-in-from-right': 'slide-in-from-right 0.3s ease-out',
         'spin-slow': 'spin-slow 3s linear infinite',
-        pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        pulse: 'pulse 1.5s ease-in-out infinite',
+        'vault-pulse': 'vault-pulse 1.5s ease-in-out infinite',
       },
     },
   },

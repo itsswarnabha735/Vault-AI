@@ -106,6 +106,7 @@ interface TextContent {
 interface TextItem {
   str: string;
   transform?: number[];
+  hasEOL?: boolean;
 }
 
 interface PDFViewport {
@@ -130,7 +131,7 @@ const DEFAULT_MIN_TEXT_LENGTH = 50;
 /**
  * PDF.js worker source path.
  */
-const PDF_WORKER_SRC = '/pdf.worker.min.js';
+const PDF_WORKER_SRC = '/pdf.worker.min.mjs';
 
 // ============================================
 // PDFExtractor Class
@@ -140,21 +141,28 @@ const PDF_WORKER_SRC = '/pdf.worker.min.js';
  * PDF text extraction service using PDF.js.
  */
 class PDFExtractorService {
-  private pdfjs: typeof import('pdfjs-dist') | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private pdfjs: any = null;
   private isInitialized = false;
 
   /**
    * Initialize PDF.js library.
+   *
+   * Uses native browser import (webpackIgnore) to bypass webpack bundling.
+   * pdfjs-dist v5 is ESM-only and breaks under webpack's module wrapper
+   * (Object.defineProperty called on non-object). Loading from /public
+   * with a native import avoids this entirely.
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
       return;
     }
 
-    this.pdfjs = await import('pdfjs-dist');
+    // Native browser import — bypasses webpack bundling entirely.
+    // The pdf.min.mjs file is served from /public.
+    this.pdfjs = await import(/* webpackIgnore: true */ '/pdf.min.mjs');
 
     // Set worker source
-    // In production, this should point to the bundled worker file
     if (typeof window !== 'undefined') {
       this.pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
     }
@@ -208,10 +216,29 @@ class PDFExtractorService {
         const page = await pdfDoc.getPage(pageNum);
         const textContent = await page.getTextContent();
 
-        // Combine all text items
+        // Combine text items preserving line structure
         const pageText = textContent.items
-          .map((item: TextItem) => item.str)
-          .join(' ')
+          .map((item: TextItem, idx: number, arr: TextItem[]) => {
+            let text = item.str;
+            if (item.hasEOL) {
+              text += '\n';
+            } else if (idx < arr.length - 1) {
+              const next = arr[idx + 1];
+              // Check if next item is on a different Y position (new line)
+              if (
+                next &&
+                item.transform &&
+                next.transform &&
+                Math.abs(item.transform[5] - next.transform[5]) > 2
+              ) {
+                text += '\n';
+              } else {
+                text += ' ';
+              }
+            }
+            return text;
+          })
+          .join('')
           .trim();
 
         pageTexts.push(pageText);

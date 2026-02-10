@@ -26,6 +26,8 @@ import type {
   AnomalyAlertId,
   UserId,
 } from '@/types/database';
+import type { VendorCategoryMapping } from '@/lib/processing/vendor-category-learning';
+import type { StatementFingerprint } from '@/lib/anomaly/import-duplicate-checker';
 
 // ============================================
 // User Settings Interface
@@ -87,6 +89,8 @@ export class VaultDatabase extends Dexie {
   searchHistory!: Table<SearchQuery, SearchQueryId>;
   anomalies!: Table<AnomalyAlert, AnomalyAlertId>;
   settings!: Table<UserSettings, string>;
+  vendorCategories!: Table<VendorCategoryMapping, string>;
+  statementFingerprints!: Table<StatementFingerprint, string>;
 
   constructor() {
     super('VaultAI');
@@ -116,6 +120,73 @@ export class VaultDatabase extends Dexie {
       // Settings - user preferences
       // Indexes: id (PK)
       settings: 'id',
+    });
+
+    // Version 2: Add vendor-category learning table
+    this.version(2).stores({
+      // Existing tables remain unchanged (null = keep as-is)
+      transactions: 'id, date, vendor, category, syncStatus, createdAt',
+      categories: 'id, parentId, isDefault',
+      budgets: 'id, categoryId, isActive',
+      searchHistory: 'id, timestamp',
+      anomalies: 'id, transactionId, isResolved',
+      settings: 'id',
+
+      // New: Vendor-category learning table
+      // Stores user corrections for auto-categorization improvement
+      // Indexes: id (PK), vendorPattern (unique), categoryId
+      vendorCategories: 'id, &vendorPattern, categoryId',
+    });
+
+    // Version 3: Add statement fingerprints table for duplicate detection
+    this.version(3).stores({
+      transactions: 'id, date, vendor, category, syncStatus, createdAt',
+      categories: 'id, parentId, isDefault',
+      budgets: 'id, categoryId, isActive',
+      searchHistory: 'id, timestamp',
+      anomalies: 'id, transactionId, isResolved',
+      settings: 'id',
+      vendorCategories: 'id, &vendorPattern, categoryId',
+
+      // New: Statement fingerprints for re-import detection
+      // Indexes: id (PK), issuer, periodStart
+      statementFingerprints: 'id, issuer, periodStart',
+    });
+
+    // Version 4: Migrate existing user settings from USD defaults to INR.
+    // This fixes existing users who were created with the old hardcoded USD default.
+    // Using toCollection().modify() which is the recommended Dexie upgrade pattern.
+    this.version(4).stores({
+      // No schema changes — same indexes as version 3
+      transactions: 'id, date, vendor, category, syncStatus, createdAt',
+      categories: 'id, parentId, isDefault',
+      budgets: 'id, categoryId, isActive',
+      searchHistory: 'id, timestamp',
+      anomalies: 'id, transactionId, isResolved',
+      settings: 'id',
+      vendorCategories: 'id, &vendorPattern, categoryId',
+      statementFingerprints: 'id, issuer, periodStart',
+    }).upgrade((tx) => {
+      // Migrate settings: USD → INR for existing users
+      const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+      return tx.table('settings').toCollection().modify((setting: Record<string, unknown>) => {
+        let changed = false;
+        if (setting.defaultCurrency === 'USD') {
+          setting.defaultCurrency = 'INR';
+          changed = true;
+        }
+        if (setting.timezone === 'UTC') {
+          setting.timezone = localTz;
+          changed = true;
+        }
+        if (setting.numberLocale === 'en-US') {
+          setting.numberLocale = 'en-IN';
+          changed = true;
+        }
+        if (changed) {
+          setting.updatedAt = new Date();
+        }
+      });
     });
 
     // Middleware to handle Date serialization
@@ -473,13 +544,13 @@ export class VaultDatabase extends Dexie {
         id,
         userId: null,
         theme: 'system',
-        defaultCurrency: 'USD',
+        defaultCurrency: 'INR',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         syncEnabled: true,
         anomalyDetectionEnabled: true,
         anomalyThreshold: 20,
         dateFormat: 'yyyy-MM-dd',
-        numberLocale: navigator.language || 'en-US',
+        numberLocale: navigator.language || 'en-IN',
         updatedAt: new Date(),
         ...settingsUpdate,
       };

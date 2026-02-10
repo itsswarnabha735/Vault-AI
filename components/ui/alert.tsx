@@ -8,14 +8,14 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-background text-foreground',
+        default: 'bg-vault-bg-elevated text-vault-text-primary border-[rgba(255,255,255,0.06)]',
         destructive:
-          'border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive',
+          'border-vault-danger/30 bg-vault-danger-muted text-vault-danger-text [&>svg]:text-vault-danger',
         warning:
-          'border-amber-500/50 bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400',
+          'border-vault-warning/30 bg-vault-warning-muted text-vault-warning-text [&>svg]:text-vault-warning',
         success:
-          'border-green-500/50 bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100 [&>svg]:text-green-600 dark:[&>svg]:text-green-400',
-        info: 'border-blue-500/50 bg-blue-50 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100 [&>svg]:text-blue-600 dark:[&>svg]:text-blue-400',
+          'border-vault-success/30 bg-vault-success-muted text-vault-success-text [&>svg]:text-vault-success',
+        info: 'border-vault-info/30 bg-vault-info-muted text-vault-info-text [&>svg]:text-vault-info',
       },
     },
     defaultVariants: {

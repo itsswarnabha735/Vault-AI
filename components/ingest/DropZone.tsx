@@ -245,7 +245,7 @@ export function DropZone({
         <p className="mt-4 text-lg font-medium text-foreground">
           {isDragActive
             ? 'Drop files here'
-            : 'Drag & drop receipts, invoices, or documents'}
+            : 'Drag & drop receipts, invoices, or bank/CC statements'}
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
           {acceptedExtensions} up to {formatFileSize(maxFileSize)} each

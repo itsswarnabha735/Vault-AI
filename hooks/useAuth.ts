@@ -25,13 +25,22 @@ export interface AuthState {
  * Auth actions interface
  */
 export interface AuthActions {
-  /** Sign in with email magic link */
-  signInWithEmail: (
+  /** Sign in with email and password */
+  signInWithPassword: (
     email: string,
-    redirectTo?: string
+    password: string
+  ) => Promise<{ error: AuthError | null }>;
+  /** Sign up with email and password */
+  signUp: (
+    email: string,
+    password: string
   ) => Promise<{ error: AuthError | null }>;
   /** Sign out the current user */
   signOut: () => Promise<{ error: AuthError | null }>;
+  /** Request password reset email */
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  /** Update user password */
+  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
   /** Refresh the current session */
   refreshSession: () => Promise<void>;
 }
@@ -46,7 +55,8 @@ export type UseAuthReturn = AuthState & AuthActions;
  *
  * Provides:
  * - Current user and session state
- * - Sign in/out functions
+ * - Sign in/up/out functions with password
+ * - Password reset functionality
  * - Loading and error states
  * - Automatic session refresh
  *
@@ -119,20 +129,95 @@ export function useAuth(): UseAuthReturn {
   }, [supabase.auth]);
 
   /**
-   * Sign in with email magic link
+   * Sign in with email and password
    */
-  const signInWithEmail = useCallback(
+  const signInWithPassword = useCallback(
     async (
       email: string,
-      redirectTo = '/vault'
+      password: string
     ): Promise<{ error: AuthError | null }> => {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
+        password,
+      });
+
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: error ?? null,
+      }));
+
+      return { error: error ?? null };
+    },
+    [supabase.auth]
+  );
+
+  /**
+   * Sign up with email and password
+   */
+  const signUp = useCallback(
+    async (
+      email: string,
+      password: string
+    ): Promise<{ error: AuthError | null }> => {
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
         options: {
-          emailRedirectTo: `${window.location.origin}/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
+          emailRedirectTo: `${appUrl}/callback`,
         },
+      });
+
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: error ?? null,
+      }));
+
+      return { error: error ?? null };
+    },
+    [supabase.auth]
+  );
+
+  /**
+   * Request password reset email
+   */
+  const resetPassword = useCallback(
+    async (email: string): Promise<{ error: AuthError | null }> => {
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${appUrl}/reset-password`,
+      });
+
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: error ?? null,
+      }));
+
+      return { error: error ?? null };
+    },
+    [supabase.auth]
+  );
+
+  /**
+   * Update user password
+   */
+  const updatePassword = useCallback(
+    async (newPassword: string): Promise<{ error: AuthError | null }> => {
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
       });
 
       setState((prev) => ({
@@ -204,6 +289,9 @@ export function useAuth(): UseAuthReturn {
         // Session was automatically refreshed
       } else if (event === 'USER_UPDATED') {
         router.refresh();
+      } else if (event === 'PASSWORD_RECOVERY') {
+        // User clicked password reset link
+        router.push('/reset-password');
       }
     });
 
@@ -215,8 +303,11 @@ export function useAuth(): UseAuthReturn {
 
   return {
     ...state,
-    signInWithEmail,
+    signInWithPassword,
+    signUp,
     signOut,
+    resetPassword,
+    updatePassword,
     refreshSession,
   };
 }

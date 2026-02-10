@@ -62,7 +62,7 @@ export function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="bg-muted/30 py-20">
+    <section id="faq" className="bg-vault-bg-secondary py-20">
       <div className="mx-auto max-w-3xl px-4">
         {/* Section Header */}
         <motion.div
@@ -72,12 +72,12 @@ export function FAQSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
+          <h2 className="mb-4 font-display text-3xl font-bold sm:text-4xl">
             Frequently Asked
             <br />
-            <span className="text-primary">Questions</span>
+            <span className="text-vault-gold">Questions</span>
           </h2>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-vault-text-secondary">
             Everything you need to know about Vault-AI
           </p>
         </motion.div>
@@ -93,14 +93,14 @@ export function FAQSection() {
           {faqs.map((faq, index) => (
             <motion.div
               key={index}
-              className="overflow-hidden rounded-xl border bg-card"
+              className="overflow-hidden rounded-xl border border-[rgba(255,255,255,0.10)] bg-vault-bg-elevated"
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.05 }}
             >
               <button
-                className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left transition-colors hover:bg-muted/50"
+                className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left transition-colors hover:bg-vault-bg-surface"
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
               >
                 <span className="font-medium">{faq.question}</span>
@@ -108,7 +108,7 @@ export function FAQSection() {
                   animate={{ rotate: openIndex === index ? 180 : 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <ChevronDown className="h-5 w-5 shrink-0 text-vault-text-secondary" />
                 </motion.div>
               </button>
 
@@ -120,7 +120,7 @@ export function FAQSection() {
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <div className="px-6 pb-4 leading-relaxed text-muted-foreground">
+                    <div className="px-6 pb-4 leading-relaxed text-vault-text-secondary">
                       {faq.answer}
                     </div>
                   </motion.div>
@@ -138,7 +138,7 @@ export function FAQSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <p className="mb-4 text-muted-foreground">Still have questions?</p>
+          <p className="mb-4 text-vault-text-secondary">Still have questions?</p>
           <Button variant="outline" asChild>
             <a
               href="mailto:support@vault-ai.app"

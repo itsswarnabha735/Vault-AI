@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 /**
@@ -13,19 +13,22 @@ import { createClient } from '@/lib/supabase/client';
  */
 function LoginForm() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
 
+  const _router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') || '/vault';
   const errorParam = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
+  const registered = searchParams.get('registered');
 
   // Handle browser autofill by checking input value on animation events
-  // This is needed because some browsers don't trigger onChange on autofill
   useEffect(() => {
     const emailInput = document.getElementById('email') as HTMLInputElement;
     if (emailInput && emailInput.value && !email) {
@@ -43,17 +46,28 @@ function LoginForm() {
     }
   }, [errorParam, errorDescription]);
 
+  // Handle successful registration message
+  useEffect(() => {
+    if (registered === 'true') {
+      setMessage({
+        type: 'success',
+        text: 'Account created successfully! Please sign in.',
+      });
+    }
+  }, [registered]);
+
   /**
-   * Handle form submission - send magic link
+   * Handle form submission - sign in with password
    */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setMessage(null);
 
-    // Get email from form data as fallback for autofill issues
+    // Get values from form data as fallback for autofill issues
     const formData = new FormData(e.currentTarget);
     const emailValue = (formData.get('email') as string) || email;
+    const passwordValue = (formData.get('password') as string) || password;
 
     if (!emailValue || !emailValue.includes('@')) {
       setMessage({
@@ -64,37 +78,62 @@ function LoginForm() {
       return;
     }
 
-    try {
-      console.log('Creating Supabase client...');
-      const supabase = createClient();
-      console.log('Supabase client created, sending OTP to:', emailValue);
+    if (!passwordValue || passwordValue.length < 6) {
+      setMessage({
+        type: 'error',
+        text: 'Password must be at least 6 characters.',
+      });
+      setIsLoading(false);
+      return;
+    }
 
-      const { error, data } = await supabase.auth.signInWithOtp({
+    try {
+      console.log('Attempting login for:', emailValue);
+      const supabase = createClient();
+
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: emailValue,
-        options: {
-          emailRedirectTo: `${window.location.origin}/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
-        },
+        password: passwordValue,
       });
 
-      console.log('OTP response:', { error, data });
+      console.log('Login response:', { data, error });
 
       if (error) {
         throw error;
       }
 
-      setMessage({
-        type: 'success',
-        text: 'Check your email for the magic link! It should arrive within a few seconds.',
-      });
-      setEmail('');
+      if (!data.session) {
+        throw new Error('No session returned. Please check your email for confirmation link.');
+      }
+
+      console.log('Login successful, session:', data.session.user.email);
+      
+      // Add small delay to ensure cookies are set before redirect
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Successful login - use window.location.replace for full page reload
+      const redirectUrl = redirectTo.startsWith('/') ? `${window.location.origin}${redirectTo}` : redirectTo;
+      console.log('Redirecting to:', redirectUrl);
+      window.location.replace(redirectUrl);
     } catch (error) {
       console.error('Login error:', error);
+      
+      let errorMessage = 'Failed to sign in. Please check your credentials.';
+      
+      if (error instanceof Error) {
+        // Provide more helpful error messages
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please try again.';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Please verify your email address before signing in. Check your inbox for a confirmation link.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       setMessage({
         type: 'error',
-        text:
-          error instanceof Error
-            ? error.message
-            : 'Failed to send magic link. Please try again.',
+        text: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -104,12 +143,13 @@ function LoginForm() {
   return (
     <>
       {/* Login Form */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl dark:border-gray-800 dark:bg-gray-900">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-vault-bg-elevated p-8 shadow-xl">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email Field */}
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              className="block text-sm font-medium text-vault-text-secondary"
             >
               Email address
             </label>
@@ -124,15 +164,64 @@ function LoginForm() {
               onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
               onBlur={(e) => setEmail(e.target.value)}
               disabled={isLoading}
-              className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+              className="mt-1 block w-full rounded-lg border border-[rgba(255,255,255,0.10)] bg-vault-bg-tertiary px-4 py-3 text-vault-text-primary placeholder:text-vault-text-tertiary transition-colors focus:border-vault-gold focus:outline-none focus:ring-2 focus:ring-vault-gold/20 disabled:cursor-not-allowed disabled:opacity-50"
               placeholder="you@example.com"
             />
           </div>
 
+          {/* Password Field */}
+          <div>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-vault-text-secondary"
+              >
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-sm font-medium text-vault-gold hover:text-vault-gold-secondary"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <div className="relative mt-1">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                className="block w-full rounded-lg border border-[rgba(255,255,255,0.10)] bg-vault-bg-tertiary px-4 py-3 pr-10 text-vault-text-primary placeholder:text-vault-text-tertiary transition-colors focus:border-vault-gold focus:outline-none focus:ring-2 focus:ring-vault-gold/20 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter your password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-vault-text-tertiary hover:text-vault-text-secondary"
+              >
+                {showPassword ? (
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={isLoading}
-            className="relative w-full overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="gradient-vault relative w-full overflow-hidden rounded-lg px-4 py-3 font-semibold text-vault-bg-primary shadow-glow transition-all hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-vault-gold focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
@@ -155,10 +244,10 @@ function LoginForm() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                Sending magic link...
+                Signing in...
               </span>
             ) : (
-              'Send Magic Link'
+              'Sign In'
             )}
           </button>
         </form>
@@ -168,8 +257,8 @@ function LoginForm() {
           <div
             className={`mt-4 rounded-lg p-4 text-sm ${
               message.type === 'success'
-                ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
-                : 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
+                ? 'bg-vault-success-muted text-vault-success-text'
+                : 'bg-vault-danger-muted text-vault-danger-text'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -211,14 +300,24 @@ function LoginForm() {
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+              <div className="w-full border-t border-[rgba(255,255,255,0.06)]" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-3 text-gray-500 dark:bg-gray-900 dark:text-gray-400">
-                No password required
+              <span className="bg-vault-bg-elevated px-3 text-vault-text-tertiary">
+                New to Vault AI?
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Sign Up Link */}
+        <div className="mt-6">
+          <Link
+            href="/signup"
+            className="flex w-full items-center justify-center rounded-lg border border-[rgba(255,255,255,0.10)] bg-vault-bg-surface px-4 py-3 font-medium text-vault-text-primary shadow-sm transition-colors hover:bg-vault-bg-hover focus:outline-none focus:ring-2 focus:ring-vault-gold focus:ring-offset-2"
+          >
+            Create an account
+          </Link>
         </div>
       </div>
     </>
@@ -230,13 +329,17 @@ function LoginForm() {
  */
 function LoginFormSkeleton() {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl dark:border-gray-800 dark:bg-gray-900">
-      <div className="space-y-6">
+    <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-vault-bg-elevated p-8 shadow-xl">
+      <div className="space-y-5">
         <div>
-          <div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-          <div className="mt-1 h-12 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
+          <div className="h-4 w-24 rounded bg-vault-bg-surface animate-vault-pulse" />
+          <div className="mt-1 h-12 rounded-lg bg-vault-bg-tertiary animate-vault-pulse" />
         </div>
-        <div className="h-12 animate-pulse rounded-lg bg-gradient-to-r from-blue-200 to-violet-200 dark:from-blue-900 dark:to-violet-900" />
+        <div>
+          <div className="h-4 w-20 rounded bg-vault-bg-surface animate-vault-pulse" />
+          <div className="mt-1 h-12 rounded-lg bg-vault-bg-tertiary animate-vault-pulse" />
+        </div>
+        <div className="h-12 rounded-lg bg-vault-gold-muted animate-vault-pulse" />
       </div>
     </div>
   );
@@ -245,18 +348,18 @@ function LoginFormSkeleton() {
 /**
  * Login Page Component
  *
- * Provides email magic link authentication with Vault-AI branding.
+ * Provides email/password authentication with Vault-AI branding.
  * Handles loading states, errors, and success messages.
  */
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 p-4 dark:from-gray-950 dark:to-gray-900">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-vault-bg-primary p-4">
       <div className="w-full max-w-md space-y-8">
         {/* Logo & Header */}
         <div className="flex flex-col items-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 shadow-lg shadow-blue-500/25">
+          <div className="flex h-16 w-16 items-center justify-center rounded-xl gradient-vault shadow-glow">
             <svg
-              className="h-10 w-10 text-white"
+              className="h-10 w-10 text-vault-bg-primary"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -269,11 +372,11 @@ export default function LoginPage() {
               />
             </svg>
           </div>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Welcome to Vault AI
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-vault-text-primary">
+            Welcome back
           </h1>
-          <p className="mt-2 text-center text-gray-600 dark:text-gray-400">
-            Privacy-first finance with AI-powered insights
+          <p className="mt-2 text-center text-vault-text-secondary">
+            Sign in to your Vault AI account
           </p>
         </div>
 
@@ -283,10 +386,10 @@ export default function LoginPage() {
         </Suspense>
 
         {/* Privacy Notice */}
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/50">
+        <div className="rounded-xl border border-vault-success/20 bg-vault-success-muted p-4">
           <div className="flex gap-3">
             <svg
-              className="h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400"
+              className="h-5 w-5 flex-shrink-0 text-vault-success-text"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -298,9 +401,9 @@ export default function LoginPage() {
                 d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
               />
             </svg>
-            <div className="text-sm text-emerald-700 dark:text-emerald-300">
+            <div className="text-sm text-vault-success-text">
               <p className="font-semibold">Your privacy is guaranteed</p>
-              <p className="mt-1 text-emerald-600 dark:text-emerald-400">
+              <p className="mt-1 text-vault-success-text">
                 Documents and raw text never leave your device. Only encrypted,
                 sanitized accounting data syncs to the cloud.
               </p>
@@ -312,7 +415,7 @@ export default function LoginPage() {
         <div className="text-center">
           <Link
             href="/"
-            className="inline-flex items-center gap-1 text-sm text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            className="inline-flex items-center gap-1 text-sm text-vault-text-secondary transition-colors hover:text-vault-text-primary"
           >
             <svg
               className="h-4 w-4"

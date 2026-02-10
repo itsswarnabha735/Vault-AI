@@ -3,16 +3,18 @@
  *
  * Editable card for reviewing extracted document data.
  * Shows thumbnail, extracted fields, and confidence indicators.
+ * Auto-suggests categories based on vendor name using the auto-categorizer.
  */
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useCategories } from '@/hooks/useLocalDB';
+import { autoCategorizer } from '@/lib/processing/auto-categorizer';
 import type { ProcessedDocumentResult } from '@/lib/processing/processing-worker-client';
 import type { CategoryId } from '@/types/database';
 
@@ -110,14 +112,49 @@ export function ExtractionCard({
   const initialAmount = getAmount(document);
   const initialDate = getDate(document);
 
-  // Local editing state
+  // Build a map of category names to IDs for auto-categorization
+  const categoryNameToId = useMemo(() => {
+    const map = new Map<string, CategoryId>();
+    for (const cat of categories) {
+      map.set(cat.name.toLowerCase(), cat.id);
+    }
+    return map;
+  }, [categories]);
+
+  // Auto-categorize based on initial vendor (checks learned mappings first)
+  const initialAutoCategory = useMemo(() => {
+    if (!initialVendor) return null;
+    const suggestion = autoCategorizer.suggestCategory(initialVendor);
+    if (suggestion) {
+      // If learned mapping, use the direct categoryId
+      if (suggestion.isLearned && suggestion.learnedCategoryId) {
+        return suggestion.learnedCategoryId;
+      }
+      // Otherwise resolve name → id from categories list
+      return categoryNameToId.get(suggestion.categoryName.toLowerCase()) || null;
+    }
+    return null;
+  }, [initialVendor, categoryNameToId]);
+
+  // Local editing state - pre-populate category with auto-suggestion
   const [editedValues, setEditedValues] = useState({
     vendor: initialVendor,
     amount: initialAmount,
     date: initialDate,
-    category: null as CategoryId | null,
+    category: initialAutoCategory,
     note: '',
   });
+
+  // Track whether category was auto-set (for showing hint badge)
+  const [categoryAutoSet, setCategoryAutoSet] = useState(!!initialAutoCategory);
+
+  // Update auto-category when initialAutoCategory resolves (categories may load async)
+  useEffect(() => {
+    if (initialAutoCategory && !editedValues.category) {
+      setEditedValues((prev) => ({ ...prev, category: initialAutoCategory }));
+      setCategoryAutoSet(true);
+    }
+  }, [initialAutoCategory, editedValues.category]);
 
   // Track if edited
   const isEdited =
@@ -145,17 +182,52 @@ export function ExtractionCard({
       value: (typeof editedValues)[K]
     ) => {
       setEditedValues((prev) => ({ ...prev, [field]: value }));
+      // If user manually changes category, clear the auto-set hint
+      if (field === 'category') {
+        setCategoryAutoSet(false);
+      }
     },
     []
   );
 
-  // Format display values
-  const formattedAmount = formatCurrency(editedValues.amount);
+  // Re-categorize when vendor changes (debounced via blur)
+  // Checks learned mappings first, then falls back to default rules
+  const handleVendorBlur = useCallback(() => {
+    if (!editedValues.vendor) return;
+    // Only auto-set if user hasn't manually chosen a category
+    if (editedValues.category && !categoryAutoSet) return;
+
+    const suggestion = autoCategorizer.suggestCategory(editedValues.vendor);
+    if (suggestion) {
+      // If learned mapping, use the direct categoryId
+      if (suggestion.isLearned && suggestion.learnedCategoryId) {
+        setEditedValues((prev) => ({ ...prev, category: suggestion.learnedCategoryId! }));
+        setCategoryAutoSet(true);
+        return;
+      }
+      // Otherwise resolve name → id from categories list
+      const catId = categoryNameToId.get(suggestion.categoryName.toLowerCase());
+      if (catId) {
+        setEditedValues((prev) => ({ ...prev, category: catId }));
+        setCategoryAutoSet(true);
+      }
+    }
+  }, [editedValues.vendor, editedValues.category, categoryAutoSet, categoryNameToId]);
+
+  // Format display values (use detected currency, fallback to INR)
+  const detectedCurrency = document.entities.currency || 'INR';
+  const formattedAmount = formatCurrency(editedValues.amount, detectedCurrency);
   const formattedDate = formatDate(new Date(editedValues.date), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
+
+  // Resolve category name for display in collapsed view
+  const selectedCategory = useMemo(
+    () => categories.find((c) => c.id === editedValues.category),
+    [categories, editedValues.category]
+  );
 
   // Use document.id for unique keys
   const docId = document.id;
@@ -204,6 +276,11 @@ export function ExtractionCard({
           </div>
           <p className="text-sm text-muted-foreground">
             {formattedAmount} • {formattedDate}
+            {selectedCategory && (
+              <span className="ml-1.5">
+                • {selectedCategory.icon} {selectedCategory.name}
+              </span>
+            )}
           </p>
         </div>
 
@@ -232,6 +309,7 @@ export function ExtractionCard({
                 id={`vendor-${docId}`}
                 value={editedValues.vendor}
                 onChange={(e) => updateField('vendor', e.target.value)}
+                onBlur={handleVendorBlur}
                 placeholder="Enter vendor name"
                 className={cn(
                   'mt-1',
@@ -274,9 +352,16 @@ export function ExtractionCard({
 
             {/* Category */}
             <div>
-              <Label htmlFor={`category-${docId}`} className="text-xs">
-                Category
-              </Label>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor={`category-${docId}`} className="text-xs">
+                  Category
+                </Label>
+                {categoryAutoSet && editedValues.category && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                    Auto-suggested
+                  </span>
+                )}
+              </div>
               <select
                 id={`category-${docId}`}
                 value={editedValues.category || ''}
@@ -286,7 +371,10 @@ export function ExtractionCard({
                     (e.target.value || null) as CategoryId | null
                   )
                 }
-                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className={cn(
+                  'mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                  categoryAutoSet && editedValues.category && 'border-emerald-500/50'
+                )}
               >
                 <option value="">Select category</option>
                 {categories?.map((cat) => (

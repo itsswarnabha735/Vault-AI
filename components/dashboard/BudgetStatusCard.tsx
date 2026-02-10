@@ -31,32 +31,32 @@ export function BudgetStatusCard() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="text-sm font-medium text-vault-text-secondary">
           Budget Status
         </CardTitle>
-        <Wallet className="h-4 w-4 text-muted-foreground" />
+        <Wallet className="h-4 w-4 text-vault-text-secondary" />
       </CardHeader>
       <CardContent>
         {totalBudget > 0 ? (
           <>
-            <div className="text-2xl font-bold">
+            <div className="font-display text-2xl font-bold font-mono">
               {formatCurrency(totalSpent)} / {formatCurrency(totalBudget)}
             </div>
             <Progress
               value={Math.min(percentage, 100)}
               className={cn(
                 'mt-3',
-                isOver && '[&>div]:bg-red-500',
-                isWarning && '[&>div]:bg-amber-500',
-                !isOver && !isWarning && '[&>div]:bg-emerald-500'
+                isOver && '[&>div]:bg-vault-danger',
+                isWarning && '[&>div]:bg-vault-warning',
+                !isOver && !isWarning && '[&>div]:bg-vault-success'
               )}
             />
             <p
               className={cn(
                 'mt-2 text-xs',
-                isOver && 'text-red-600 dark:text-red-400',
-                isWarning && 'text-amber-600 dark:text-amber-400',
-                !isOver && !isWarning && 'text-muted-foreground'
+                isOver && 'text-vault-danger-text',
+                isWarning && 'text-vault-warning-text',
+                !isOver && !isWarning && 'text-vault-text-secondary'
               )}
             >
               {isOver ? (
@@ -68,8 +68,8 @@ export function BudgetStatusCard() {
           </>
         ) : (
           <div className="py-2">
-            <p className="text-sm text-muted-foreground">No budget set yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-sm text-vault-text-secondary">No budget set yet</p>
+            <p className="mt-1 text-xs text-vault-text-secondary">
               Set up a budget in Settings to track your spending
             </p>
           </div>

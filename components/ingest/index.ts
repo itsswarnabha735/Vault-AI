@@ -36,6 +36,10 @@ export type {
 export { ExtractionCard } from './ExtractionCard';
 export type { ExtractionCardProps, EditableDocument } from './ExtractionCard';
 
+// Statement review
+export { StatementReview } from './StatementReview';
+export type { StatementReviewProps } from './StatementReview';
+
 // Complete state
 export { ImportComplete } from './ImportComplete';
 export type { ImportCompleteProps } from './ImportComplete';

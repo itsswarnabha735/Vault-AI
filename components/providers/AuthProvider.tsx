@@ -30,13 +30,22 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   /** Auth error if any */
   error: AuthError | null;
-  /** Sign in with email magic link */
-  signInWithEmail: (
+  /** Sign in with email and password */
+  signInWithPassword: (
     email: string,
-    redirectTo?: string
+    password: string
+  ) => Promise<{ error: AuthError | null }>;
+  /** Sign up with email and password */
+  signUp: (
+    email: string,
+    password: string
   ) => Promise<{ error: AuthError | null }>;
   /** Sign out the current user */
   signOut: () => Promise<{ error: AuthError | null }>;
+  /** Request password reset email */
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  /** Update user password */
+  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
   /** Refresh the current session */
   refreshSession: () => Promise<void>;
 }
@@ -63,7 +72,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
  *
  * Provides authentication state and actions to the entire application.
  * Handles session management, auth state changes, and provides
- * sign in/out functionality.
+ * sign in/out functionality with password-based authentication.
  *
  * @example
  * ```tsx
@@ -120,22 +129,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [supabase.auth]);
 
   /**
-   * Sign in with email magic link
+   * Sign in with email and password
    */
-  const signInWithEmail = useCallback(
+  const signInWithPassword = useCallback(
     async (
       email: string,
-      redirectTo = '/vault'
+      password: string
     ): Promise<{ error: AuthError | null }> => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const { error: signInError } = await supabase.auth.signInWithOtp({
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
-          options: {
-            emailRedirectTo: `${window.location.origin}/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
-          },
+          password,
         });
 
         if (signInError) {
@@ -143,6 +150,95 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         return { error: signInError ?? null };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [supabase.auth]
+  );
+
+  /**
+   * Sign up with email and password
+   */
+  const signUp = useCallback(
+    async (
+      email: string,
+      password: string
+    ): Promise<{ error: AuthError | null }> => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${appUrl}/callback`,
+          },
+        });
+
+        if (signUpError) {
+          setError(signUpError);
+        }
+
+        return { error: signUpError ?? null };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [supabase.auth]
+  );
+
+  /**
+   * Request password reset email
+   */
+  const resetPassword = useCallback(
+    async (email: string): Promise<{ error: AuthError | null }> => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+          email,
+          {
+            redirectTo: `${appUrl}/reset-password`,
+          }
+        );
+
+        if (resetError) {
+          setError(resetError);
+        }
+
+        return { error: resetError ?? null };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [supabase.auth]
+  );
+
+  /**
+   * Update user password
+   */
+  const updatePassword = useCallback(
+    async (newPassword: string): Promise<{ error: AuthError | null }> => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+
+        if (updateError) {
+          setError(updateError);
+        }
+
+        return { error: updateError ?? null };
       } finally {
         setIsLoading(false);
       }
@@ -205,6 +301,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         case 'USER_UPDATED':
           router.refresh();
           break;
+        case 'PASSWORD_RECOVERY':
+          // User clicked password reset link
+          router.push('/reset-password');
+          break;
       }
     });
 
@@ -221,8 +321,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     isAuthenticated,
     error,
-    signInWithEmail,
+    signInWithPassword,
+    signUp,
     signOut,
+    resetPassword,
+    updatePassword,
     refreshSession,
   };
 

@@ -638,11 +638,11 @@ export interface UserSettings {
 export const DEFAULT_USER_SETTINGS: Omit<UserSettings, 'id' | 'updatedAt'> = {
   userId: null,
   theme: 'system',
-  defaultCurrency: 'USD',
-  timezone: 'UTC',
+  defaultCurrency: 'INR',
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
   syncEnabled: true,
   anomalyDetectionEnabled: true,
   anomalyThreshold: 20,
   dateFormat: 'yyyy-MM-dd',
-  numberLocale: 'en-US',
+  numberLocale: 'en-IN',
 };

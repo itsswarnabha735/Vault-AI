@@ -269,10 +269,13 @@ class EmbeddingWorker {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private configureEnvironment(env: any): void {
-    // Allow remote models
+    // Skip local model path check — no local /models/ directory in Next.js
+    env.allowLocalModels = false;
+
+    // Allow loading models from Hugging Face Hub
     env.allowRemoteModels = true;
 
-    // Use cache
+    // Use browser Cache API for models (avoids re-downloading)
     env.useBrowserCache = true;
 
     // Configure threading

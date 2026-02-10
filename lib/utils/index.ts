@@ -15,18 +15,37 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Formats a number as currency
+ * Formats a number as currency.
+ * Auto-selects locale based on currency for proper formatting
+ * (e.g., INR uses 'en-IN' for lakh notation: ₹1,87,551.00).
  */
 export function formatCurrency(
   amount: number,
-  currency: string = 'USD',
-  locale: string = 'en-US'
+  currency: string = 'INR',
+  locale?: string
 ): string {
-  return new Intl.NumberFormat(locale, {
+  // Auto-select locale based on currency if not explicitly provided
+  const effectiveLocale = locale || CURRENCY_LOCALE_MAP[currency] || 'en-US';
+
+  return new Intl.NumberFormat(effectiveLocale, {
     style: 'currency',
     currency,
   }).format(amount);
 }
+
+/** Maps currency codes to their natural locale for proper formatting */
+const CURRENCY_LOCALE_MAP: Record<string, string> = {
+  INR: 'en-IN',  // ₹1,87,551.00 (lakh notation)
+  USD: 'en-US',  // $187,551.00
+  EUR: 'de-DE',  // 187.551,00 €
+  GBP: 'en-GB',  // £187,551.00
+  JPY: 'ja-JP',  // ¥187,551
+  CNY: 'zh-CN',  // ¥187,551.00
+  CAD: 'en-CA',
+  AUD: 'en-AU',
+  SGD: 'en-SG',
+  HKD: 'en-HK',
+};
 
 /**
  * Formats a date in a human-readable format

@@ -67,7 +67,6 @@ export function ChatContainer({
     selectedCitation,
     sendMessage,
     setInputText,
-    selectQuickQuery,
     selectCitation,
     retryLastMessage,
     clearError,
@@ -99,22 +98,20 @@ export function ChatContainer({
     [selectCitation]
   );
 
-  // Handle follow-up click
+  // Handle follow-up click - auto-send the follow-up query
   const handleFollowupClick = useCallback(
     (query: string) => {
-      setInputText(query);
-      // Optionally auto-send
-      // sendMessage(query);
+      sendMessage(query);
     },
-    [setInputText]
+    [sendMessage]
   );
 
-  // Handle quick query selection
+  // Handle quick query selection - auto-send
   const handleQuickQuerySelect = useCallback(
     (query: string) => {
-      selectQuickQuery(query);
+      sendMessage(query);
     },
-    [selectQuickQuery]
+    [sendMessage]
   );
 
   // Handle citation navigation

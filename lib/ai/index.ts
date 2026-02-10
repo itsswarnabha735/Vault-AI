@@ -97,6 +97,7 @@ export {
   generateFallbackResponse,
   generateFallbackFollowups,
   GeminiClient,
+  ApiRouteProxyClient,
   LLMError,
   RateLimitError,
   LLMConfigError,

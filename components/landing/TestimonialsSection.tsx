@@ -11,7 +11,7 @@ const testimonials = [
     content:
       "Finally, a finance app that doesn't make me choose between convenience and privacy. The search is incredibly fast, and I love knowing my receipts never leave my laptop.",
     rating: 5,
-    color: 'bg-blue-500',
+    color: 'bg-vault-gold',
   },
   {
     name: 'Marcus Johnson',
@@ -20,7 +20,7 @@ const testimonials = [
     content:
       "I was skeptical about 'local-first' but the experience is seamless. Syncing across my devices works great, and the AI categorization saves me hours every month.",
     rating: 5,
-    color: 'bg-purple-500',
+    color: 'bg-vault-gold-secondary',
   },
   {
     name: 'Elena Rodriguez',
@@ -29,7 +29,7 @@ const testimonials = [
     content:
       'As someone who audits privacy claims for a living, I was impressed. Their architecture genuinely keeps sensitive data local. This is how all finance apps should work.',
     rating: 5,
-    color: 'bg-green-500',
+    color: 'bg-vault-success',
   },
   {
     name: 'David Park',
@@ -38,7 +38,7 @@ const testimonials = [
     content:
       "The semantic search is mind-blowing. I can describe what I'm looking for in natural language and it just finds it. Works offline too, which is perfect for travel.",
     rating: 5,
-    color: 'bg-orange-500',
+    color: 'bg-vault-warning',
   },
   {
     name: 'Lisa Thompson',
@@ -47,7 +47,7 @@ const testimonials = [
     content:
       'My clients love that their financial documents stay on their own devices. The export features make tax season so much easier. Highly recommend for any finance professional.',
     rating: 5,
-    color: 'bg-pink-500',
+    color: 'bg-vault-info',
   },
   {
     name: 'Alex Kim',
@@ -56,7 +56,7 @@ const testimonials = [
     content:
       "Works perfectly offline which is essential when I'm traveling. The AI chat feature helps me track expenses across multiple currencies and categories effortlessly.",
     rating: 5,
-    color: 'bg-cyan-500',
+    color: 'bg-vault-gold-muted',
   },
 ];
 
@@ -83,7 +83,7 @@ const itemVariants = {
 
 export function TestimonialsSection() {
   return (
-    <section id="testimonials" className="bg-muted/30 py-20">
+    <section id="testimonials" className="bg-vault-bg-secondary py-20">
       <div className="mx-auto max-w-7xl px-4">
         {/* Section Header */}
         <motion.div
@@ -93,12 +93,12 @@ export function TestimonialsSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
+          <h2 className="mb-4 font-display text-3xl font-bold sm:text-4xl">
             Loved by Privacy-Conscious
             <br />
-            <span className="text-primary">Users Everywhere</span>
+            <span className="text-vault-gold">Users Everywhere</span>
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+          <p className="mx-auto max-w-2xl text-lg text-vault-text-secondary">
             Join thousands of users who trust Vault-AI with their financial
             documents.
           </p>
@@ -116,23 +116,23 @@ export function TestimonialsSection() {
             <motion.div
               key={testimonial.name}
               variants={itemVariants}
-              className="relative rounded-xl border bg-card p-6 transition-shadow hover:shadow-lg"
+              className="relative rounded-xl border border-[rgba(255,255,255,0.10)] bg-vault-bg-elevated p-6 transition-shadow hover:shadow-lg"
             >
               {/* Quote Icon */}
-              <Quote className="absolute right-4 top-4 h-8 w-8 text-muted-foreground/20" />
+              <Quote className="absolute right-4 top-4 h-8 w-8 text-vault-text-secondary/20" />
 
               {/* Rating */}
               <div className="mb-4 flex gap-1">
                 {Array.from({ length: testimonial.rating }).map((_, i) => (
                   <Star
                     key={i}
-                    className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                    className="h-4 w-4 fill-vault-gold text-vault-gold"
                   />
                 ))}
               </div>
 
               {/* Content */}
-              <p className="mb-6 leading-relaxed text-muted-foreground">
+              <p className="mb-6 leading-relaxed text-vault-text-secondary">
                 &quot;{testimonial.content}&quot;
               </p>
 
@@ -147,7 +147,7 @@ export function TestimonialsSection() {
                   <div className="text-sm font-semibold">
                     {testimonial.name}
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-vault-text-secondary">
                     {testimonial.role}
                   </div>
                 </div>
@@ -164,23 +164,23 @@ export function TestimonialsSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <p className="mb-6 text-sm text-muted-foreground">
+          <p className="mb-6 text-sm text-vault-text-secondary">
             Trusted by users in 50+ countries
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8 opacity-60">
             {/* Placeholder for trust badges/logos */}
-            <div className="text-2xl font-bold text-muted-foreground">
+            <div className="text-2xl font-bold text-vault-text-secondary">
               10,000+
             </div>
-            <div className="text-sm text-muted-foreground">Active Users</div>
-            <div className="h-8 w-px bg-border" />
-            <div className="text-2xl font-bold text-muted-foreground">1M+</div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-vault-text-secondary">Active Users</div>
+            <div className="h-8 w-px bg-[rgba(255,255,255,0.06)]" />
+            <div className="text-2xl font-bold text-vault-text-secondary">1M+</div>
+            <div className="text-sm text-vault-text-secondary">
               Documents Processed
             </div>
-            <div className="h-8 w-px bg-border" />
-            <div className="text-2xl font-bold text-muted-foreground">4.9</div>
-            <div className="text-sm text-muted-foreground">Average Rating</div>
+            <div className="h-8 w-px bg-[rgba(255,255,255,0.06)]" />
+            <div className="text-2xl font-bold text-vault-text-secondary">4.9</div>
+            <div className="text-sm text-vault-text-secondary">Average Rating</div>
           </div>
         </motion.div>
       </div>

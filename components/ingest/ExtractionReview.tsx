@@ -7,12 +7,16 @@
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExtractionCard, type EditableDocument } from './ExtractionCard';
+import { autoCategorizer } from '@/lib/processing/auto-categorizer';
+import { importDuplicateChecker, type ImportDuplicateResult } from '@/lib/anomaly/import-duplicate-checker';
+import { useCategories } from '@/hooks/useLocalDB';
 import type { ProcessedDocumentResult } from '@/lib/processing/processing-worker-client';
+import type { CategoryId } from '@/types/database';
 
 // Re-export EditableDocument for external use
 export type { EditableDocument };
@@ -57,6 +61,58 @@ export function ExtractionReview({
   onCancel,
   className,
 }: ExtractionReviewProps) {
+  const { data: categories } = useCategories();
+
+  // Build category name-to-ID map for auto-categorization fallback
+  const categoryNameToId = useMemo(() => {
+    const map = new Map<string, CategoryId>();
+    for (const cat of categories) {
+      map.set(cat.name.toLowerCase(), cat.id);
+    }
+    return map;
+  }, [categories]);
+
+  // Duplicate detection state
+  const [duplicateResults, setDuplicateResults] = useState<Map<string, ImportDuplicateResult>>(
+    () => new Map()
+  );
+
+  // Run duplicate check on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkDuplicates() {
+      const results = new Map<string, ImportDuplicateResult>();
+
+      for (const doc of documents) {
+        const date = doc.entities.date?.value || '';
+        const vendor = doc.entities.vendor?.value || '';
+        const amount = doc.entities.amount?.value || 0;
+
+        if (date && vendor && amount) {
+          const result = await importDuplicateChecker.checkReceipt(date, vendor, amount);
+          results.set(doc.id, result);
+        }
+      }
+
+      if (!cancelled) {
+        setDuplicateResults(results);
+      }
+    }
+
+    void checkDuplicates();
+    return () => { cancelled = true; };
+  }, [documents]);
+
+  // Count duplicates
+  const duplicateDocCount = useMemo(() => {
+    let count = 0;
+    for (const result of duplicateResults.values()) {
+      if (result.isDuplicate) count++;
+    }
+    return count;
+  }, [duplicateResults]);
+
   // Track edited documents
   const [editedDocs, setEditedDocs] = useState<Map<string, EditableDocument>>(
     () => new Map()
@@ -94,30 +150,82 @@ export function ExtractionReview({
     return Array.from(editedDocs.values()).filter((d) => d.isEdited).length;
   }, [editedDocs]);
 
+  /**
+   * Resolve a category from auto-categorizer suggestion, handling
+   * both learned (direct CategoryId) and rule-based (name → id) results.
+   */
+  const resolveSuggestedCategory = useCallback(
+    (vendor: string): CategoryId | null => {
+      const suggestion = autoCategorizer.suggestCategory(vendor);
+      if (!suggestion) return null;
+      if (suggestion.isLearned && suggestion.learnedCategoryId) {
+        return suggestion.learnedCategoryId;
+      }
+      return categoryNameToId.get(suggestion.categoryName.toLowerCase()) || null;
+    },
+    [categoryNameToId]
+  );
+
   // Handle confirm
-  const handleConfirm = () => {
-    // Build final document list
+  const handleConfirm = async () => {
+    // Build final document list with auto-categorization fallback
     const finalDocs = documents.map((doc) => {
       const edited = editedDocs.get(doc.id);
       if (edited) {
+        // If no category was set, try auto-categorization as fallback
+        if (!edited.edited.category && edited.edited.vendor) {
+          const catId = resolveSuggestedCategory(edited.edited.vendor);
+          if (catId) {
+            return {
+              ...edited,
+              edited: { ...edited.edited, category: catId },
+            };
+          }
+        }
         return edited;
       }
-      // Return unedited as EditableDocument
+
+      // Return unedited as EditableDocument, with auto-category if possible
+      const vendor = doc.entities.vendor?.value || '';
+      const autoCategory = vendor ? resolveSuggestedCategory(vendor) : null;
+
       return {
         original: doc,
         edited: {
-          vendor: doc.entities.vendor?.value || '',
+          vendor,
           amount: doc.entities.amount?.value || 0,
           date:
             doc.entities.date?.value ||
             new Date().toISOString().split('T')[0] ||
             '',
-          category: null,
+          category: autoCategory,
           note: '',
         },
         isEdited: false,
       } as EditableDocument;
     });
+
+    // Learn vendor-category mappings from user's confirmed selections
+    const learnings: Array<{ vendor: string; categoryId: CategoryId }> = [];
+    for (const doc of finalDocs) {
+      if (doc.edited.vendor && doc.edited.category) {
+        learnings.push({
+          vendor: doc.edited.vendor,
+          categoryId: doc.edited.category,
+        });
+      }
+    }
+    if (learnings.length > 0) {
+      try {
+        await autoCategorizer.learnCategories(learnings);
+        console.log(
+          `[ExtractionReview] Learned ${learnings.length} vendor-category mappings`
+        );
+      } catch (e) {
+        // Learning failure is non-critical
+        console.error('[ExtractionReview] Failed to learn categories:', e);
+      }
+    }
 
     onConfirm(finalDocs);
   };
@@ -156,17 +264,43 @@ export function ExtractionReview({
         </div>
       </div>
 
+      {/* Duplicate Warning */}
+      {duplicateDocCount > 0 && (
+        <div className="mt-4 rounded-lg border border-orange-500/30 bg-orange-50 p-3 dark:bg-orange-950/20">
+          <div className="flex items-center gap-2">
+            <DuplicateWarningIcon className="h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
+            <p className="text-sm font-medium text-orange-700 dark:text-orange-300">
+              {duplicateDocCount} document{duplicateDocCount > 1 ? 's' : ''} may already exist in your vault
+            </p>
+          </div>
+          <p className="mt-1 text-xs text-orange-600/80 dark:text-orange-400/80">
+            Review the flagged documents below. They will still be saved unless you cancel.
+          </p>
+        </div>
+      )}
+
       {/* Documents list */}
       <div className="mt-4 max-h-96 space-y-3 overflow-y-auto rounded-lg border border-border p-3">
-        {documents.map((doc) => (
-          <ExtractionCard
-            key={doc.id}
-            document={doc}
-            onChange={handleDocumentChange}
-            isExpanded={expandedId === doc.id}
-            onToggleExpand={() => handleToggleExpand(doc.id)}
-          />
-        ))}
+        {documents.map((doc) => {
+          const dupResult = duplicateResults.get(doc.id);
+          return (
+            <div key={doc.id} className="relative">
+              {dupResult?.isDuplicate && (
+                <div className="mb-1 flex items-center gap-1.5 rounded bg-orange-100 px-2 py-1 text-xs text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                  <DuplicateWarningIcon className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{dupResult.reason}</span>
+                </div>
+              )}
+              <ExtractionCard
+                document={doc}
+                onChange={handleDocumentChange}
+                isExpanded={expandedId === doc.id}
+                onToggleExpand={() => handleToggleExpand(doc.id)}
+                className={dupResult?.isDuplicate ? 'border-orange-500/30' : undefined}
+              />
+            </div>
+          );
+        })}
       </div>
 
       {/* Actions */}
@@ -311,6 +445,24 @@ function EyeIcon({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      />
+    </svg>
+  );
+}
+
+function DuplicateWarningIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"
       />
     </svg>
   );

@@ -10,7 +10,7 @@ export function CTASection() {
     <section className="px-4 py-20">
       <div className="mx-auto max-w-4xl">
         <motion.div
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/90 via-primary to-blue-600 p-8 text-center text-white sm:p-12"
+          className="relative overflow-hidden rounded-3xl border border-[rgba(200,164,78,0.3)] bg-gradient-to-br from-vault-bg-elevated via-vault-bg-surface to-vault-bg-tertiary p-8 text-center text-vault-text-primary sm:p-12"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -18,8 +18,8 @@ export function CTASection() {
         >
           {/* Background decoration */}
           <div className="absolute inset-0 -z-10">
-            <div className="absolute left-1/4 top-0 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute bottom-0 right-1/4 h-64 w-64 rounded-full bg-blue-400/20 blur-3xl" />
+            <div className="absolute left-1/4 top-0 h-64 w-64 rounded-full bg-vault-gold-muted/20 blur-3xl" />
+            <div className="absolute bottom-0 right-1/4 h-64 w-64 rounded-full bg-vault-gold-muted/10 blur-3xl" />
           </div>
 
           {/* Content */}
@@ -29,7 +29,7 @@ export function CTASection() {
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-vault-gold-muted px-4 py-2">
               <Shield className="h-4 w-4" />
               <span className="text-sm font-medium">
                 100% Private • Free to Start
@@ -38,7 +38,7 @@ export function CTASection() {
           </motion.div>
 
           <motion.h2
-            className="mb-4 text-3xl font-bold sm:text-4xl lg:text-5xl"
+            className="mb-4 font-display text-3xl font-bold sm:text-4xl lg:text-5xl"
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -50,7 +50,7 @@ export function CTASection() {
           </motion.h2>
 
           <motion.p
-            className="mx-auto mb-8 max-w-2xl text-lg text-white/80"
+            className="mx-auto mb-8 max-w-2xl text-lg text-vault-text-secondary"
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -70,7 +70,7 @@ export function CTASection() {
             <Button
               size="lg"
               variant="secondary"
-              className="group bg-white px-8 py-6 text-lg text-primary hover:bg-white/90"
+              className="gradient-vault group px-8 py-6 text-lg text-vault-bg-primary hover:opacity-90"
               asChild
             >
               <Link href="/login">
@@ -81,7 +81,7 @@ export function CTASection() {
             <Button
               size="lg"
               variant="ghost"
-              className="border border-white/30 px-8 py-6 text-lg text-white hover:bg-white/10"
+              className="border border-[rgba(255,255,255,0.10)] bg-vault-bg-surface px-8 py-6 text-lg text-vault-text-primary hover:bg-vault-bg-hover"
               asChild
             >
               <Link href="#how-it-works">Watch Demo</Link>
@@ -90,7 +90,7 @@ export function CTASection() {
 
           {/* Trust indicators */}
           <motion.div
-            className="mt-10 flex flex-wrap justify-center gap-6 text-sm text-white/70"
+            className="mt-10 flex flex-wrap justify-center gap-6 text-sm text-vault-text-tertiary"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}

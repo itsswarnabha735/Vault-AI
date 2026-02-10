@@ -10,8 +10,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useChatStore, getOrCreateSession } from '@/stores/chatStore';
 import { chatService } from '@/lib/ai/chat-service';
+import { useSettings } from '@/hooks/useSettings';
 import type { ChatMessage, Citation } from '@/types/ai';
 
 // ============================================
@@ -154,24 +156,32 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const currentSessionId = useChatStore((state) => state.currentSessionId);
   const userPreferences = useChatStore((state) => state.userPreferences);
 
-  // Store actions
-  const storeActions = useChatStore((state) => ({
-    setInputText: state.setInputText,
-    clearInputText: state.clearInputText,
-    addUserMessage: state.addUserMessage,
-    addAssistantMessage: state.addAssistantMessage,
-    setLoadingState: state.setLoadingState,
-    startStreaming: state.startStreaming,
-    appendStreamingText: state.appendStreamingText,
-    completeStreaming: state.completeStreaming,
-    cancelStreaming: state.cancelStreaming,
-    setError: state.setError,
-    clearError: state.clearError,
-    clearCurrentSession: state.clearCurrentSession,
-    selectCitation: state.selectCitation,
-    createSession: state.createSession,
-    setSuggestedQueries: state.setSuggestedQueries,
-  }));
+  // Read user settings from IndexedDB (currency, timezone) — this is the
+  // source of truth for user-configured defaults.
+  const { settings } = useSettings();
+
+  // Store actions - useShallow prevents infinite re-renders by doing
+  // shallow equality on the object properties (function refs are stable)
+  const storeActions = useChatStore(
+    useShallow((state) => ({
+      setInputText: state.setInputText,
+      clearInputText: state.clearInputText,
+      addUserMessage: state.addUserMessage,
+      addAssistantMessage: state.addAssistantMessage,
+      setLoadingState: state.setLoadingState,
+      startStreaming: state.startStreaming,
+      appendStreamingText: state.appendStreamingText,
+      completeStreaming: state.completeStreaming,
+      cancelStreaming: state.cancelStreaming,
+      setError: state.setError,
+      clearError: state.clearError,
+      clearCurrentSession: state.clearCurrentSession,
+      selectCitation: state.selectCitation,
+      createSession: state.createSession,
+      setSuggestedQueries: state.setSuggestedQueries,
+      updatePreferences: state.updatePreferences,
+    }))
+  );
 
   // Keep track of last user message for retry
   const lastUserMessageRef = useRef<string | null>(null);
@@ -190,6 +200,18 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       storeActions.createSession();
     }
   }, [opts.autoCreateSession, currentSessionId, storeActions]);
+
+  // Sync user settings (currency, timezone) into chat store preferences.
+  // This ensures the chat pipeline always uses the user's configured currency
+  // from IndexedDB, not the hardcoded 'USD' default.
+  useEffect(() => {
+    if (settings.defaultCurrency && settings.defaultCurrency !== userPreferences.currency) {
+      storeActions.updatePreferences({ currency: settings.defaultCurrency });
+    }
+    if (settings.timezone && settings.timezone !== userPreferences.timezone) {
+      storeActions.updatePreferences({ timezone: settings.timezone });
+    }
+  }, [settings.defaultCurrency, settings.timezone, userPreferences.currency, userPreferences.timezone, storeActions]);
 
   /**
    * Send a message to the AI assistant.

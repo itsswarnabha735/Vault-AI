@@ -562,7 +562,7 @@ class ImportServiceImpl implements ImportService {
           colMap.category !== -1 ? row[colMap.category!] || '' : '';
         const note = colMap.note !== -1 ? row[colMap.note!] || '' : '';
         const currency =
-          colMap.currency !== -1 ? row[colMap.currency!] || 'USD' : 'USD';
+          colMap.currency !== -1 ? row[colMap.currency!] || 'INR' : 'INR';
 
         const amount = parseAmount(amountStr);
         if (amount === null || !date || !vendor) {

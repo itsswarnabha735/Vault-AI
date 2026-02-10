@@ -103,7 +103,7 @@ export function DocumentCard({
   }, [loadThumbnail]);
 
   // Format display values
-  const formattedAmount = formatCurrency(transaction.amount);
+  const formattedAmount = formatCurrency(transaction.amount, transaction.currency);
   const formattedDate = formatDate(new Date(transaction.date), {
     month: 'short',
     day: 'numeric',
@@ -131,7 +131,7 @@ export function DocumentCard({
       aria-selected={isSelected}
     >
       {/* Thumbnail area */}
-      <div className="relative aspect-[3/4] overflow-hidden bg-muted">
+      <div className="relative aspect-[3/2] overflow-hidden bg-muted">
         {isLoading ? (
           <div className="absolute inset-0 animate-pulse bg-muted" />
         ) : thumbnail ? (

@@ -43,6 +43,15 @@ export {
   type AmountAnomalyConfig,
 } from './amount-detector';
 
+// Re-export import duplicate checker
+export {
+  importDuplicateChecker,
+  type ImportDuplicateResult,
+  type StatementDuplicateCheckResult,
+  type StatementFingerprint,
+  type StatementFingerprintResult,
+} from './import-duplicate-checker';
+
 // Re-export utility functions
 export {
   levenshteinDistance,

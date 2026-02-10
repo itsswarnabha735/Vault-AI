@@ -47,7 +47,7 @@ export function RecentTransactionsList() {
           Recent Transactions
         </CardTitle>
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/vault" className="text-blue-600 dark:text-blue-400">
+          <Link href="/vault" className="text-vault-gold">
             View All
             <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
@@ -82,7 +82,7 @@ function TransactionRow({ transaction }: TransactionRowProps) {
   return (
     <Link
       href={`/vault?transaction=${id}`}
-      className="flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+      className="flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-vault-bg-surface"
     >
       <div className="flex items-center gap-3">
         {/* Category Icon */}
@@ -91,19 +91,21 @@ function TransactionRow({ transaction }: TransactionRowProps) {
           style={{
             backgroundColor: categoryData?.color
               ? `${categoryData.color}20`
-              : '#f3f4f6',
+              : '#242938',
           }}
         >
-          {categoryData?.icon ?? <FileText className="h-5 w-5 text-gray-400" />}
+          {categoryData?.icon ?? (
+            <FileText className="h-5 w-5 text-vault-text-tertiary" />
+          )}
         </div>
 
         {/* Transaction Details */}
         <div>
-          <p className="font-medium text-gray-900 dark:text-white">
+          <p className="font-medium text-vault-text-primary">
             {vendor || 'Unknown Vendor'}
           </p>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-vault-text-secondary">
               {formatTransactionDate(date)}
             </span>
             {categoryData && (
@@ -125,10 +127,10 @@ function TransactionRow({ transaction }: TransactionRowProps) {
       {/* Amount */}
       <div
         className={cn(
-          'text-sm font-semibold',
+          'font-mono text-sm font-semibold',
           isExpense
-            ? 'text-red-600 dark:text-red-400'
-            : 'text-emerald-600 dark:text-emerald-400'
+            ? 'text-vault-danger-text'
+            : 'text-vault-success-text'
         )}
       >
         {isExpense ? '-' : '+'}
@@ -171,7 +173,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <svg
-        className="h-12 w-12 text-gray-300 dark:text-gray-600"
+        className="h-12 w-12 text-vault-text-secondary/40"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -183,10 +185,10 @@ function EmptyState() {
           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
         />
       </svg>
-      <p className="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+      <p className="mt-3 text-sm font-medium text-vault-text-secondary">
         No transactions yet
       </p>
-      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+      <p className="mt-1 text-xs text-vault-text-secondary/70">
         Import documents or add transactions to get started
       </p>
       <Button variant="outline" size="sm" className="mt-4" asChild>

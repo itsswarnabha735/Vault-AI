@@ -33,16 +33,22 @@ export async function middleware(request: NextRequest) {
     const result = await updateSession(request);
     const { supabaseResponse, user } = result;
 
+    // Debug logging
+    console.log('[Middleware] Path:', pathname);
+    console.log('[Middleware] User:', user?.email ?? 'null');
+    console.log('[Middleware] Cookies:', request.cookies.getAll().map(c => c.name).join(', '));
+
     // If accessing a protected route without authentication
     if (isProtectedRoute(pathname) && !user) {
+      console.log('[Middleware] Redirecting to login - no user session');
       const redirectUrl = new URL('/login', request.url);
       // Store the original URL to redirect back after login
       redirectUrl.searchParams.set('redirectTo', pathname);
       return NextResponse.redirect(redirectUrl);
     }
 
-    // If authenticated user tries to access login page, redirect to vault
-    if (pathname === '/login' && user) {
+    // If authenticated user tries to access auth pages, redirect to vault
+    if ((pathname === '/login' || pathname === '/signup') && user) {
       return NextResponse.redirect(new URL('/vault', request.url));
     }
 

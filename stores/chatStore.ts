@@ -236,8 +236,8 @@ const initialState: ChatState = {
   selectedCitation: null,
   suggestedQueries: DEFAULT_SUGGESTED_QUERIES,
   userPreferences: {
-    currency: 'USD',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    currency: 'INR',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
   },
 };
 
@@ -643,11 +643,48 @@ export const useChatStore = create<ChatStore>()(
         }),
         {
           name: 'vault-ai-chat',
+          // Version 2: Migrates persisted state from USD defaults to INR
+          version: 2,
+          migrate: (persistedState: unknown, version: number) => {
+            const state = persistedState as Record<string, unknown>;
+            if (version < 2) {
+              // Fix stale USD currency from v1 persisted state
+              const prefs = state.userPreferences as
+                | { currency?: string; timezone?: string }
+                | undefined;
+              if (prefs) {
+                if (prefs.currency === 'USD') {
+                  prefs.currency = 'INR';
+                }
+                if (prefs.timezone === 'UTC') {
+                  prefs.timezone =
+                    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+                    'Asia/Kolkata';
+                }
+              }
+            }
+            return state as ChatState & ChatActions;
+          },
           partialize: (state) => ({
-            // Only persist these fields
+            // Persist sessions (which contain messages), current session, and preferences
             sessions: state.sessions,
+            currentSessionId: state.currentSessionId,
             userPreferences: state.userPreferences,
           }),
+          onRehydrateStorage: () => {
+            return (state) => {
+              // After rehydration, restore messages from the current session
+              // Must use setState — direct mutation doesn't work in Zustand v5
+              if (state && state.currentSessionId) {
+                const session = state.sessions[state.currentSessionId];
+                if (session && session.messages && session.messages.length > 0) {
+                  useChatStore.setState({
+                    messages: session.messages,
+                  });
+                }
+              }
+            };
+          },
         }
       )
     ),

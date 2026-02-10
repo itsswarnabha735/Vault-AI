@@ -78,7 +78,7 @@ export function TransactionMini({
 }: TransactionMiniProps) {
   const formattedAmount = formatCurrency(
     transaction.amount,
-    transaction.currency || 'USD'
+    transaction.currency || 'INR'
   );
   const formattedDate = formatDisplayDate(transaction.date);
   const displayVendor = truncateVendor(transaction.vendor);

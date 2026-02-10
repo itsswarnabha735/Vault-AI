@@ -196,8 +196,8 @@ export async function initializeNewUser(userId: string): Promise<void> {
     .upsert({
       user_id: userId,
       theme: 'system',
-      default_currency: 'USD',
-      timezone: 'UTC',
+      default_currency: 'INR',
+      timezone: 'Asia/Kolkata',
       sync_enabled: true,
       anomaly_detection_enabled: true,
       anomaly_threshold: 20,

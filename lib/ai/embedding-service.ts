@@ -140,6 +140,7 @@ type EnvType = {
       wasm?: { numThreads?: number };
     };
   };
+  allowLocalModels?: boolean;
   allowRemoteModels?: boolean;
   useBrowserCache?: boolean;
 };
@@ -270,13 +271,17 @@ class EmbeddingServiceImpl implements EmbeddingService {
    * Configure the Transformers.js environment.
    */
   private configureEnvironment(env: EnvType): void {
+    // Skip local model path check — we don't serve models from Next.js.
+    // Without this, Transformers.js tries fetch('/models/Xenova/...') which 404s.
+    env.allowLocalModels = false;
+
     // Allow loading models from Hugging Face Hub
     env.allowRemoteModels = true;
 
-    // Use browser cache for models
+    // Use browser Cache API for models (avoids re-downloading after first load)
     env.useBrowserCache = true;
 
-    // Configure WASM backend (fallback)
+    // Configure WASM backend
     if (env.backends?.onnx?.wasm) {
       env.backends.onnx.wasm.numThreads = navigator.hardwareConcurrency || 4;
     }

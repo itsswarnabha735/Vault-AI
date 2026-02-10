@@ -13,8 +13,8 @@ const plans = [
     price: '$0',
     period: 'forever',
     icon: Shield,
-    color: 'text-green-500',
-    bgColor: 'bg-green-500',
+    color: 'text-vault-success',
+    bgColor: 'bg-vault-success',
     features: [
       'Up to 100 documents',
       'Local storage only',
@@ -33,8 +33,8 @@ const plans = [
     price: '$9',
     period: 'per month',
     icon: Zap,
-    color: 'text-primary',
-    bgColor: 'bg-primary',
+    color: 'text-vault-gold',
+    bgColor: 'bg-vault-gold',
     features: [
       'Unlimited documents',
       'Cloud sync across devices',
@@ -55,8 +55,8 @@ const plans = [
     price: '$29',
     period: 'per month',
     icon: Sparkles,
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-500',
+    color: 'text-vault-gold-secondary',
+    bgColor: 'bg-vault-gold-secondary',
     features: [
       'Everything in Pro',
       'Multiple user accounts',
@@ -106,12 +106,12 @@ export function PricingSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
+          <h2 className="mb-4 font-display text-3xl font-bold sm:text-4xl">
             Simple, Transparent
             <br />
-            <span className="text-primary">Pricing</span>
+            <span className="text-vault-gold">Pricing</span>
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+          <p className="mx-auto max-w-2xl text-lg text-vault-text-secondary">
             Start free, upgrade when you need more. No hidden fees, cancel
             anytime.
           </p>
@@ -129,10 +129,10 @@ export function PricingSection() {
             <motion.div
               key={plan.name}
               variants={itemVariants}
-              className={`relative rounded-2xl border bg-card p-6 sm:p-8 ${
+              className={`relative rounded-2xl border bg-vault-bg-elevated p-6 sm:p-8 ${
                 plan.popular
-                  ? 'scale-105 border-primary shadow-lg shadow-primary/10'
-                  : 'hover:border-primary/50'
+                  ? 'scale-105 border-vault-gold shadow-glow'
+                  : 'border-[rgba(255,255,255,0.10)] hover:border-[rgba(200,164,78,0.3)]'
               } transition-all`}
             >
               {/* Popular Badge */}
@@ -149,8 +149,8 @@ export function PricingSection() {
                 >
                   <plan.icon className={`h-6 w-6 ${plan.color}`} />
                 </div>
-                <h3 className="text-xl font-bold">{plan.name}</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-display text-xl font-bold">{plan.name}</h3>
+                <p className="text-sm text-vault-text-secondary">
                   {plan.description}
                 </p>
               </div>
@@ -158,8 +158,8 @@ export function PricingSection() {
               {/* Price */}
               <div className="mb-6 text-center">
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground">/{plan.period}</span>
+                  <span className="font-display text-4xl font-bold">{plan.price}</span>
+                  <span className="text-vault-text-secondary">/{plan.period}</span>
                 </div>
               </div>
 
@@ -196,13 +196,13 @@ export function PricingSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <div className="inline-flex items-center gap-2 rounded-full bg-green-500/10 px-4 py-2 text-green-600 dark:text-green-400">
+          <div className="inline-flex items-center gap-2 rounded-full bg-vault-success-muted px-4 py-2 text-vault-success">
             <Shield className="h-4 w-4" />
             <span className="text-sm font-medium">
               30-day money-back guarantee
             </span>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">
+          <p className="mt-4 text-sm text-vault-text-secondary">
             Try Pro or Business risk-free. Not satisfied? Get a full refund, no
             questions asked.
           </p>

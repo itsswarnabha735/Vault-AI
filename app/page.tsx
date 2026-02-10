@@ -13,7 +13,7 @@ import {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-vault-bg-primary">
       <Header />
       <main>
         <HeroSection />

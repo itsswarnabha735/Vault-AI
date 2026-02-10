@@ -43,7 +43,7 @@ const socialLinks = [
 
 export function Footer() {
   return (
-    <footer className="border-t bg-muted/30">
+    <footer className="border-t border-[rgba(255,255,255,0.06)] bg-vault-bg-secondary">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:py-16">
         {/* Main Footer Content */}
         <div className="mb-12 grid grid-cols-2 gap-8 md:grid-cols-5">
@@ -51,14 +51,14 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="mb-4 flex items-center gap-2">
               <div className="relative">
-                <Shield className="h-8 w-8 text-primary" />
-                <Vault className="absolute bottom-0 right-0 h-4 w-4 translate-x-1 translate-y-1 text-primary" />
+                <Shield className="h-8 w-8 text-vault-gold" />
+                <Vault className="absolute bottom-0 right-0 h-4 w-4 translate-x-1 translate-y-1 text-vault-gold" />
               </div>
               <span className="text-xl font-bold">
-                Vault<span className="text-primary">AI</span>
+                Vault<span className="text-vault-gold">AI</span>
               </span>
             </Link>
-            <p className="mb-4 text-sm text-muted-foreground">
+            <p className="mb-4 text-sm text-vault-text-secondary">
               Your personal finance AI that respects your privacy.
             </p>
             {/* Social Links */}
@@ -69,7 +69,7 @@ export function Footer() {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-muted-foreground transition-colors hover:text-foreground"
+                  className="text-vault-text-secondary transition-colors hover:text-vault-text-primary"
                   aria-label={social.label}
                 >
                   <social.icon className="h-5 w-5" />
@@ -80,13 +80,13 @@ export function Footer() {
 
           {/* Product Links */}
           <div>
-            <h4 className="mb-4 font-semibold">Product</h4>
+            <h4 className="mb-4 font-semibold text-vault-text-primary">Product</h4>
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    className="text-sm text-vault-text-secondary transition-colors hover:text-vault-text-primary"
                   >
                     {link.label}
                   </Link>
@@ -97,13 +97,13 @@ export function Footer() {
 
           {/* Company Links */}
           <div>
-            <h4 className="mb-4 font-semibold">Company</h4>
+            <h4 className="mb-4 font-semibold text-vault-text-primary">Company</h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    className="text-sm text-vault-text-secondary transition-colors hover:text-vault-text-primary"
                   >
                     {link.label}
                   </Link>
@@ -114,13 +114,13 @@ export function Footer() {
 
           {/* Legal Links */}
           <div>
-            <h4 className="mb-4 font-semibold">Legal</h4>
+            <h4 className="mb-4 font-semibold text-vault-text-primary">Legal</h4>
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    className="text-sm text-vault-text-secondary transition-colors hover:text-vault-text-primary"
                   >
                     {link.label}
                   </Link>
@@ -131,13 +131,13 @@ export function Footer() {
 
           {/* Resources Links */}
           <div>
-            <h4 className="mb-4 font-semibold">Resources</h4>
+            <h4 className="mb-4 font-semibold text-vault-text-primary">Resources</h4>
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    className="text-sm text-vault-text-secondary transition-colors hover:text-vault-text-primary"
                   >
                     {link.label}
                   </Link>
@@ -148,13 +148,13 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t pt-8">
+        <div className="border-t border-[rgba(255,255,255,0.06)] pt-8">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-vault-text-secondary">
               &copy; {new Date().getFullYear()} Vault-AI. All rights reserved.
             </p>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Shield className="h-4 w-4 text-green-500" />
+            <div className="flex items-center gap-2 text-sm text-vault-text-secondary">
+              <Shield className="h-4 w-4 text-vault-success" />
               <span>Privacy-First Architecture</span>
             </div>
           </div>

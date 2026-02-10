@@ -146,8 +146,143 @@ const SUPPORTED_MIME_TYPES = [
   'image/jpg',
   'image/png',
   'image/webp',
+  'image/heic',
+  'image/heif',
 ];
 const MIN_TEXT_LENGTH_FOR_NO_OCR = 100;
+
+// ============================================
+// Image Preprocessing for OCR
+// ============================================
+
+/**
+ * Preprocess an image for better OCR accuracy on scanned PDF pages.
+ * Converts to grayscale with contrast stretching (no hard binarization).
+ */
+function preprocessImageForOCR(imageData: ImageData): ImageData {
+  const { data, width, height } = imageData;
+  const output = new Uint8ClampedArray(data.length);
+
+  // Step 1: Convert to grayscale
+  const grayscale = new Uint8Array(width * height);
+  for (let i = 0; i < width * height; i++) {
+    const r = data[i * 4] ?? 0;
+    const g = data[i * 4 + 1] ?? 0;
+    const b = data[i * 4 + 2] ?? 0;
+    grayscale[i] = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+  }
+
+  // Step 2: Find min/max for contrast stretching (clip 1% outliers)
+  const histogram = new Array<number>(256).fill(0);
+  for (let i = 0; i < grayscale.length; i++) {
+    histogram[grayscale[i] ?? 0]++;
+  }
+
+  const totalPixels = width * height;
+  const clipCount = Math.floor(totalPixels * 0.01);
+
+  let minVal = 0;
+  let cumulative = 0;
+  for (let i = 0; i < 256; i++) {
+    cumulative += histogram[i] ?? 0;
+    if (cumulative > clipCount) {
+      minVal = i;
+      break;
+    }
+  }
+
+  let maxVal = 255;
+  cumulative = 0;
+  for (let i = 255; i >= 0; i--) {
+    cumulative += histogram[i] ?? 0;
+    if (cumulative > clipCount) {
+      maxVal = i;
+      break;
+    }
+  }
+
+  if (maxVal <= minVal) {
+    maxVal = minVal + 1;
+  }
+
+  // Step 3: Apply contrast stretching
+  const range = maxVal - minVal;
+  for (let i = 0; i < width * height; i++) {
+    const val = grayscale[i] ?? 0;
+    const stretched = Math.round(
+      Math.max(0, Math.min(255, ((val - minVal) / range) * 255))
+    );
+    output[i * 4] = stretched;
+    output[i * 4 + 1] = stretched;
+    output[i * 4 + 2] = stretched;
+    output[i * 4 + 3] = 255;
+  }
+
+  return new ImageData(output, width, height);
+}
+
+// ============================================
+// OCR Text Post-Processing
+// ============================================
+
+/**
+ * Normalize OCR text output to fix common misreads.
+ *
+ * Tesseract commonly misreads ₹ (Indian Rupee symbol) as '3', 'z', 'Z', '%', or 't'.
+ * This function detects the systematic misread pattern and fixes it.
+ *
+ * Strategy: Count how many times '3' appears before a price-like number (X.XX with
+ * exactly 2 decimal places). If this happens 2+ times, it's a systematic ₹→3 misread
+ * and we replace ALL such occurrences. Otherwise, only replace near known keywords.
+ */
+function normalizeOCRText(text: string): string {
+  let normalized = text;
+
+  // Detect systematic ₹→3 misread: count '3' before price patterns (X.XX)
+  const rupee3Pattern = /(?<!\d)3(\d{1,6}\.\d{2})(?!\d)/g;
+  const priceMatches = text.match(rupee3Pattern);
+  const hasSystematicMisread = (priceMatches?.length ?? 0) >= 2;
+
+  if (hasSystematicMisread) {
+    // Systematic misread detected: replace ALL '3' before price patterns with ₹
+    normalized = normalized.replace(
+      /(?<!\d)3(\d{1,6}\.\d{2})(?!\d)/g,
+      '₹$1'
+    );
+
+    // Also fix negative amounts
+    normalized = normalized.replace(
+      /-3(\d{1,6}\.\d{2})(?!\d)/g,
+      '-₹$1'
+    );
+  } else {
+    // No systematic misread: only replace '3' near known keywords
+    normalized = normalized.replace(
+      /(\b(?:Total|Bill\s*Total|Grand\s*Total|Amount|Paid|Payable|Item\s*Total|Net|Due|Bill)\s*(?::?\s*))3(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\b/gi,
+      '$1₹$2'
+    );
+  }
+
+  // Fix 'z' or 'Z' misread as ₹ before amounts
+  normalized = normalized.replace(
+    /(?<!\w)[zZ](\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)(?!\d)/g,
+    '₹$1'
+  );
+
+  // Fix '%' misread as ₹ before amounts (when not preceded by a digit)
+  normalized = normalized.replace(
+    /(?<!\d)%(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)(?!\d)/g,
+    '₹$1'
+  );
+
+  // Normalize "Rs " / "Rs." patterns with extra OCR noise
+  normalized = normalized.replace(
+    /\bRs?\s*[.,:]?\s*(\d)/gi,
+    'Rs. $1'
+  );
+
+  return normalized;
+}
 
 // ============================================
 // Processing Worker Class
@@ -228,16 +363,29 @@ class ProcessingWorker {
     const startTime = performance.now();
 
     if (!this.pdfjs) {
-      this.pdfjs = await import('pdfjs-dist');
-      this.pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+      console.log('[ProcessingWorker] Loading PDF.js library...');
+      try {
+        this.pdfjs = await import('pdfjs-dist');
+        this.pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        console.log('[ProcessingWorker] PDF.js loaded successfully');
+      } catch (err) {
+        console.error('[ProcessingWorker] Failed to load PDF.js:', err);
+        throw err;
+      }
     }
 
     const arrayBuffer = await file.arrayBuffer();
 
+    interface PDFTextItem {
+      str: string;
+      transform?: number[];
+      hasEOL?: boolean;
+    }
+
     interface PDFDoc {
       numPages: number;
       getPage(num: number): Promise<{
-        getTextContent(): Promise<{ items: Array<{ str: string }> }>;
+        getTextContent(): Promise<{ items: PDFTextItem[] }>;
       }>;
       destroy(): Promise<void>;
     }
@@ -261,8 +409,26 @@ class ProcessingWorker {
         const textContent = await page.getTextContent();
 
         const pageText = textContent.items
-          .map((item) => item.str)
-          .join(' ')
+          .map((item: PDFTextItem, idx: number, arr: PDFTextItem[]) => {
+            let text = item.str;
+            if (item.hasEOL) {
+              text += '\n';
+            } else if (idx < arr.length - 1) {
+              const next = arr[idx + 1];
+              if (
+                next &&
+                item.transform &&
+                next.transform &&
+                Math.abs(item.transform[5] - next.transform[5]) > 2
+              ) {
+                text += '\n';
+              } else {
+                text += ' ';
+              }
+            }
+            return text;
+          })
+          .join('')
           .trim();
 
         pageTexts.push(pageText);
@@ -300,16 +466,37 @@ class ProcessingWorker {
     const startTime = performance.now();
 
     if (!this.tesseract) {
-      this.tesseract = await import('tesseract.js');
+      console.log('[ProcessingWorker] Loading Tesseract.js library...');
+      try {
+        this.tesseract = await import('tesseract.js');
+        console.log('[ProcessingWorker] Tesseract.js loaded successfully');
+      } catch (err) {
+        console.error('[ProcessingWorker] Failed to load Tesseract.js:', err);
+        throw err;
+      }
     }
 
     if (!this.tesseractWorker) {
-      const { createWorker } = this.tesseract;
-      this.tesseractWorker = await createWorker(language, 1, {
-        logger: (message: { progress: number }) => {
-          onProgress?.(message.progress * 100);
-        },
-      });
+      console.log('[ProcessingWorker] Initializing Tesseract worker...');
+      try {
+        const { createWorker } = this.tesseract;
+        this.tesseractWorker = await createWorker(language, 1, {
+          logger: (message: { progress: number }) => {
+            onProgress?.(message.progress * 100);
+          },
+        });
+
+        // Set optimized parameters for receipt/invoice OCR
+        await this.tesseractWorker.setParameters({
+          tessedit_pageseg_mode: '3',     // Fully automatic page segmentation
+          preserve_interword_spaces: '1', // Preserve spacing structure
+        });
+
+        console.log('[ProcessingWorker] Tesseract worker initialized');
+      } catch (err) {
+        console.error('[ProcessingWorker] Failed to initialize Tesseract worker:', err);
+        throw err;
+      }
     }
 
     // Convert ImageData to Blob if needed (Tesseract doesn't accept ImageData directly)
@@ -350,7 +537,7 @@ class ProcessingWorker {
   ): Promise<ImageData> {
     if (!this.pdfjs) {
       this.pdfjs = await import('pdfjs-dist');
-      this.pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+      this.pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
     }
 
     const arrayBuffer = await file.arrayBuffer();
@@ -434,6 +621,13 @@ class ProcessingWorker {
     const startTime = performance.now();
     const fileId = this.generateId();
 
+    console.log('[ProcessingWorker] Starting document processing:', {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      fileId,
+    });
+
     const {
       ocrLanguage = 'eng',
       forceOCR = false,
@@ -450,6 +644,7 @@ class ProcessingWorker {
       });
 
       const validation = this.validateFile(file);
+      console.log('[ProcessingWorker] Validation result:', validation);
       if (!validation.isValid) {
         throw new Error(validation.error || 'Validation failed');
       }
@@ -505,7 +700,8 @@ class ProcessingWorker {
             progress: 0,
           });
 
-          const imageData = await this.renderPDFPageToImage(file, 1, 2.0);
+          const rawImageData = await this.renderPDFPageToImage(file, 1, 3.0);
+          const imageData = preprocessImageForOCR(rawImageData);
           const ocrResult = await this.performOCR(
             imageData,
             ocrLanguage,
@@ -519,7 +715,7 @@ class ProcessingWorker {
             }
           );
 
-          rawText = ocrResult.text;
+          rawText = normalizeOCRText(ocrResult.text);
           ocrUsed = true;
         }
       } else {
@@ -544,7 +740,7 @@ class ProcessingWorker {
           }
         );
 
-        rawText = ocrResult.text;
+        rawText = normalizeOCRText(ocrResult.text);
         ocrUsed = true;
       }
 
@@ -590,6 +786,16 @@ class ProcessingWorker {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      const stack = error instanceof Error ? error.stack : '';
+      
+      // Log detailed error for debugging
+      console.error('[ProcessingWorker] Document processing failed:', {
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        error: message,
+        stack,
+      });
 
       this.reportProgress({
         fileId,

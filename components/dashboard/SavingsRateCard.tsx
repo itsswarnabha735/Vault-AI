@@ -29,10 +29,10 @@ export function SavingsRateCard() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="text-sm font-medium text-vault-text-secondary">
           Savings Rate
         </CardTitle>
-        <PiggyBank className="h-4 w-4 text-muted-foreground" />
+        <PiggyBank className="h-4 w-4 text-vault-text-secondary" />
       </CardHeader>
       <CardContent>
         {hasData ? (
@@ -40,12 +40,12 @@ export function SavingsRateCard() {
             <div className="flex items-baseline gap-2">
               <span
                 className={cn(
-                  'text-2xl font-bold',
+                  'font-display text-2xl font-bold',
                   savingsRate >= 20
-                    ? 'text-emerald-600 dark:text-emerald-400'
+                    ? 'text-vault-success-text'
                     : savingsRate >= 0
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-red-600 dark:text-red-400'
+                      ? 'text-vault-warning-text'
+                      : 'text-vault-danger-text'
                 )}
               >
                 {savingsRate.toFixed(1)}%
@@ -55,25 +55,25 @@ export function SavingsRateCard() {
 
             <div className="mt-3 space-y-1.5 text-xs">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Income</span>
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="text-vault-text-secondary">Income</span>
+                <span className="font-medium font-mono text-vault-success-text">
                   +{formatCurrency(income)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Expenses</span>
-                <span className="font-medium text-red-600 dark:text-red-400">
+                <span className="text-vault-text-secondary">Expenses</span>
+                <span className="font-medium font-mono text-vault-danger-text">
                   -{formatCurrency(expenses)}
                 </span>
               </div>
-              <div className="flex justify-between border-t pt-1.5 dark:border-gray-700">
-                <span className="text-muted-foreground">Net Savings</span>
+              <div className="flex justify-between border-t border-[rgba(255,255,255,0.06)] pt-1.5">
+                <span className="text-vault-text-secondary">Net Savings</span>
                 <span
                   className={cn(
-                    'font-semibold',
+                    'font-semibold font-mono',
                     savings >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-red-600 dark:text-red-400'
+                      ? 'text-vault-success-text'
+                      : 'text-vault-danger-text'
                   )}
                 >
                   {savings >= 0 ? '+' : ''}
@@ -84,8 +84,8 @@ export function SavingsRateCard() {
           </>
         ) : (
           <div className="py-2">
-            <p className="text-sm text-muted-foreground">No data yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-sm text-vault-text-secondary">No data yet</p>
+            <p className="mt-1 text-xs text-vault-text-secondary">
               Add transactions to see your savings rate
             </p>
           </div>
@@ -105,7 +105,7 @@ interface TrendIndicatorProps {
 function TrendIndicator({ trend }: TrendIndicatorProps) {
   if (trend === 'stable') {
     return (
-      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+      <span className="flex items-center gap-0.5 text-xs text-vault-text-secondary">
         <Minus className="h-3 w-3" />
         Stable
       </span>
@@ -119,8 +119,8 @@ function TrendIndicator({ trend }: TrendIndicatorProps) {
       className={cn(
         'flex items-center gap-0.5 text-xs',
         isUp
-          ? 'text-emerald-600 dark:text-emerald-400'
-          : 'text-red-600 dark:text-red-400'
+          ? 'text-vault-success-text'
+          : 'text-vault-danger-text'
       )}
     >
       {isUp ? (

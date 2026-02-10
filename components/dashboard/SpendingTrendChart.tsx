@@ -55,35 +55,32 @@ export function SpendingTrendChart() {
                   x2="0"
                   y2="1"
                 >
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#C8A44E" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#C8A44E" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke="#e5e7eb"
-                className="dark:stroke-gray-700"
+                stroke="rgba(255,255,255,0.06)"
               />
               <XAxis
                 dataKey="month"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: '#6b7280' }}
-                className="dark:fill-gray-400"
+                tick={{ fontSize: 12, fill: '#5C6378' }}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tick={{ fontSize: 12, fill: '#5C6378' }}
                 tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                 width={50}
-                className="dark:fill-gray-400"
               />
               <Tooltip
                 content={<CustomTooltip />}
                 cursor={{
-                  stroke: '#3b82f6',
+                  stroke: '#C8A44E',
                   strokeWidth: 1,
                   strokeDasharray: '4 4',
                 }}
@@ -91,7 +88,7 @@ export function SpendingTrendChart() {
               <Area
                 type="monotone"
                 dataKey="amount"
-                stroke="#3b82f6"
+                stroke="#C8A44E"
                 strokeWidth={2}
                 fill="url(#spendingGradient)"
               />
@@ -124,11 +121,11 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   }
 
   return (
-    <div className="rounded-lg border bg-white px-3 py-2 shadow-md dark:border-gray-700 dark:bg-gray-800">
-      <p className="text-xs font-medium text-muted-foreground">
+    <div className="rounded-lg border border-[rgba(255,255,255,0.10)] bg-vault-bg-elevated px-3 py-2 shadow-md">
+      <p className="text-xs font-medium text-vault-text-secondary">
         {firstPayload.payload.label}
       </p>
-      <p className="text-sm font-semibold text-foreground">
+      <p className="font-mono text-sm font-semibold text-vault-text-primary">
         {formatCurrency(firstPayload.value)}
       </p>
     </div>
@@ -142,7 +139,7 @@ function EmptyState() {
   return (
     <div className="flex h-[300px] flex-col items-center justify-center text-center">
       <svg
-        className="h-12 w-12 text-gray-300 dark:text-gray-600"
+        className="h-12 w-12 text-vault-text-secondary/40"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -154,10 +151,10 @@ function EmptyState() {
           d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
         />
       </svg>
-      <p className="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+      <p className="mt-3 text-sm font-medium text-vault-text-secondary">
         No spending data yet
       </p>
-      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+      <p className="mt-1 text-xs text-vault-text-secondary/70">
         Add transactions to see your spending trend
       </p>
     </div>

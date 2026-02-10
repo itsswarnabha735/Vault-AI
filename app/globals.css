@@ -2,103 +2,133 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   Vault-AI Design System: Obsidian & Gold
+   ============================================ */
+
 @layer base {
   :root {
-    /* Navy/Blue Finance Theme - Light Mode */
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    /* Obsidian & Gold - Dark-First Theme */
+    --background: 220 27% 4%;      /* #0A0C10 */
+    --foreground: 220 30% 93%;     /* #E8ECF4 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 222 25% 9%;            /* #1E2330 bg.elevated */
+    --card-foreground: 220 30% 93%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 222 25% 9%;
+    --popover-foreground: 220 30% 93%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 41 47% 55%;         /* #C8A44E accent.primary */
+    --primary-foreground: 220 27% 4%;
 
-    --secondary: 262 83% 58%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 222 18% 18%;      /* #242938 bg.surface */
+    --secondary-foreground: 220 30% 93%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 221 20% 13%;          /* #1A1E28 bg.tertiary */
+    --muted-foreground: 225 10% 59%;  /* #8B92A5 text.secondary */
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 41 47% 55%;          /* #C8A44E */
+    --accent-foreground: 220 27% 4%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 86% 71%;      /* #F87171 */
+    --destructive-foreground: 220 30% 93%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --border: 0 0% 100% / 0.10;
+    --input: 0 0% 100% / 0.10;
+    --ring: 41 47% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;            /* 10px - radius.md */
 
     /* Chart Colors */
-    --chart-1: 221 83% 53%;
-    --chart-2: 262 83% 58%;
-    --chart-3: 187 92% 41%;
-    --chart-4: 160 84% 39%;
-    --chart-5: 38 92% 50%;
+    --chart-1: 41 47% 55%;         /* Gold */
+    --chart-2: 160 59% 51%;        /* Success green */
+    --chart-3: 217 91% 60%;        /* Info blue */
+    --chart-4: 44 87% 56%;         /* Warning amber */
+    --chart-5: 0 86% 71%;          /* Danger red */
 
     /* Sidebar */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-background: 223 22% 8%;   /* #12151C bg.secondary */
+    --sidebar-foreground: 220 30% 93%;
+    --sidebar-primary: 41 47% 55%;
+    --sidebar-primary-foreground: 220 27% 4%;
+    --sidebar-accent: 41 47% 14%;
+    --sidebar-accent-foreground: 41 47% 55%;
+    --sidebar-border: 0 0% 100% / 0.06;
+    --sidebar-ring: 41 47% 55%;
+
+    /* Vault Design System Tokens */
+    --vault-bg-primary: #0A0C10;
+    --vault-bg-secondary: #12151C;
+    --vault-bg-tertiary: #1A1E28;
+    --vault-bg-elevated: #1E2330;
+    --vault-bg-surface: #242938;
+    --vault-bg-hover: #2A3042;
+
+    --vault-gold: #C8A44E;
+    --vault-gold-secondary: #D4B86A;
+    --vault-gold-muted: rgba(200, 164, 78, 0.15);
+    --vault-gold-glow: rgba(200, 164, 78, 0.08);
+
+    --vault-text-primary: #E8ECF4;
+    --vault-text-secondary: #8B92A5;
+    --vault-text-tertiary: #5C6378;
+
+    --vault-border-subtle: rgba(255, 255, 255, 0.06);
+    --vault-border-default: rgba(255, 255, 255, 0.10);
+    --vault-border-strong: rgba(255, 255, 255, 0.16);
+    --vault-border-accent: rgba(200, 164, 78, 0.3);
+
+    --vault-success: #34D399;
+    --vault-success-muted: rgba(52, 211, 153, 0.12);
+    --vault-success-text: #6EE7B7;
+
+    --vault-warning: #FBBF24;
+    --vault-warning-muted: rgba(251, 191, 36, 0.12);
+    --vault-warning-text: #FCD34D;
+
+    --vault-danger: #F87171;
+    --vault-danger-muted: rgba(248, 113, 113, 0.12);
+    --vault-danger-text: #FCA5A5;
+
+    --vault-info: #60A5FA;
+    --vault-info-muted: rgba(96, 165, 250, 0.12);
+    --vault-info-text: #93C5FD;
   }
 
+  /* We keep .dark class for compatibility but it maps to same values */
   .dark {
-    /* Navy/Blue Finance Theme - Dark Mode */
-    --background: 222 47% 5%;
-    --foreground: 210 40% 98%;
-
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 5%;
-
-    --secondary: 263 70% 50%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 217 91% 60%;
-
-    /* Chart Colors - Dark Mode */
-    --chart-1: 217 91% 60%;
-    --chart-2: 263 70% 60%;
-    --chart-3: 187 92% 41%;
-    --chart-4: 160 84% 39%;
-    --chart-5: 38 92% 50%;
-
-    /* Sidebar - Dark Mode */
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217 91% 60%;
+    --background: 220 27% 4%;
+    --foreground: 220 30% 93%;
+    --card: 222 25% 9%;
+    --card-foreground: 220 30% 93%;
+    --popover: 222 25% 9%;
+    --popover-foreground: 220 30% 93%;
+    --primary: 41 47% 55%;
+    --primary-foreground: 220 27% 4%;
+    --secondary: 222 18% 18%;
+    --secondary-foreground: 220 30% 93%;
+    --muted: 221 20% 13%;
+    --muted-foreground: 225 10% 59%;
+    --accent: 41 47% 55%;
+    --accent-foreground: 220 27% 4%;
+    --destructive: 0 86% 71%;
+    --destructive-foreground: 220 30% 93%;
+    --border: 0 0% 100% / 0.10;
+    --input: 0 0% 100% / 0.10;
+    --ring: 41 47% 55%;
+    --chart-1: 41 47% 55%;
+    --chart-2: 160 59% 51%;
+    --chart-3: 217 91% 60%;
+    --chart-4: 44 87% 56%;
+    --chart-5: 0 86% 71%;
+    --sidebar-background: 223 22% 8%;
+    --sidebar-foreground: 220 30% 93%;
+    --sidebar-primary: 41 47% 55%;
+    --sidebar-primary-foreground: 220 27% 4%;
+    --sidebar-accent: 41 47% 14%;
+    --sidebar-accent-foreground: 41 47% 55%;
+    --sidebar-border: 0 0% 100% / 0.06;
+    --sidebar-ring: 41 47% 55%;
   }
 }
 
@@ -112,6 +142,12 @@
       'rlig' 1,
       'calt' 1;
   }
+
+  /* Force dark background for html */
+  html {
+    background-color: #0A0C10;
+    color-scheme: dark;
+  }
 }
 
 @layer utilities {
@@ -119,32 +155,35 @@
     text-wrap: balance;
   }
 
-  /* Finance-specific utilities */
+  /* Finance-specific utilities - Updated for Obsidian & Gold */
   .text-money-positive {
-    @apply text-emerald-600 dark:text-emerald-400;
+    color: var(--vault-success-text);
   }
 
   .text-money-negative {
-    @apply text-red-600 dark:text-red-400;
+    color: var(--vault-danger-text);
   }
 
+  /* Gold gradient for primary CTAs */
   .gradient-vault {
-    @apply bg-gradient-to-r from-blue-600 to-violet-600;
+    background: linear-gradient(135deg, #C8A44E 0%, #D4B86A 50%, #C8A44E 100%);
   }
 
   .gradient-vault-subtle {
-    @apply bg-gradient-to-r from-blue-600/10 to-violet-600/10;
+    background: linear-gradient(135deg, rgba(200,164,78,0.15) 0%, rgba(200,164,78,0.08) 100%);
   }
 
-  /* Glassmorphism effect */
+  /* Glass effect for dark backgrounds */
   .glass {
-    @apply bg-white/80 backdrop-blur-md dark:bg-gray-900/80;
+    background: rgba(18, 21, 28, 0.80);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
   /* Scrollbar styling */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) transparent;
+    scrollbar-color: var(--vault-bg-surface) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -157,21 +196,25 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--muted));
+    background-color: var(--vault-bg-surface);
     border-radius: 3px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(var(--muted-foreground));
+    background-color: var(--vault-bg-hover);
   }
 
-  /* Privacy badge styles */
+  /* Privacy badge styles - Updated for Obsidian & Gold */
   .privacy-badge {
-    @apply inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+    background: var(--vault-success-muted);
+    color: var(--vault-success-text);
   }
 
   .sync-badge {
-    @apply inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+    background: var(--vault-info-muted);
+    color: var(--vault-info-text);
   }
 
   /* Animation delays for staggered effects */
@@ -186,6 +229,33 @@
   .animation-delay-500 {
     animation-delay: 500ms;
   }
+
+  /* Vault-specific text styles */
+  .font-display {
+    font-family: var(--font-playfair), Georgia, serif;
+  }
+
+  .font-body {
+    font-family: var(--font-dm-sans), 'Helvetica Neue', sans-serif;
+  }
+
+  .font-data {
+    font-family: var(--font-jetbrains), 'Fira Code', monospace;
+  }
+
+  /* Gold glow effect for accent cards */
+  .glow-gold {
+    box-shadow: 0 0 30px rgba(200, 164, 78, 0.1);
+  }
+
+  /* Label style from design system */
+  .label-uppercase {
+    font-family: var(--font-dm-sans), sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
 }
 
 /* Custom focus styles for accessibility */
@@ -193,4 +263,44 @@
   :focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
+}
+
+/* Entry animation for page content */
+@keyframes vault-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-vault-in {
+  animation: vault-fade-in-up 500ms ease both;
+}
+
+/* Stagger children animation */
+.stagger-children > * {
+  animation: vault-fade-in-up 500ms ease both;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+
+/* Skeleton pulse - matching design system */
+@keyframes vault-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-vault-pulse {
+  animation: vault-pulse 1.5s ease-in-out infinite;
 }

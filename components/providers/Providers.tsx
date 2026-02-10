@@ -2,6 +2,7 @@
 
 import { type ReactNode } from 'react';
 import { AuthProvider } from './AuthProvider';
+import { SyncProvider } from './SyncProvider';
 
 /**
  * Props for the Providers component
@@ -18,11 +19,11 @@ interface ProvidersProps {
  *
  * Current providers:
  * 1. AuthProvider - Supabase authentication
+ * 2. SyncProvider - Cloud sync engine (depends on auth)
  *
  * Future providers to add:
  * - QueryClientProvider (TanStack Query)
  * - LocalBrainProvider (ML models)
- * - SyncProvider (Cloud sync)
  * - ThemeProvider (Dark mode)
  *
  * @example
@@ -44,12 +45,9 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <AuthProvider>
-      {/* Add more providers here as needed */}
-      {/* <QueryClientProvider client={queryClient}> */}
-      {/* <ThemeProvider> */}
-      {children}
-      {/* </ThemeProvider> */}
-      {/* </QueryClientProvider> */}
+      <SyncProvider>
+        {children}
+      </SyncProvider>
     </AuthProvider>
   );
 }

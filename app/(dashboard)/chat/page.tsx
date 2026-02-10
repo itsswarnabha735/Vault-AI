@@ -33,21 +33,21 @@ export default function ChatPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
       {/* Header */}
-      <header className="border-b border-border bg-background px-6 py-4">
+      <header className="border-b border-[rgba(255,255,255,0.06)] bg-vault-bg-primary px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-2xl font-bold text-vault-text-primary">
               Finance Assistant
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-vault-text-secondary">
               Ask questions about your finances and get instant insights
             </p>
           </div>
 
           {/* Privacy badge */}
-          <div className="hidden items-center gap-2 rounded-full bg-green-500/10 px-4 py-2 sm:flex">
+          <div className="hidden items-center gap-2 rounded-full bg-vault-success-muted px-4 py-2 sm:flex">
             <svg
-              className="h-4 w-4 text-green-600"
+              className="h-4 w-4 text-vault-success"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -59,7 +59,7 @@ export default function ChatPage() {
                 d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
               />
             </svg>
-            <span className="text-sm font-medium text-green-700 dark:text-green-400">
+            <span className="text-sm font-medium text-vault-success-text">
               Private & Secure
             </span>
           </div>

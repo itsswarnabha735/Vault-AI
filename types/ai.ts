@@ -420,6 +420,7 @@ export type MessageRole = 'user' | 'assistant' | 'system';
  */
 export type QueryIntent =
   | 'spending_query'
+  | 'income_query'
   | 'budget_query'
   | 'search_query'
   | 'comparison_query'
@@ -508,11 +509,23 @@ export interface ChatResponse {
  * Verified financial data from cloud.
  */
 export interface VerifiedFinancialData {
-  /** Total amount */
+  /** Net total amount (expenses + income, where expenses are positive, income negative) */
   total: number;
+
+  /** Total expenses (sum of positive amounts) */
+  totalExpenses: number;
+
+  /** Total income (sum of absolute value of negative amounts) */
+  totalIncome: number;
 
   /** Transaction count */
   count: number;
+
+  /** Number of expense transactions */
+  expenseCount: number;
+
+  /** Number of income transactions */
+  incomeCount: number;
 
   /** Category breakdown */
   byCategory?: Record<string, number>;

@@ -32,6 +32,7 @@ import {
 } from '@/hooks/useLocalDB';
 import { useSemanticSearch } from '@/hooks/useVectorSearch';
 import { useEmbedding } from '@/hooks/useEmbedding';
+import ImportModal from '@/components/ingest/ImportModal';
 import type { LocalTransaction, TransactionId } from '@/types/database';
 
 // ============================================
@@ -46,9 +47,12 @@ type ViewMode = 'grid' | 'list';
 
 export default function VaultPage() {
   // View state
-  const [view, setView] = useState<ViewMode>('grid');
+  const [view, setView] = useState<ViewMode>('list');
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [isFilterCollapsed, setIsFilterCollapsed] = useState(false);
+
+  // Import modal state
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -237,35 +241,35 @@ export default function VaultPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-border bg-background px-6 py-4">
+      <header className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-vault-bg-primary px-6 py-4">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-foreground">
+            <h1 className="text-xl font-semibold text-vault-text-primary">
               Document Vault
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-vault-text-secondary">
               {stats.total} documents • {stats.withDocs} with attachments
             </p>
           </div>
 
           {/* Privacy badge */}
           <Badge variant="secondary" className="gap-1">
-            <ShieldIcon className="h-3 w-3 text-green-500" />
+            <ShieldIcon className="h-3 w-3 text-vault-success" />
             <span>Local Storage</span>
           </Badge>
         </div>
 
         <div className="flex items-center gap-2">
           {/* View toggle */}
-          <div className="flex rounded-lg border border-border p-1">
+          <div className="flex rounded-lg border border-[rgba(255,255,255,0.06)] p-1">
             <button
               type="button"
               onClick={() => setView('grid')}
               className={cn(
                 'rounded-md p-1.5 transition-colors',
                 view === 'grid'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-vault-gold text-vault-bg-primary'
+                  : 'text-vault-text-secondary hover:text-vault-text-primary'
               )}
               aria-label="Grid view"
             >
@@ -277,8 +281,8 @@ export default function VaultPage() {
               className={cn(
                 'rounded-md p-1.5 transition-colors',
                 view === 'list'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-vault-gold text-vault-bg-primary'
+                  : 'text-vault-text-secondary hover:text-vault-text-primary'
               )}
               aria-label="List view"
             >
@@ -287,7 +291,7 @@ export default function VaultPage() {
           </div>
 
           {/* Upload button */}
-          <Button>
+          <Button onClick={() => setIsImportOpen(true)}>
             <UploadIcon className="mr-2 h-4 w-4" />
             Upload
           </Button>
@@ -307,7 +311,7 @@ export default function VaultPage() {
         {/* Content area */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Search bar */}
-          <div className="border-b border-border bg-background p-4">
+          <div className="border-b border-[rgba(255,255,255,0.06)] bg-vault-bg-primary p-4">
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
@@ -335,7 +339,7 @@ export default function VaultPage() {
 
             {/* Model loading indicator */}
             {!isModelLoaded && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-vault-text-secondary">
                 Semantic search will be available once the AI model loads...
               </p>
             )}
@@ -367,7 +371,7 @@ export default function VaultPage() {
 
         {/* Preview panel */}
         {selectedTransaction && (
-          <div className="hidden w-96 border-l border-border lg:block">
+          <div className="hidden w-96 border-l border-[rgba(255,255,255,0.06)] lg:block">
             <DocumentPreviewPanel
               transaction={selectedTransaction}
               onClose={() => setSelectedTransaction(null)}
@@ -389,6 +393,15 @@ export default function VaultPage() {
           />
         </div>
       )}
+
+      {/* Import Modal */}
+      <ImportModal
+        open={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onSuccess={() => {
+          setIsImportOpen(false);
+        }}
+      />
     </div>
   );
 }

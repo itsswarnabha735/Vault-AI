@@ -6,6 +6,7 @@
  */
 
 import type { QueryIntent, SearchFilter } from '@/types/ai';
+import { embeddingService } from './embedding-service';
 
 // ============================================
 // Types
@@ -14,6 +15,14 @@ import type { QueryIntent, SearchFilter } from '@/types/ai';
 /**
  * Extracted entities from a query.
  */
+/**
+ * Transaction direction for filtering income vs expenses.
+ * - 'expense': only positive amounts (debits/outflows)
+ * - 'income': only negative amounts (credits/inflows)
+ * - 'all': both directions (or direction not specified)
+ */
+export type TransactionDirection = 'expense' | 'income' | 'all';
+
 export interface ExtractedQueryEntities {
   /** Parsed date range */
   dateRange: {
@@ -44,6 +53,9 @@ export interface ExtractedQueryEntities {
 
   /** Raw keywords for fallback search */
   keywords: string[];
+
+  /** Transaction direction (income, expense, or all) */
+  transactionDirection: TransactionDirection;
 }
 
 /**
@@ -59,7 +71,8 @@ export type TimePeriod =
   | 'this_quarter'
   | 'last_quarter'
   | 'this_year'
-  | 'last_year';
+  | 'last_year'
+  | 'specific_month';
 
 /**
  * Comparison types for trend queries.
@@ -111,6 +124,18 @@ const INTENT_PATTERNS: Record<QueryIntent, RegExp[]> = {
     /spending (?:on|for|at|in)/i,
     /expenses? (?:for|on|at|in)/i,
   ],
+  income_query: [
+    /how much (?:did i|have i|do i) (?:earn|receive|get paid|make)/i,
+    /(?:what|how much) (?:was|is|are) (?:my )?(?:total )?(?:income|earnings?|salary|revenue)/i,
+    /(?:total|sum|amount) (?:of )?(?:income|earnings?|salary|credits?|deposits?)/i,
+    /(?:what|how much) (?:was|were) (?:credited|deposited|received)/i,
+    /(?:credited|deposited|received) (?:to|into|in) (?:my )?(?:account|bank)/i,
+    /(?:income|salary|paycheck|earnings?|deposits?) (?:for|in|on|this|last)/i,
+    /(?:show|find|get) (?:me )?(?:my )?(?:income|earnings?|salary|credits?|deposits?)/i,
+    /(?:money|amount) (?:received|earned|credited|deposited|coming in)/i,
+    /(?:what|how much) (?:did i|have i) (?:earned?|received|got paid)/i,
+    /(?:inflow|inflows|money in|cash in)/i,
+  ],
   search_query: [
     /(?:find|show|get|search|look for|locate) (?:me )?(?:the )?(?:receipt|document|transaction|bill|invoice)/i,
     /(?:where|which) (?:is|are) (?:my|the)/i,
@@ -160,8 +185,12 @@ const TIME_PERIOD_PATTERNS: Record<TimePeriod, RegExp[]> = {
   last_month: [/last month/i, /previous month/i, /past month/i],
   this_quarter: [/this quarter/i, /current quarter/i, /q[1-4] ?\d{4}/i],
   last_quarter: [/last quarter/i, /previous quarter/i],
-  this_year: [/this year/i, /current year/i, /\b\d{4}\b/],
+  // Removed /\b\d{4}\b/ — it greedily matched bare years like "2026" in
+  // "January 2026", preventing extractMonthNameDateRange from running.
+  this_year: [/this year/i, /current year/i],
   last_year: [/last year/i, /previous year/i],
+  // specific_month is handled separately by extractMonthNameDateRange()
+  specific_month: [],
 };
 
 /**
@@ -275,6 +304,7 @@ export function classifyIntent(query: string): QueryIntent {
   // Check each intent pattern in order of specificity
   const intentOrder: QueryIntent[] = [
     'spending_query',
+    'income_query',
     'budget_query',
     'comparison_query',
     'trend_query',
@@ -298,6 +328,279 @@ export function classifyIntent(query: string): QueryIntent {
   return 'general_query';
 }
 
+// ============================================
+// Embedding-Based Intent Classification
+// ============================================
+
+/**
+ * Canonical example queries for each intent.
+ * These are embedded once and cached — each new user query is compared
+ * against these centroids via cosine similarity, which handles paraphrases
+ * far better than regex patterns.
+ */
+const INTENT_EXAMPLES: Record<Exclude<QueryIntent, 'general_query'>, string[]> = {
+  spending_query: [
+    'How much did I spend this month?',
+    'What are my total expenses?',
+    'Show me my spending in January',
+    'How much money did I spend on food?',
+    'What was my total spending last week?',
+    'How much did I pay for groceries?',
+    'Total amount spent on utilities',
+    'My expenses this year',
+    'What did I spend at Starbucks?',
+    'Show me all my purchases',
+  ],
+  income_query: [
+    'How much income did I receive?',
+    'What was my salary this month?',
+    'Show me my earnings',
+    'How much money did I earn this year?',
+    'What deposits came into my account?',
+    'Total credits this month',
+    'How much did I get paid?',
+    'Show my income for January',
+    'What was deposited into my account?',
+    'How much money came in last month?',
+  ],
+  search_query: [
+    'Find my receipt from Amazon',
+    'Search for transactions at Walmart',
+    'Show me the invoice from last Tuesday',
+    'Where is my electricity bill?',
+    'Find all transactions from Target',
+    'Locate my dental receipt',
+    'Search for the payment to Dr. Smith',
+    'Find documents from February',
+    'Show me my gym membership transaction',
+    'Get the receipt for my phone bill',
+  ],
+  budget_query: [
+    'Am I within my budget?',
+    'How much budget do I have left?',
+    'What is my budget status for groceries?',
+    'Am I over budget this month?',
+    'How much can I still spend?',
+    'Budget remaining for entertainment',
+    'Show my budget versus actual spending',
+    'Have I exceeded my dining budget?',
+  ],
+  trend_query: [
+    'Show me my spending trends',
+    'How has my spending changed over time?',
+    'What are my spending patterns?',
+    'Is my spending increasing or decreasing?',
+    'Show me spending trends for food',
+    'How have my expenses evolved?',
+    'Monthly spending trend analysis',
+    'Spending habits over the past year',
+  ],
+  comparison_query: [
+    'Compare this month to last month',
+    'How does January compare to February?',
+    'This month versus last month spending',
+    'Compare my expenses week over week',
+    'Spending this year vs last year',
+    'Difference between this and last quarter',
+    'Month over month comparison',
+    'How did my spending change from January to February?',
+  ],
+};
+
+/**
+ * Cache for pre-computed intent example embeddings.
+ * Populated lazily on first use — avoids blocking initialization.
+ */
+interface IntentEmbeddingEntry {
+  intent: QueryIntent;
+  embedding: Float32Array;
+}
+
+let intentEmbeddingCache: IntentEmbeddingEntry[] | null = null;
+let intentEmbeddingCachePromise: Promise<IntentEmbeddingEntry[]> | null = null;
+
+/**
+ * Compute and cache embeddings for all canonical intent examples.
+ * Called once, subsequent calls return the cached result.
+ */
+async function getIntentEmbeddings(): Promise<IntentEmbeddingEntry[]> {
+  if (intentEmbeddingCache) return intentEmbeddingCache;
+  if (intentEmbeddingCachePromise) return intentEmbeddingCachePromise;
+
+  intentEmbeddingCachePromise = (async () => {
+    const entries: IntentEmbeddingEntry[] = [];
+
+    for (const [intent, examples] of Object.entries(INTENT_EXAMPLES)) {
+      const embeddings = await embeddingService.embedBatch(examples);
+      for (const embedding of embeddings) {
+        entries.push({ intent: intent as QueryIntent, embedding });
+      }
+    }
+
+    intentEmbeddingCache = entries;
+    console.log(
+      `[QueryRouter] Cached ${entries.length} intent example embeddings`
+    );
+    return entries;
+  })();
+
+  return intentEmbeddingCachePromise;
+}
+
+/**
+ * Compute cosine similarity between two vectors.
+ */
+function cosineSimilarity(a: Float32Array, b: Float32Array): number {
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i]! * b[i]!;
+    normA += a[i]! * a[i]!;
+    normB += b[i]! * b[i]!;
+  }
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+  return magnitude === 0 ? 0 : dotProduct / magnitude;
+}
+
+/**
+ * Classify intent using embedding similarity.
+ *
+ * Embeds the user query and compares against pre-computed canonical
+ * examples for each intent. Returns the intent with the highest
+ * average similarity among its top-k examples.
+ *
+ * @returns The classified intent and confidence, or null if embeddings aren't ready.
+ */
+async function classifyIntentWithEmbeddings(
+  query: string
+): Promise<{ intent: QueryIntent; confidence: number } | null> {
+  // Bail out if the embedding model isn't ready
+  if (!embeddingService.isReady()) return null;
+
+  try {
+    const [queryEmbedding, intentEntries] = await Promise.all([
+      embeddingService.embedText(query),
+      getIntentEmbeddings(),
+    ]);
+
+    // Compute similarity against every canonical example
+    const scores: { intent: QueryIntent; similarity: number }[] = [];
+    for (const entry of intentEntries) {
+      scores.push({
+        intent: entry.intent,
+        similarity: cosineSimilarity(queryEmbedding, entry.embedding),
+      });
+    }
+
+    // Group by intent and compute the average of the top-3 similarities
+    const intentScores = new Map<QueryIntent, number[]>();
+    for (const { intent, similarity } of scores) {
+      const arr = intentScores.get(intent) || [];
+      arr.push(similarity);
+      intentScores.set(intent, arr);
+    }
+
+    let bestIntent: QueryIntent = 'general_query';
+    let bestScore = 0;
+
+    for (const [intent, sims] of intentScores.entries()) {
+      // Take the top-3 similarities and average them
+      sims.sort((a, b) => b - a);
+      const topK = sims.slice(0, 3);
+      const avgScore = topK.reduce((a, b) => a + b, 0) / topK.length;
+
+      if (avgScore > bestScore) {
+        bestScore = avgScore;
+        bestIntent = intent;
+      }
+    }
+
+    // Require a minimum similarity threshold to avoid mis-classification
+    // of truly general queries
+    const MIN_SIMILARITY = 0.45;
+    if (bestScore < MIN_SIMILARITY) {
+      return { intent: 'general_query', confidence: 1 - bestScore };
+    }
+
+    return { intent: bestIntent, confidence: bestScore };
+  } catch (error) {
+    console.warn(
+      '[QueryRouter] Embedding-based classification failed, will use regex:',
+      error
+    );
+    return null;
+  }
+}
+
+/**
+ * Async version of classifyQuery that uses embedding-based intent
+ * classification when the model is ready, falling back to regex.
+ *
+ * The embedding classifier handles paraphrases and natural language
+ * variations much better than regex (e.g., "Where'd all my money go?"
+ * → spending_query).
+ */
+export async function classifyQueryAsync(
+  query: string
+): Promise<QueryClassification> {
+  // Try embedding-based classification first
+  const embeddingResult = await classifyIntentWithEmbeddings(query);
+
+  let intent: QueryIntent;
+  let confidence: number;
+
+  if (embeddingResult && embeddingResult.confidence >= 0.45) {
+    intent = embeddingResult.intent;
+    confidence = embeddingResult.confidence;
+
+    // Cross-check with regex — if regex gives a different high-confidence result,
+    // prefer the regex result (it's deterministic and pattern-exact)
+    const regexIntent = classifyIntent(query);
+    const regexConfidence = calculateConfidence(query, regexIntent);
+
+    if (regexIntent !== intent && regexConfidence > 0.8) {
+      // Regex is very confident about a different intent — trust it
+      intent = regexIntent;
+      confidence = regexConfidence;
+    }
+  } else {
+    // Fallback to regex classification
+    intent = classifyIntent(query);
+    confidence = calculateConfidence(query, intent);
+  }
+
+  const entities = extractEntities(query, intent);
+
+  const isQuestion =
+    /^(what|how|where|when|why|which|who|can|could|would|is|are|did|do|does|have|has)\b/i.test(
+      query.trim()
+    ) || query.trim().endsWith('?');
+
+  const needsCloudData = [
+    'spending_query',
+    'income_query',
+    'budget_query',
+    'comparison_query',
+    'trend_query',
+  ].includes(intent);
+  const needsLocalSearch = [
+    'search_query',
+    'spending_query',
+    'income_query',
+    'general_query',
+  ].includes(intent);
+
+  return {
+    intent,
+    confidence,
+    entities,
+    isQuestion,
+    needsCloudData,
+    needsLocalSearch,
+  };
+}
+
 /**
  * Extract entities from a query.
  *
@@ -318,20 +621,39 @@ export function extractEntities(
     timePeriod: null,
     comparisonType: null,
     keywords: [],
+    transactionDirection: 'all',
   };
 
   const normalizedQuery = query.toLowerCase();
 
-  // Extract time period
-  entities.timePeriod = extractTimePeriod(normalizedQuery);
+  // Extract transaction direction from query
+  entities.transactionDirection = extractTransactionDirection(
+    normalizedQuery,
+    intent
+  );
 
-  // Extract date range from time period
-  if (entities.timePeriod) {
-    entities.dateRange = getDateRangeFromPeriod(entities.timePeriod);
+  // Try to extract a specific month name first (e.g., "in January", "January 2026").
+  // This is the most specific pattern and must run before general time-period matching
+  // to prevent patterns like "this year" from swallowing "January 2026".
+  entities.dateRange = extractMonthNameDateRange(normalizedQuery);
+  if (entities.dateRange) {
+    entities.timePeriod = 'specific_month';
+  }
+
+  // If no specific month matched, try general time period patterns
+  if (!entities.dateRange) {
+    entities.timePeriod = extractTimePeriod(normalizedQuery);
+    if (entities.timePeriod) {
+      entities.dateRange = getDateRangeFromPeriod(entities.timePeriod);
+    }
   }
 
   // Extract categories
   entities.categories = extractCategories(normalizedQuery);
+
+  // Extract vendors — look for proper nouns / capitalized words that
+  // are likely vendor or merchant names (e.g., "Starbucks", "Amazon")
+  entities.vendors = extractVendors(query);
 
   // Extract amounts
   entities.amountRange = extractAmountRange(query);
@@ -372,6 +694,7 @@ export function classifyQuery(query: string): QueryClassification {
   // Determine data requirements
   const needsCloudData = [
     'spending_query',
+    'income_query',
     'budget_query',
     'comparison_query',
     'trend_query',
@@ -379,6 +702,7 @@ export function classifyQuery(query: string): QueryClassification {
   const needsLocalSearch = [
     'search_query',
     'spending_query',
+    'income_query',
     'general_query',
   ].includes(intent);
 
@@ -395,6 +719,111 @@ export function classifyQuery(query: string): QueryClassification {
 // ============================================
 // Entity Extraction Helpers
 // ============================================
+
+/**
+ * Extract transaction direction from query and intent.
+ * Uses intent as a strong signal, plus keyword detection for explicit direction.
+ */
+function extractTransactionDirection(
+  query: string,
+  intent: QueryIntent
+): TransactionDirection {
+  // income_query intent is a strong signal
+  if (intent === 'income_query') {
+    return 'income';
+  }
+
+  // spending_query intent is a strong signal
+  if (intent === 'spending_query') {
+    return 'expense';
+  }
+
+  // For other intents, check for explicit direction keywords
+  const incomeKeywords =
+    /\b(income|earn|earned|earning|salary|paycheck|credit|credited|deposit|deposited|received|inflow|inflows|money in|cash in|payment received)\b/i;
+  const expenseKeywords =
+    /\b(spend|spent|spending|expense|expenses|paid|pay|payment|debit|debited|outflow|outflows|money out|cash out|cost|costs|purchase|bought)\b/i;
+
+  const hasIncomeSignal = incomeKeywords.test(query);
+  const hasExpenseSignal = expenseKeywords.test(query);
+
+  if (hasIncomeSignal && !hasExpenseSignal) {
+    return 'income';
+  }
+  if (hasExpenseSignal && !hasIncomeSignal) {
+    return 'expense';
+  }
+
+  // Both or neither — return 'all'
+  return 'all';
+}
+
+/**
+ * Month name to number mapping.
+ */
+const MONTH_NAMES: Record<string, number> = {
+  january: 0,
+  february: 1,
+  march: 2,
+  april: 3,
+  may: 4,
+  june: 5,
+  july: 6,
+  august: 7,
+  september: 8,
+  october: 9,
+  november: 10,
+  december: 11,
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  sept: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11,
+};
+
+/**
+ * Extract a date range from a specific month name in the query.
+ * Handles patterns like "in January", "for February", "January 2026", etc.
+ * Assumes the current year if no year is specified.
+ * If the month is in the future, assumes last year.
+ */
+function extractMonthNameDateRange(
+  query: string
+): { start: string; end: string } | null {
+  // Match month names, optionally followed by a year
+  const monthPattern =
+    /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b(?:\s+(\d{4}))?/i;
+
+  const match = query.match(monthPattern);
+  if (!match?.[1]) return null;
+
+  const monthName = match[1].toLowerCase();
+  const monthIndex = MONTH_NAMES[monthName];
+  if (monthIndex === undefined) return null;
+
+  const now = new Date();
+  let year = match[2] ? parseInt(match[2], 10) : now.getFullYear();
+
+  // If month is in the future and no year specified, assume last year
+  if (!match[2] && monthIndex > now.getMonth()) {
+    year = now.getFullYear() - 1;
+  }
+
+  const start = new Date(year, monthIndex, 1);
+  const end = new Date(year, monthIndex + 1, 0); // Last day of the month
+
+  return {
+    start: start.toISOString().split('T')[0]!,
+    end: end.toISOString().split('T')[0]!,
+  };
+}
 
 /**
  * Extract time period from query.
@@ -472,6 +901,11 @@ function getDateRangeFromPeriod(period: TimePeriod): {
       start = new Date(today.getFullYear() - 1, 0, 1);
       end = new Date(today.getFullYear() - 1, 11, 31);
       break;
+    case 'specific_month':
+      // Handled by extractMonthNameDateRange, fallback to this month
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      end = today;
+      break;
     default:
       start = new Date(today.getFullYear(), today.getMonth(), 1);
       end = today;
@@ -481,6 +915,70 @@ function getDateRangeFromPeriod(period: TimePeriod): {
     start: start.toISOString().split('T')[0]!,
     end: end.toISOString().split('T')[0]!,
   };
+}
+
+/**
+ * Extract potential vendor/merchant names from a query.
+ *
+ * Looks for capitalized words that aren't common English words, month names,
+ * or financial keywords — these are likely vendor/merchant names.
+ * Also matches quoted strings as explicit vendor references.
+ */
+function extractVendors(query: string): string[] {
+  const vendors: string[] = [];
+
+  // 1. Match explicitly quoted vendor names: "Starbucks", 'Amazon'
+  const quotedPattern = /["']([^"']+)["']/g;
+  let quotedMatch;
+  while ((quotedMatch = quotedPattern.exec(query)) !== null) {
+    if (quotedMatch[1] && quotedMatch[1].length > 1) {
+      vendors.push(quotedMatch[1].trim());
+    }
+  }
+
+  // 2. Match capitalized words that look like proper nouns (vendor names)
+  // e.g., "Starbucks", "Amazon", "Uber", "Netflix"
+  const properNounPattern = /\b([A-Z][a-zA-Z]{2,}(?:\s+[A-Z][a-zA-Z]+)*)\b/g;
+  const ignoreWords = new Set([
+    // Common English
+    'The', 'This', 'That', 'These', 'Those', 'What', 'Which', 'Where',
+    'When', 'Why', 'How', 'Who', 'Can', 'Could', 'Would', 'Should',
+    'Did', 'Does', 'Have', 'Has', 'Show', 'Find', 'Get', 'Search',
+    'Compare', 'Total', 'Amount', 'Much', 'Many', 'All', 'Most',
+    // Months
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+    // Days
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+    'Saturday', 'Sunday',
+    // Financial terms
+    'Budget', 'Spending', 'Income', 'Expense', 'Expenses',
+    'Transaction', 'Transactions', 'Category', 'Categories',
+    'Credit', 'Debit', 'Deposit', 'Salary', 'Payment',
+  ]);
+
+  let nounMatch;
+  while ((nounMatch = properNounPattern.exec(query)) !== null) {
+    const word = nounMatch[1];
+    if (word && !ignoreWords.has(word)) {
+      if (!vendors.includes(word)) {
+        vendors.push(word);
+      }
+    }
+  }
+
+  // 3. Match common patterns: "at <vendor>", "from <vendor>", "to <vendor>"
+  const prepositionPattern =
+    /(?:at|from|to|for)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)/g;
+  let prepMatch;
+  while ((prepMatch = prepositionPattern.exec(query)) !== null) {
+    const vendor = prepMatch[1];
+    if (vendor && !ignoreWords.has(vendor) && !vendors.includes(vendor)) {
+      vendors.push(vendor);
+    }
+  }
+
+  return vendors;
 }
 
 /**
