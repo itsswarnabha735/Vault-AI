@@ -39,7 +39,7 @@ export function BudgetStatusCard() {
       <CardContent>
         {totalBudget > 0 ? (
           <>
-            <div className="font-display text-2xl font-bold font-mono">
+            <div className="font-display font-mono text-2xl font-bold">
               {formatCurrency(totalSpent)} / {formatCurrency(totalBudget)}
             </div>
             <Progress
@@ -68,7 +68,9 @@ export function BudgetStatusCard() {
           </>
         ) : (
           <div className="py-2">
-            <p className="text-sm text-vault-text-secondary">No budget set yet</p>
+            <p className="text-sm text-vault-text-secondary">
+              No budget set yet
+            </p>
             <p className="mt-1 text-xs text-vault-text-secondary">
               Set up a budget in Settings to track your spending
             </p>

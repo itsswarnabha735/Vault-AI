@@ -128,9 +128,7 @@ function TransactionRow({ transaction }: TransactionRowProps) {
       <div
         className={cn(
           'font-mono text-sm font-semibold',
-          isExpense
-            ? 'text-vault-danger-text'
-            : 'text-vault-success-text'
+          isExpense ? 'text-vault-danger-text' : 'text-vault-success-text'
         )}
       >
         {isExpense ? '-' : '+'}

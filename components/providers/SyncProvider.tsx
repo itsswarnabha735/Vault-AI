@@ -108,10 +108,14 @@ export function SyncProvider({ children }: SyncProviderProps) {
 
   // Manage engine lifecycle based on auth state
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading) {
+      return;
+    }
 
     const engine = engineRef.current;
-    if (!engine) return;
+    if (!engine) {
+      return;
+    }
 
     if (isAuthenticated) {
       engine.start();

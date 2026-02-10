@@ -41,7 +41,8 @@ export default function GlobalError({
                 Critical Error
               </h1>
               <p className="mt-2 text-sm text-vault-text-secondary">
-                {error.message || 'Something went wrong. Please refresh the page.'}
+                {error.message ||
+                  'Something went wrong. Please refresh the page.'}
               </p>
             </div>
 

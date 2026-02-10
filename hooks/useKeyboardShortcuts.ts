@@ -95,7 +95,9 @@ export function useKeyboardShortcuts(
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (!enabled) return;
+      if (!enabled) {
+        return;
+      }
 
       // Check if we should exclude this element
       const target = event.target as HTMLElement;
@@ -118,23 +120,35 @@ export function useKeyboardShortcuts(
       // Check each shortcut
       for (const shortcut of shortcutsRef.current) {
         // Skip if shortcut is disabled
-        if (shortcut.enabled === false) continue;
+        if (shortcut.enabled === false) {
+          continue;
+        }
 
         // Check key match (case-insensitive)
-        if (event.key.toLowerCase() !== shortcut.key.toLowerCase()) continue;
+        if (event.key.toLowerCase() !== shortcut.key.toLowerCase()) {
+          continue;
+        }
 
         // Check modifiers
         const cmdOrCtrlPressed = isMac ? event.metaKey : event.ctrlKey;
         const cmdOrCtrlRequired = shortcut.cmdOrCtrl ?? false;
 
-        if (cmdOrCtrlRequired && !cmdOrCtrlPressed) continue;
-        if (!cmdOrCtrlRequired && cmdOrCtrlPressed) continue;
+        if (cmdOrCtrlRequired && !cmdOrCtrlPressed) {
+          continue;
+        }
+        if (!cmdOrCtrlRequired && cmdOrCtrlPressed) {
+          continue;
+        }
 
         const shiftRequired = shortcut.shift ?? false;
-        if (shiftRequired !== event.shiftKey) continue;
+        if (shiftRequired !== event.shiftKey) {
+          continue;
+        }
 
         const altRequired = shortcut.alt ?? false;
-        if (altRequired !== event.altKey) continue;
+        if (altRequired !== event.altKey) {
+          continue;
+        }
 
         // Match found - execute handler
         if (shortcut.preventDefault !== false) {
@@ -149,7 +163,9 @@ export function useKeyboardShortcuts(
   );
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);

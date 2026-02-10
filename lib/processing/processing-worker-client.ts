@@ -17,11 +17,17 @@
 import { pdfExtractor } from '@/lib/processing/pdf-extractor';
 import { ocrService } from '@/lib/processing/ocr-service';
 import { entityExtractor } from '@/lib/processing/entity-extractor';
-import { statementParser, detectDocumentType } from '@/lib/processing/statement-parser';
+import {
+  statementParser,
+  detectDocumentType,
+} from '@/lib/processing/statement-parser';
 import { llmStatementParser } from '@/lib/processing/llm-statement-parser';
 import { preprocessStatementText } from '@/lib/processing/statement-preprocessor';
 import type { ExtractedEntities as AIExtractedEntities } from '@/types/ai';
-import type { StatementParseResult, DocumentTypeDetection } from '@/types/statement';
+import type {
+  StatementParseResult,
+  DocumentTypeDetection,
+} from '@/types/statement';
 
 // ============================================
 // Types (kept compatible with existing consumers)
@@ -176,7 +182,7 @@ const MIN_TEXT_LENGTH_FOR_NO_OCR = 100;
  * @param imageData - Raw image data from PDF rendering
  * @returns Preprocessed image data optimized for OCR
  */
-function preprocessImageForOCR(imageData: ImageData): ImageData {
+function _preprocessImageForOCR(imageData: ImageData): ImageData {
   const { data, width, height } = imageData;
   const output = new Uint8ClampedArray(data.length);
 
@@ -266,17 +272,11 @@ function normalizeOCRText(text: string): string {
   if (hasSystematicMisread) {
     // Systematic misread detected: replace ALL '3' before price patterns with ₹
     // e.g., "3271.00" → "₹271.00", "3315.00" → "₹315.00", "38.00" → "₹8.00"
-    normalized = normalized.replace(
-      /(?<!\d)3(\d{1,6}\.\d{2})(?!\d)/g,
-      '₹$1'
-    );
+    normalized = normalized.replace(/(?<!\d)3(\d{1,6}\.\d{2})(?!\d)/g, '₹$1');
 
     // Also fix negative amounts: "-3" before price → "-₹"
     // e.g., "-380.00" → "-₹80.00"
-    normalized = normalized.replace(
-      /-3(\d{1,6}\.\d{2})(?!\d)/g,
-      '-₹$1'
-    );
+    normalized = normalized.replace(/-3(\d{1,6}\.\d{2})(?!\d)/g, '-₹$1');
   } else {
     // No systematic misread: only replace '3' near known keywords
     normalized = normalized.replace(
@@ -298,10 +298,7 @@ function normalizeOCRText(text: string): string {
   );
 
   // Normalize "Rs " / "Rs." patterns with extra OCR noise
-  normalized = normalized.replace(
-    /\bRs?\s*[.,:]?\s*(\d)/gi,
-    'Rs. $1'
-  );
+  normalized = normalized.replace(/\bRs?\s*[.,:]?\s*(\d)/gi, 'Rs. $1');
 
   return normalized;
 }
@@ -370,9 +367,20 @@ class ProcessingWorkerClientImpl {
 
     // Also check by extension for browsers that don't set MIME type
     const ext = `.${file.name.split('.').pop()?.toLowerCase()}`;
-    const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'];
+    const validExtensions = [
+      '.pdf',
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.webp',
+      '.heic',
+      '.heif',
+    ];
 
-    if (!SUPPORTED_MIME_TYPES.includes(mimeType) && !validExtensions.includes(ext)) {
+    if (
+      !SUPPORTED_MIME_TYPES.includes(mimeType) &&
+      !validExtensions.includes(ext)
+    ) {
       return {
         isValid: false,
         error: `Unsupported file type: ${mimeType || ext}`,
@@ -385,7 +393,8 @@ class ProcessingWorkerClientImpl {
     return {
       isValid: true,
       fileType,
-      mimeType: mimeType || (isPdf ? 'application/pdf' : `image/${ext.slice(1)}`),
+      mimeType:
+        mimeType || (isPdf ? 'application/pdf' : `image/${ext.slice(1)}`),
       size: file.size,
     };
   }
@@ -422,9 +431,7 @@ class ProcessingWorkerClientImpl {
   ): Promise<OCRResult> {
     const result = await ocrService.recognizeImage(imageSource, {
       language,
-      onProgress: onProgress
-        ? (p) => onProgress(p.progress)
-        : undefined,
+      onProgress: onProgress ? (p) => onProgress(p.progress) : undefined,
     });
 
     return {
@@ -438,8 +445,7 @@ class ProcessingWorkerClientImpl {
    * Extract entities from text.
    */
   extractEntities(text: string): ExtractedEntities {
-    const result: AIExtractedEntities =
-      entityExtractor.extractEntities(text);
+    const result: AIExtractedEntities = entityExtractor.extractEntities(text);
 
     // Map from ExtractedField<T> format to simplified format
     return {
@@ -563,7 +569,9 @@ class ProcessingWorkerClientImpl {
             progress: 0,
           });
 
-          console.log('[ProcessingClient] PDF needs OCR, processing all pages...');
+          console.log(
+            '[ProcessingClient] PDF needs OCR, processing all pages...'
+          );
           const multiPageResult = await this.performMultiPageOCR(
             file,
             ocrLanguage,
@@ -663,7 +671,8 @@ class ProcessingWorkerClientImpl {
         thumbnailDataUrl: null, // Thumbnail generation handled separately
         fileMetadata: {
           originalName: file.name,
-          mimeType: file.type || validation.mimeType || 'application/octet-stream',
+          mimeType:
+            file.type || validation.mimeType || 'application/octet-stream',
           size: file.size,
           pageCount,
         },
@@ -722,7 +731,10 @@ class ProcessingWorkerClientImpl {
         const result = await this.processDocument(file, options);
         results.push(result);
       } catch (error) {
-        console.error(`[ProcessingClient] Failed to process ${file.name}:`, error);
+        console.error(
+          `[ProcessingClient] Failed to process ${file.name}:`,
+          error
+        );
       }
     }
 
@@ -749,7 +761,10 @@ class ProcessingWorkerClientImpl {
     const pageCount = pdfResult.pageCount;
 
     // If text-based PDF with enough text, return extracted text
-    if (!pdfResult.isImageBased && pdfResult.text.length >= MIN_TEXT_LENGTH_FOR_NO_OCR) {
+    if (
+      !pdfResult.isImageBased &&
+      pdfResult.text.length >= MIN_TEXT_LENGTH_FOR_NO_OCR
+    ) {
       return {
         text: pdfResult.text,
         pageTexts: pdfResult.pageTexts,
@@ -762,7 +777,9 @@ class ProcessingWorkerClientImpl {
     let totalConfidence = 0;
 
     for (let page = 1; page <= pageCount; page++) {
-      if (onProgress) onProgress(page, pageCount);
+      if (onProgress) {
+        onProgress(page, pageCount);
+      }
 
       try {
         const imageData = await pdfExtractor.renderPageToImage(file, page, 2.0);
@@ -776,7 +793,8 @@ class ProcessingWorkerClientImpl {
           ctx.putImageData(imageData, 0, 0);
           const blob = await new Promise<Blob>((resolve, reject) => {
             canvas.toBlob(
-              (b) => (b ? resolve(b) : reject(new Error('Canvas toBlob failed'))),
+              (b) =>
+                b ? resolve(b) : reject(new Error('Canvas toBlob failed')),
               'image/png'
             );
           });
@@ -812,10 +830,13 @@ class ProcessingWorkerClientImpl {
    * Parse a financial statement into individual transactions.
    * Uses regex parser first, then LLM fallback if confidence is low.
    */
-  parseStatement(text: string, options?: {
-    defaultCurrency?: string;
-    minConfidence?: number;
-  }): StatementParseResult {
+  parseStatement(
+    text: string,
+    options?: {
+      defaultCurrency?: string;
+      minConfidence?: number;
+    }
+  ): StatementParseResult {
     return statementParser.parseStatement(text, options);
   }
 
@@ -861,10 +882,16 @@ class ProcessingWorkerClientImpl {
     // Safety fallback: If preprocessing produced 0 transactions, try raw text.
     // This protects against the preprocessor being too aggressive for certain formats.
     if (regexResult.transactions.length === 0 && text !== preprocessedText) {
-      console.log('[ProcessingClient] No transactions found after preprocessing. Trying raw text...');
+      console.log(
+        '[ProcessingClient] No transactions found after preprocessing. Trying raw text...'
+      );
       const rawRegexResult = statementParser.parseStatement(text, options);
       if (rawRegexResult.transactions.length > 0) {
-        console.log('[ProcessingClient] Raw text found', rawRegexResult.transactions.length, 'transactions. Using raw result.');
+        console.log(
+          '[ProcessingClient] Raw text found',
+          rawRegexResult.transactions.length,
+          'transactions. Using raw result.'
+        );
         regexResult = rawRegexResult;
       }
     }
@@ -952,7 +979,11 @@ class ProcessingWorkerClientImpl {
       pageCount = pdfResult.pageCount;
 
       // Multi-page OCR if needed
-      if (forceOCR || pdfResult.isImageBased || rawText.length < MIN_TEXT_LENGTH_FOR_NO_OCR) {
+      if (
+        forceOCR ||
+        pdfResult.isImageBased ||
+        rawText.length < MIN_TEXT_LENGTH_FOR_NO_OCR
+      ) {
         this.reportProgress({
           fileId,
           fileName: file.name,
@@ -1034,7 +1065,8 @@ class ProcessingWorkerClientImpl {
       processingTimeMs: performance.now() - startTime,
       fileMetadata: {
         originalName: file.name,
-        mimeType: file.type || validation.mimeType || 'application/octet-stream',
+        mimeType:
+          file.type || validation.mimeType || 'application/octet-stream',
         size: file.size,
         pageCount,
       },
@@ -1100,11 +1132,19 @@ class ProcessingWorkerClientImpl {
   ): number {
     const scores: number[] = [];
 
-    if (entities.date) scores.push(entities.date.confidence);
-    if (entities.amount) scores.push(entities.amount.confidence);
-    if (entities.vendor) scores.push(entities.vendor.confidence);
+    if (entities.date) {
+      scores.push(entities.date.confidence);
+    }
+    if (entities.amount) {
+      scores.push(entities.amount.confidence);
+    }
+    if (entities.vendor) {
+      scores.push(entities.vendor.confidence);
+    }
 
-    if (scores.length === 0) return 0.3;
+    if (scores.length === 0) {
+      return 0.3;
+    }
 
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     return ocrUsed ? avg * 0.9 : avg;

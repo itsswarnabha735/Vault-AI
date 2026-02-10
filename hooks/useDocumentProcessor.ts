@@ -383,7 +383,9 @@ export function useDocumentProcessor(
 
       // Prevent concurrent calls (e.g., from React re-renders during async onComplete)
       if (processingGuardRef.current) {
-        console.log('[useDocumentProcessor] Skipping duplicate processFiles call');
+        console.log(
+          '[useDocumentProcessor] Skipping duplicate processFiles call'
+        );
         return [];
       }
       processingGuardRef.current = true;
@@ -425,7 +427,9 @@ export function useDocumentProcessor(
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (!file) continue;
+        if (!file) {
+          continue;
+        }
 
         // Check if cancelled
         if (cancelledFileIds.current.has(`pending-${i}`)) {

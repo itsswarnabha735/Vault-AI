@@ -63,7 +63,9 @@ export function useImportShortcuts(
   // Check if we should prevent shortcut
   const shouldPrevent = useCallback(
     (event: KeyboardEvent): boolean => {
-      if (!preventOnInput) return false;
+      if (!preventOnInput) {
+        return false;
+      }
 
       const target = event.target as HTMLElement;
       const tagName = target.tagName.toLowerCase();
@@ -86,15 +88,21 @@ export function useImportShortcuts(
   // Handle keydown
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (!enabled) return;
+      if (!enabled) {
+        return;
+      }
 
       pressedKeysRef.current.add(event.key.toLowerCase());
 
       // Check for modifier key (Cmd on Mac, Ctrl on Windows/Linux)
       const modifier = event.metaKey || event.ctrlKey;
 
-      if (!modifier) return;
-      if (shouldPrevent(event)) return;
+      if (!modifier) {
+        return;
+      }
+      if (shouldPrevent(event)) {
+        return;
+      }
 
       // Cmd/Ctrl + I - Import
       if (event.key.toLowerCase() === 'i') {
@@ -125,7 +133,9 @@ export function useImportShortcuts(
 
   // Set up event listeners
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
@@ -166,7 +176,9 @@ export function ShortcutHints({
   position = 'bottom-right',
   className,
 }: ShortcutHintsProps) {
-  if (!show) return null;
+  if (!show) {
+    return null;
+  }
 
   const isMac =
     typeof navigator !== 'undefined' && navigator.platform.includes('Mac');

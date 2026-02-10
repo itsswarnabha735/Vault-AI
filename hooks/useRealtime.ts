@@ -74,7 +74,9 @@ export interface UseRealtimeReturn {
 // ============================================
 
 function formatTimeSinceEvent(lastEventAt: Date | null): string | null {
-  if (!lastEventAt) return null;
+  if (!lastEventAt) {
+    return null;
+  }
 
   const now = new Date();
   const diffMs = now.getTime() - lastEventAt.getTime();
@@ -137,7 +139,7 @@ export function useRealtime(
   const [connectionState, setConnectionState] =
     useState<ConnectionState>('disconnected');
   const [lastEventAt, setLastEventAt] = useState<Date | null>(null);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const [, setReconnectAttempts] = useState(0);
 
   // Get manager instance
   const getManager = useCallback((): RealtimeManager => {
@@ -153,23 +155,31 @@ export function useRealtime(
 
   const connect = useCallback(async () => {
     if (!user?.id) {
-      if (debug) console.log('[useRealtime] No user - cannot connect');
+      if (debug) {
+        console.log('[useRealtime] No user - cannot connect');
+      }
       return;
     }
 
-    if (debug) console.log('[useRealtime] Connecting...');
+    if (debug) {
+      console.log('[useRealtime] Connecting...');
+    }
     const manager = getManager();
     await manager.subscribe(user.id);
   }, [user?.id, getManager, debug]);
 
   const disconnect = useCallback(async () => {
-    if (debug) console.log('[useRealtime] Disconnecting...');
+    if (debug) {
+      console.log('[useRealtime] Disconnecting...');
+    }
     const manager = getManager();
     await manager.unsubscribe();
   }, [getManager, debug]);
 
   const reconnect = useCallback(async () => {
-    if (debug) console.log('[useRealtime] Reconnecting...');
+    if (debug) {
+      console.log('[useRealtime] Reconnecting...');
+    }
     const manager = getManager();
     await manager.reconnect();
   }, [getManager, debug]);
@@ -191,7 +201,9 @@ export function useRealtime(
     const manager = getManager();
 
     const unsubscribe = manager.onConnectionChange((connected, state) => {
-      if (debug) console.log('[useRealtime] Connection state:', state);
+      if (debug) {
+        console.log('[useRealtime] Connection state:', state);
+      }
       setConnectionState(state);
 
       // Update status when connected
@@ -209,7 +221,9 @@ export function useRealtime(
 
   // Subscribe to changes if onChange callback provided
   useEffect(() => {
-    if (!onChange) return;
+    if (!onChange) {
+      return;
+    }
 
     const manager = getManager();
     const unsubscribe = manager.onChange((eventType, record, oldRecord) => {
@@ -228,11 +242,15 @@ export function useRealtime(
       return;
     }
 
-    if (debug) console.log('[useRealtime] Auto-connecting for user:', user.id);
+    if (debug) {
+      console.log('[useRealtime] Auto-connecting for user:', user.id);
+    }
     connect();
 
     return () => {
-      if (debug) console.log('[useRealtime] Cleanup - disconnecting');
+      if (debug) {
+        console.log('[useRealtime] Cleanup - disconnecting');
+      }
       disconnect();
     };
   }, [autoConnect, isAuthenticated, user?.id, connect, disconnect, debug]);

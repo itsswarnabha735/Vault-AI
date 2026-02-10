@@ -18,7 +18,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { CategoryId } from '@/types/database';
 
 // Internal data store for the mock
-const _mockData: Array<{ id: string; vendorPattern: string; categoryId: string; usageCount: number; createdAt: Date; updatedAt: Date }> = [];
+const _mockData: Array<{
+  id: string;
+  vendorPattern: string;
+  categoryId: string;
+  usageCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}> = [];
 
 // We need to mock the database before importing the service
 vi.mock('@/lib/storage/db', () => {
@@ -40,7 +47,9 @@ vi.mock('@/lib/storage/db', () => {
           return Promise.resolve();
         }),
         get: vi.fn((id: string) => {
-          return Promise.resolve(_mockData.find((d) => d.id === id) || undefined);
+          return Promise.resolve(
+            _mockData.find((d) => d.id === id) || undefined
+          );
         }),
         delete: vi.fn((id: string) => {
           const idx = _mockData.findIndex((d) => d.id === id);
@@ -120,10 +129,12 @@ describe('Vendor-Category Learning Service', () => {
 
     it('should only initialize once (idempotent)', async () => {
       await vendorCategoryLearning.initialize();
-      const callCountAfterFirst = vi.mocked(db.vendorCategories.toArray).mock.calls.length;
+      const callCountAfterFirst = vi.mocked(db.vendorCategories.toArray).mock
+        .calls.length;
 
       await vendorCategoryLearning.initialize();
-      const callCountAfterSecond = vi.mocked(db.vendorCategories.toArray).mock.calls.length;
+      const callCountAfterSecond = vi.mocked(db.vendorCategories.toArray).mock
+        .calls.length;
 
       // Second init should not call toArray again
       expect(callCountAfterSecond).toBe(callCountAfterFirst);
@@ -132,11 +143,14 @@ describe('Vendor-Category Learning Service', () => {
     it('should handle database errors gracefully', async () => {
       // Override the mock to fail once
       const originalImpl = db.vendorCategories.toArray;
-      (db.vendorCategories as Record<string, unknown>).toArray = vi.fn()
+      (db.vendorCategories as Record<string, unknown>).toArray = vi
+        .fn()
         .mockRejectedValueOnce(new Error('DB error'));
 
       // Reset initialized state
-      const service = vendorCategoryLearning as unknown as { initialized: boolean };
+      const service = vendorCategoryLearning as unknown as {
+        initialized: boolean;
+      };
       service.initialized = false;
 
       // Should not throw
@@ -198,7 +212,10 @@ describe('Vendor-Category Learning Service', () => {
 
     it('should prefer longer (more specific) pattern matches', async () => {
       // Add a more specific pattern
-      await vendorCategoryLearning.learn('Amazon Fresh', catId('cat-groceries'));
+      await vendorCategoryLearning.learn(
+        'Amazon Fresh',
+        catId('cat-groceries')
+      );
 
       // "Amazon Fresh Delivery" should match "amazon fresh" over "amazon.com"
       const result = vendorCategoryLearning.lookup('Amazon Fresh Delivery');
@@ -232,7 +249,10 @@ describe('Vendor-Category Learning Service', () => {
     });
 
     it('should normalize whitespace when looking up', async () => {
-      await vendorCategoryLearning.learn('Whole  Foods  Market', catId('cat-groceries'));
+      await vendorCategoryLearning.learn(
+        'Whole  Foods  Market',
+        catId('cat-groceries')
+      );
 
       // Extra whitespace should be collapsed
       const result = vendorCategoryLearning.lookup('Whole Foods Market');
@@ -296,30 +316,40 @@ describe('Vendor-Category Learning Service', () => {
     });
 
     it('should persist mappings to IndexedDB', async () => {
-      const addCallsBefore = vi.mocked(db.vendorCategories.add).mock.calls.length;
+      const addCallsBefore = vi.mocked(db.vendorCategories.add).mock.calls
+        .length;
 
       await vendorCategoryLearning.learn('Costco', catId('cat-groceries'));
 
       // Verify the database was called
-      expect(vi.mocked(db.vendorCategories.add).mock.calls.length).toBe(addCallsBefore + 1);
+      expect(vi.mocked(db.vendorCategories.add).mock.calls.length).toBe(
+        addCallsBefore + 1
+      );
     });
 
     it('should update existing mappings via put', async () => {
-      const addCallsBefore = vi.mocked(db.vendorCategories.add).mock.calls.length;
-      const putCallsBefore = vi.mocked(db.vendorCategories.put).mock.calls.length;
+      const addCallsBefore = vi.mocked(db.vendorCategories.add).mock.calls
+        .length;
+      const putCallsBefore = vi.mocked(db.vendorCategories.put).mock.calls
+        .length;
 
       await vendorCategoryLearning.learn('Costco', catId('cat-groceries'));
       await vendorCategoryLearning.learn('Costco', catId('cat-groceries'));
 
       // First call uses add, second uses put
-      expect(vi.mocked(db.vendorCategories.add).mock.calls.length).toBe(addCallsBefore + 1);
-      expect(vi.mocked(db.vendorCategories.put).mock.calls.length).toBe(putCallsBefore + 1);
+      expect(vi.mocked(db.vendorCategories.add).mock.calls.length).toBe(
+        addCallsBefore + 1
+      );
+      expect(vi.mocked(db.vendorCategories.put).mock.calls.length).toBe(
+        putCallsBefore + 1
+      );
     });
 
     it('should handle database errors gracefully during learn', async () => {
       // Override add to fail once
       const originalAdd = db.vendorCategories.add;
-      (db.vendorCategories as Record<string, unknown>).add = vi.fn()
+      (db.vendorCategories as Record<string, unknown>).add = vi
+        .fn()
         .mockRejectedValueOnce(new Error('DB write failed'));
 
       // Should not throw
@@ -342,7 +372,10 @@ describe('Vendor-Category Learning Service', () => {
     });
 
     it('should remove trailing punctuation from vendor patterns', async () => {
-      await vendorCategoryLearning.learn('Some Vendor, Inc.', catId('cat-other'));
+      await vendorCategoryLearning.learn(
+        'Some Vendor, Inc.',
+        catId('cat-other')
+      );
 
       const result = vendorCategoryLearning.lookup('Some Vendor, Inc');
 
@@ -372,7 +405,9 @@ describe('Vendor-Category Learning Service', () => {
     });
 
     it('should handle empty batch', async () => {
-      await expect(vendorCategoryLearning.learnBatch([])).resolves.not.toThrow();
+      await expect(
+        vendorCategoryLearning.learnBatch([])
+      ).resolves.not.toThrow();
     });
 
     it('should handle duplicate vendors in batch (last write wins)', async () => {
@@ -416,7 +451,8 @@ describe('Vendor-Category Learning Service', () => {
 
       // Override toArray to fail once
       const originalToArray = db.vendorCategories.toArray;
-      (db.vendorCategories as Record<string, unknown>).toArray = vi.fn()
+      (db.vendorCategories as Record<string, unknown>).toArray = vi
+        .fn()
         .mockRejectedValueOnce(new Error('DB read error'));
 
       const mappings = await vendorCategoryLearning.getAllMappings();
@@ -425,7 +461,8 @@ describe('Vendor-Category Learning Service', () => {
       expect(mappings.length).toBeGreaterThanOrEqual(1);
 
       // Restore
-      (db.vendorCategories as Record<string, unknown>).toArray = originalToArray;
+      (db.vendorCategories as Record<string, unknown>).toArray =
+        originalToArray;
     });
   });
 
@@ -461,7 +498,8 @@ describe('Vendor-Category Learning Service', () => {
 
     it('should handle database errors during delete', async () => {
       const originalGet = db.vendorCategories.get;
-      (db.vendorCategories as Record<string, unknown>).get = vi.fn()
+      (db.vendorCategories as Record<string, unknown>).get = vi
+        .fn()
         .mockRejectedValueOnce(new Error('DB error'));
 
       await expect(
@@ -497,7 +535,8 @@ describe('Vendor-Category Learning Service', () => {
 
     it('should handle database errors during clear', async () => {
       const originalClear = db.vendorCategories.clear;
-      (db.vendorCategories as Record<string, unknown>).clear = vi.fn()
+      (db.vendorCategories as Record<string, unknown>).clear = vi
+        .fn()
         .mockRejectedValueOnce(new Error('DB error'));
 
       await expect(vendorCategoryLearning.clearAll()).resolves.not.toThrow();
@@ -553,9 +592,14 @@ describe('Vendor-Category Learning Service', () => {
     });
 
     it('should collapse whitespace', async () => {
-      await vendorCategoryLearning.learn('Whole   Foods   Market', catId('cat-food'));
+      await vendorCategoryLearning.learn(
+        'Whole   Foods   Market',
+        catId('cat-food')
+      );
 
-      expect(vendorCategoryLearning.lookup('Whole Foods Market')).not.toBeNull();
+      expect(
+        vendorCategoryLearning.lookup('Whole Foods Market')
+      ).not.toBeNull();
     });
 
     it('should trim leading/trailing whitespace', async () => {
@@ -615,8 +659,10 @@ describe('Vendor-Category Learning Service', () => {
         await vendorCategoryLearning.learn('Partial', catId('cat-1'));
       }
 
-      const result = vendorCategoryLearning.lookup('Partial Vendor Very Long Name');
-      expect(result!.confidence).toBeLessThanOrEqual(0.90);
+      const result = vendorCategoryLearning.lookup(
+        'Partial Vendor Very Long Name'
+      );
+      expect(result!.confidence).toBeLessThanOrEqual(0.9);
     });
   });
 });

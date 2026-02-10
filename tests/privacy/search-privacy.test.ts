@@ -317,7 +317,7 @@ describe('CRITICAL: Privacy - Search Operations', () => {
 
     it('MUST NOT sync search history to cloud', async () => {
       // Local search history (simulated)
-      const localHistory = [
+      const _localHistory = [
         { query: 'salary slip', embedding: new Float32Array(384) },
         { query: 'bonus payment', embedding: new Float32Array(384) },
       ];

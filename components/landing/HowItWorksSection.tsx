@@ -227,7 +227,7 @@ export function HowItWorksSection() {
         {/* Steps */}
         <div className="relative">
           {/* Connecting Line */}
-          <div className="absolute bottom-0 left-8 top-0 hidden w-0.5 bg-gradient-to-b from-vault-info via-vault-success via-vault-gold-secondary to-vault-warning md:block lg:left-1/2" />
+          <div className="absolute bottom-0 left-8 top-0 hidden w-0.5 bg-gradient-to-b from-vault-info via-vault-gold-secondary via-vault-success to-vault-warning md:block lg:left-1/2" />
 
           <div className="space-y-12 lg:space-y-24">
             {steps.map((step, index) => (

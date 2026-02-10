@@ -114,7 +114,9 @@ export function useOPFSInit(): UseOPFSInitResult {
   const initializingRef = useRef(false);
 
   const initialize = useCallback(async () => {
-    if (initializingRef.current) return;
+    if (initializingRef.current) {
+      return;
+    }
     initializingRef.current = true;
 
     setStatus((prev) => ({ ...prev, isInitializing: true, error: null }));
@@ -367,7 +369,9 @@ export function useFileDownload() {
   const getFileUrl = useCallback(
     async (filePath: string): Promise<string | null> => {
       const file = await getFile(filePath);
-      if (!file) return null;
+      if (!file) {
+        return null;
+      }
       return URL.createObjectURL(file);
     },
     [getFile]

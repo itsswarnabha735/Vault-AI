@@ -218,7 +218,7 @@ const DATE_PATTERNS: DatePattern[] = [
   {
     regex: /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g,
     format: 'DD/MM/YYYY',
-    baseConfidence: 0.80,
+    baseConfidence: 0.8,
     parser: (m) => {
       const first = parseInt(m[1] ?? '0', 10);
       const second = parseInt(m[2] ?? '0', 10);
@@ -356,7 +356,8 @@ const AMOUNT_PATTERNS: AmountPattern[] = [
   // Simple total — supports multiple currency prefixes
   // Excludes "Item Total" (handled separately with lower confidence)
   {
-    regex: /(?<!Item\s)\bTotal(?:\s*:|\s+is)?\s*(?:₹|Rs\.?\s*|INR\s*|\$)?\s*([\d,]+\.?\d*)/gi,
+    regex:
+      /(?<!Item\s)\bTotal(?:\s*:|\s+is)?\s*(?:₹|Rs\.?\s*|INR\s*|\$)?\s*([\d,]+\.?\d*)/gi,
     description: 'Total',
     baseConfidence: 0.95,
     isTotalIndicator: true,
@@ -364,9 +365,10 @@ const AMOUNT_PATTERNS: AmountPattern[] = [
   },
   // Item Total — typically the subtotal before discounts/coupons (lower confidence)
   {
-    regex: /\bItem\s+Total(?:\s*:|\s+is)?\s*(?:₹|Rs\.?\s*|INR\s*|\$)?\s*([\d,]+\.?\d*)/gi,
+    regex:
+      /\bItem\s+Total(?:\s*:|\s+is)?\s*(?:₹|Rs\.?\s*|INR\s*|\$)?\s*([\d,]+\.?\d*)/gi,
     description: 'Item Total',
-    baseConfidence: 0.80,
+    baseConfidence: 0.8,
     isTotalIndicator: false,
     extractor: (m) => parseFloat((m[1] ?? '0').replace(/,/g, '')),
   },
@@ -413,7 +415,8 @@ const AMOUNT_PATTERNS: AmountPattern[] = [
   },
   // Amount with currency suffix: 1,234.56 USD
   {
-    regex: /([\d,]+(?:\.\d{1,2})?)\s*(USD|EUR|GBP|INR|dollars?|euros?|rupees?)/gi,
+    regex:
+      /([\d,]+(?:\.\d{1,2})?)\s*(USD|EUR|GBP|INR|dollars?|euros?|rupees?)/gi,
     description: 'Currency code suffix',
     baseConfidence: 0.82,
     isTotalIndicator: false,
@@ -532,7 +535,7 @@ const VENDOR_PATTERNS: VendorPattern[] = [
     baseConfidence: 0.86,
     extractor: (m) => (m[1] ?? '').trim(),
   },
-  // Delivery app: "Delivered · 1 Item · ₹271.00 ... Chowman" 
+  // Delivery app: "Delivered · 1 Item · ₹271.00 ... Chowman"
   // Restaurant name as title-case word between amount and address
   {
     regex:
@@ -547,7 +550,7 @@ const VENDOR_PATTERNS: VendorPattern[] = [
     regex:
       /^([A-Z][A-Za-z\s&'.]+?)\n\s*(?:[A-Z][\w\s,.-]*(?:Road|Street|St|Ave|Blvd|Lane|Nagar|Colony|Enclave|Block|Sector|Market|Mall|Floor|Plot|No\.|Building))/gim,
     description: 'Name before address',
-    baseConfidence: 0.80,
+    baseConfidence: 0.8,
     extractor: (m) => m[1] ?? '',
   },
   // Website-based extraction
@@ -967,7 +970,9 @@ class EntityExtractorService {
         line.length >= 3 &&
         line.length <= 30 &&
         !this.isExcludedVendorName(line) &&
-        !/^(Order|Item|Bill|Date|Time|Tax|Thank|Payment|Paid|Discount|Delivery|Home|Address)/.test(line)
+        !/^(Order|Item|Bill|Date|Time|Tax|Thank|Payment|Paid|Discount|Delivery|Home|Address)/.test(
+          line
+        )
       ) {
         const confidence = i <= 2 ? 0.74 : 0.64;
         candidates.push({
@@ -1148,12 +1153,14 @@ class EntityExtractorService {
         // Sort by confidence first (Bill Total 0.98 > Item Total 0.95),
         // then by value as a tiebreaker. This ensures "Bill Total ₹271" beats
         // "Item Total ₹315" because Bill Total has higher confidence.
-        return totals.sort((a, b) => {
-          if (Math.abs(a.confidence - b.confidence) > 0.01) {
-            return b.confidence - a.confidence;
-          }
-          return b.value - a.value;
-        })[0] ?? null;
+        return (
+          totals.sort((a, b) => {
+            if (Math.abs(a.confidence - b.confidence) > 0.01) {
+              return b.confidence - a.confidence;
+            }
+            return b.value - a.value;
+          })[0] ?? null
+        );
       }
     }
 

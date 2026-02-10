@@ -13,7 +13,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { StatementParseResult, ParsedStatementTransaction } from '@/types/statement';
+import type {
+  StatementParseResult,
+  ParsedStatementTransaction,
+} from '@/types/statement';
 
 // Mock the auto-categorizer before importing the service
 vi.mock('./auto-categorizer', () => ({
@@ -295,7 +298,12 @@ describe('LLM Statement Parser', () => {
     it('should call the API and return parsed result', async () => {
       const mockResponse = createMockLLMApiResponse([
         { date: '2024-01-15', vendor: 'Amazon', amount: 42.99, type: 'debit' },
-        { date: '2024-01-16', vendor: 'Starbucks', amount: 5.75, type: 'debit' },
+        {
+          date: '2024-01-16',
+          vendor: 'Starbucks',
+          amount: 5.75,
+          type: 'debit',
+        },
       ]);
 
       vi.mocked(global.fetch).mockResolvedValueOnce({
@@ -303,13 +311,17 @@ describe('LLM Statement Parser', () => {
         json: vi.fn().mockResolvedValue(mockResponse),
       } as unknown as Response);
 
-      const result = await llmStatementParser.parseWithLLM('sample statement text');
+      const result = await llmStatementParser.parseWithLLM(
+        'sample statement text'
+      );
 
       expect(result).not.toBeNull();
       expect(result!.transactions).toHaveLength(2);
       expect(result!.documentType).toBe('statement');
       expect(result!.confidence).toBe(0.88);
-      expect(result!.warnings.some(w => w.includes('Parsed using AI'))).toBe(true);
+      expect(result!.warnings.some((w) => w.includes('Parsed using AI'))).toBe(
+        true
+      );
     });
 
     it('should pass issuer and currency hints to the API', async () => {
@@ -408,7 +420,7 @@ describe('LLM Statement Parser', () => {
         {
           date: '2024-01-15',
           vendor: 'Some Vendor',
-          amount: 25.00,
+          amount: 25.0,
           type: 'debit',
           category: 'Entertainment',
         },
@@ -424,7 +436,9 @@ describe('LLM Statement Parser', () => {
       expect(result).not.toBeNull();
       // When LLM provides category, autoCategorizer is NOT called (tx.category truthy)
       // So suggestedCategoryName should be 'Entertainment'
-      expect(result!.transactions[0]!.suggestedCategoryName).toBe('Entertainment');
+      expect(result!.transactions[0]!.suggestedCategoryName).toBe(
+        'Entertainment'
+      );
     });
 
     it('should use learned category mapping when available', async () => {
@@ -454,10 +468,15 @@ describe('LLM Statement Parser', () => {
 
     it('should calculate totals correctly from parsed transactions', async () => {
       const mockResponse = createMockLLMApiResponse([
-        { date: '2024-01-15', vendor: 'Store A', amount: 50.00, type: 'debit' },
-        { date: '2024-01-16', vendor: 'Store B', amount: 30.00, type: 'debit' },
-        { date: '2024-01-17', vendor: 'Refund', amount: 10.00, type: 'credit' },
-        { date: '2024-01-18', vendor: 'Payment', amount: 100.00, type: 'payment' },
+        { date: '2024-01-15', vendor: 'Store A', amount: 50.0, type: 'debit' },
+        { date: '2024-01-16', vendor: 'Store B', amount: 30.0, type: 'debit' },
+        { date: '2024-01-17', vendor: 'Refund', amount: 10.0, type: 'credit' },
+        {
+          date: '2024-01-18',
+          vendor: 'Payment',
+          amount: 100.0,
+          type: 'payment',
+        },
       ]);
 
       vi.mocked(global.fetch).mockResolvedValueOnce({
@@ -475,7 +494,7 @@ describe('LLM Statement Parser', () => {
 
     it('should set fixed confidence of 0.88 for LLM-parsed transactions', async () => {
       const mockResponse = createMockLLMApiResponse([
-        { date: '2024-01-15', vendor: 'Test', amount: 10.00, type: 'debit' },
+        { date: '2024-01-15', vendor: 'Test', amount: 10.0, type: 'debit' },
       ]);
 
       vi.mocked(global.fetch).mockResolvedValueOnce({
@@ -490,8 +509,8 @@ describe('LLM Statement Parser', () => {
 
     it('should set all transactions as selected by default', async () => {
       const mockResponse = createMockLLMApiResponse([
-        { date: '2024-01-15', vendor: 'Test', amount: 10.00, type: 'debit' },
-        { date: '2024-01-16', vendor: 'Test2', amount: 20.00, type: 'debit' },
+        { date: '2024-01-15', vendor: 'Test', amount: 10.0, type: 'debit' },
+        { date: '2024-01-16', vendor: 'Test2', amount: 20.0, type: 'debit' },
       ]);
 
       vi.mocked(global.fetch).mockResolvedValueOnce({
@@ -698,7 +717,7 @@ describe('LLM Statement Parser', () => {
 
       // LLM-first: always uses LLM when fallback is triggered
       expect(result.transactions).toHaveLength(2);
-      expect(result.warnings.some(w => w.includes('AI'))).toBe(true);
+      expect(result.warnings.some((w) => w.includes('AI'))).toBe(true);
     });
 
     it('should fall back to regex with warning when LLM fails completely', async () => {

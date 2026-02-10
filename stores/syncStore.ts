@@ -130,7 +130,7 @@ const initialState: SyncState = {
 
 export const useSyncStore = create<SyncStore>()(
   devtools(
-    subscribeWithSelector((set, get) => ({
+    subscribeWithSelector((set, _get) => ({
       // Initial state
       ...initialState,
 

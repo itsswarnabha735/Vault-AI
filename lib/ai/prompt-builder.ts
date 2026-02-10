@@ -219,7 +219,9 @@ function detectDominantCurrency(
   transactions: SafeTransactionData[],
   fallback: string
 ): string {
-  if (transactions.length === 0) return fallback;
+  if (transactions.length === 0) {
+    return fallback;
+  }
 
   const counts = new Map<string, number>();
   for (const tx of transactions) {
@@ -428,9 +430,7 @@ export function buildSafePrompt(context: PromptContext): string {
       for (const [category, amount] of Object.entries(
         context.verifiedData.byCategory
       )) {
-        parts.push(
-          `- ${category}: ${formatCurrency(amount, currency)}`
-        );
+        parts.push(`- ${category}: ${formatCurrency(amount, currency)}`);
       }
     }
 
@@ -446,10 +446,7 @@ export function buildSafePrompt(context: PromptContext): string {
     parts.push('\n## RELEVANT TRANSACTIONS');
     parts.push(`Found ${context.transactions.length} transaction(s):`);
     parts.push(
-      formatTransactionsForPrompt(
-        context.transactions,
-        effectiveCurrency
-      )
+      formatTransactionsForPrompt(context.transactions, effectiveCurrency)
     );
   } else {
     parts.push('\n## TRANSACTION DATA');
@@ -494,7 +491,9 @@ export function buildSafePrompt(context: PromptContext): string {
  *
  * Falls back to a flat text version for clients that don't support it.
  */
-export function buildStructuredPrompt(context: PromptContext): StructuredPrompt {
+export function buildStructuredPrompt(
+  context: PromptContext
+): StructuredPrompt {
   verifySafePayload(context.transactions);
 
   // Determine the effective currency from actual transaction data
@@ -580,10 +579,7 @@ export function buildStructuredPrompt(context: PromptContext): StructuredPrompt 
     userParts.push('\n## RELEVANT TRANSACTIONS');
     userParts.push(`Found ${context.transactions.length} transaction(s):`);
     userParts.push(
-      formatTransactionsForPrompt(
-        context.transactions,
-        effectiveCurrency
-      )
+      formatTransactionsForPrompt(context.transactions, effectiveCurrency)
     );
   } else {
     userParts.push('\n## TRANSACTION DATA');
@@ -755,10 +751,7 @@ export function buildSpendingQueryPrompt(
   const expenses = transactions.filter((tx) => tx.amount >= 0);
   const income = transactions.filter((tx) => tx.amount < 0);
   const totalExpenses = expenses.reduce((sum, tx) => sum + tx.amount, 0);
-  const totalIncome = income.reduce(
-    (sum, tx) => sum + Math.abs(tx.amount),
-    0
-  );
+  const totalIncome = income.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
   const context: PromptContext = {
     query,

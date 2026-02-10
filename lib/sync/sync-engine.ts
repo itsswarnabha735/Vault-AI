@@ -26,7 +26,10 @@ import type {
   SyncError as SyncErrorType,
   SyncConfig,
 } from '@/types/sync';
-import type { TransactionInsert, Transaction as TransactionRow } from '@/types/supabase';
+import type {
+  TransactionInsert,
+  Transaction as TransactionRow,
+} from '@/types/supabase';
 
 // ============================================
 // Types

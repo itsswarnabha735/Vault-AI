@@ -13,7 +13,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExtractionCard, type EditableDocument } from './ExtractionCard';
 import { autoCategorizer } from '@/lib/processing/auto-categorizer';
-import { importDuplicateChecker, type ImportDuplicateResult } from '@/lib/anomaly/import-duplicate-checker';
+import {
+  importDuplicateChecker,
+  type ImportDuplicateResult,
+} from '@/lib/anomaly/import-duplicate-checker';
 import { useCategories } from '@/hooks/useLocalDB';
 import type { ProcessedDocumentResult } from '@/lib/processing/processing-worker-client';
 import type { CategoryId } from '@/types/database';
@@ -73,9 +76,9 @@ export function ExtractionReview({
   }, [categories]);
 
   // Duplicate detection state
-  const [duplicateResults, setDuplicateResults] = useState<Map<string, ImportDuplicateResult>>(
-    () => new Map()
-  );
+  const [duplicateResults, setDuplicateResults] = useState<
+    Map<string, ImportDuplicateResult>
+  >(() => new Map());
 
   // Run duplicate check on mount
   useEffect(() => {
@@ -90,7 +93,11 @@ export function ExtractionReview({
         const amount = doc.entities.amount?.value || 0;
 
         if (date && vendor && amount) {
-          const result = await importDuplicateChecker.checkReceipt(date, vendor, amount);
+          const result = await importDuplicateChecker.checkReceipt(
+            date,
+            vendor,
+            amount
+          );
           results.set(doc.id, result);
         }
       }
@@ -101,14 +108,18 @@ export function ExtractionReview({
     }
 
     void checkDuplicates();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [documents]);
 
   // Count duplicates
   const duplicateDocCount = useMemo(() => {
     let count = 0;
     for (const result of duplicateResults.values()) {
-      if (result.isDuplicate) count++;
+      if (result.isDuplicate) {
+        count++;
+      }
     }
     return count;
   }, [duplicateResults]);
@@ -157,11 +168,15 @@ export function ExtractionReview({
   const resolveSuggestedCategory = useCallback(
     (vendor: string): CategoryId | null => {
       const suggestion = autoCategorizer.suggestCategory(vendor);
-      if (!suggestion) return null;
+      if (!suggestion) {
+        return null;
+      }
       if (suggestion.isLearned && suggestion.learnedCategoryId) {
         return suggestion.learnedCategoryId;
       }
-      return categoryNameToId.get(suggestion.categoryName.toLowerCase()) || null;
+      return (
+        categoryNameToId.get(suggestion.categoryName.toLowerCase()) || null
+      );
     },
     [categoryNameToId]
   );
@@ -270,11 +285,13 @@ export function ExtractionReview({
           <div className="flex items-center gap-2">
             <DuplicateWarningIcon className="h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
             <p className="text-sm font-medium text-orange-700 dark:text-orange-300">
-              {duplicateDocCount} document{duplicateDocCount > 1 ? 's' : ''} may already exist in your vault
+              {duplicateDocCount} document{duplicateDocCount > 1 ? 's' : ''} may
+              already exist in your vault
             </p>
           </div>
           <p className="mt-1 text-xs text-orange-600/80 dark:text-orange-400/80">
-            Review the flagged documents below. They will still be saved unless you cancel.
+            Review the flagged documents below. They will still be saved unless
+            you cancel.
           </p>
         </div>
       )}
@@ -296,7 +313,9 @@ export function ExtractionReview({
                 onChange={handleDocumentChange}
                 isExpanded={expandedId === doc.id}
                 onToggleExpand={() => handleToggleExpand(doc.id)}
-                className={dupResult?.isDuplicate ? 'border-orange-500/30' : undefined}
+                className={
+                  dupResult?.isDuplicate ? 'border-orange-500/30' : undefined
+                }
               />
             </div>
           );

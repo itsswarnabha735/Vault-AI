@@ -156,7 +156,10 @@ export function DocumentPreviewPanel({
   }
 
   // Format display values
-  const formattedAmount = formatCurrency(transaction.amount, transaction.currency);
+  const formattedAmount = formatCurrency(
+    transaction.amount,
+    transaction.currency
+  );
   const formattedDate = formatDate(new Date(transaction.date), {
     weekday: 'long',
     year: 'numeric',

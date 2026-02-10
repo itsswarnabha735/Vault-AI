@@ -16,9 +16,15 @@
  * Account numbers are masked server-side before sending to the LLM.
  */
 
-import type { ParsedStatementTransaction, StatementParseResult } from '@/types/statement';
+import type {
+  ParsedStatementTransaction,
+  StatementParseResult,
+} from '@/types/statement';
 import { autoCategorizer } from './auto-categorizer';
-import { preprocessStatementText, estimateTransactionCount } from './statement-preprocessor';
+import {
+  preprocessStatementText,
+  estimateTransactionCount,
+} from './statement-preprocessor';
 
 // ============================================
 // Types
@@ -99,7 +105,10 @@ class LLMStatementParserService {
    * Maps a hash of (text + modelTier) to the pending promise.
    * Prevents duplicate API calls when the same text is submitted concurrently.
    */
-  private pendingRequests = new Map<string, Promise<StatementParseResult | null>>();
+  private pendingRequests = new Map<
+    string,
+    Promise<StatementParseResult | null>
+  >();
 
   /**
    * Simple hash for deduplication key (first 200 chars + length + tier).
@@ -118,14 +127,22 @@ class LLMStatementParserService {
   ): boolean {
     const opts = { ...DEFAULT_OPTIONS, ...options };
 
-    if (opts.regexOnly) return false;
-    if (opts.forceLLM) return true;
+    if (opts.regexOnly) {
+      return false;
+    }
+    if (opts.forceLLM) {
+      return true;
+    }
 
     // Low confidence from regex parser
-    if (regexResult.confidence < opts.minRegexConfidence) return true;
+    if (regexResult.confidence < opts.minRegexConfidence) {
+      return true;
+    }
 
     // Too few transactions extracted
-    if (regexResult.transactions.length < opts.minRegexTransactions) return true;
+    if (regexResult.transactions.length < opts.minRegexTransactions) {
+      return true;
+    }
 
     // High unparsed line count relative to parsed transactions
     if (
@@ -161,7 +178,12 @@ class LLMStatementParserService {
       return pending;
     }
 
-    const promise = this._parseWithLLMImpl(text, issuerHint, currencyHint, modelTier);
+    const promise = this._parseWithLLMImpl(
+      text,
+      issuerHint,
+      currencyHint,
+      modelTier
+    );
     this.pendingRequests.set(requestKey, promise);
 
     try {
@@ -231,10 +253,9 @@ class LLMStatementParserService {
             amount: tx.amount,
             type: tx.type,
             category: learnedCategoryId, // Direct from learned mapping, or null
-            suggestedCategoryName:
-              learnedCategoryId
-                ? null // Already resolved via learned mapping
-                : tx.category || suggestion?.categoryName || null,
+            suggestedCategoryName: learnedCategoryId
+              ? null // Already resolved via learned mapping
+              : tx.category || suggestion?.categoryName || null,
             rawLine: `[LLM-${index + 1}] ${tx.date} ${tx.vendor} ${tx.amount}`,
             confidence: 0.88, // LLM-parsed lines get a fixed high confidence
             selected: true,
@@ -249,7 +270,9 @@ class LLMStatementParserService {
         .filter((t) => t.type === 'debit' || t.type === 'fee')
         .reduce((sum, t) => sum + t.amount, 0);
       const totalCredits = transactions
-        .filter((t) => ['credit', 'payment', 'refund', 'interest'].includes(t.type))
+        .filter((t) =>
+          ['credit', 'payment', 'refund', 'interest'].includes(t.type)
+        )
         .reduce((sum, t) => sum + t.amount, 0);
 
       const parseResult: StatementParseResult = {
@@ -257,7 +280,10 @@ class LLMStatementParserService {
         issuer: result.data.issuer || 'Unknown',
         accountLast4: result.data.accountLast4,
         statementPeriod: result.data.statementPeriod
-          ? { start: result.data.statementPeriod.start, end: result.data.statementPeriod.end }
+          ? {
+              start: result.data.statementPeriod.start,
+              end: result.data.statementPeriod.end,
+            }
           : { start: null, end: null },
         transactions,
         totals: {
@@ -270,17 +296,13 @@ class LLMStatementParserService {
         confidence: 0.88,
         parsingTimeMs,
         unparsedLineCount: 0,
-        warnings: [
-          `Parsed using AI (${result.meta?.model || 'Gemini'})`,
-        ],
+        warnings: [`Parsed using AI (${result.meta?.model || 'Gemini'})`],
       };
 
       console.log(
         `[LLM Parser] Successfully parsed ${transactions.length} transactions in ${parsingTimeMs.toFixed(0)}ms`,
         `(model: ${result.meta?.model}, tier: ${result.meta?.tier})`,
-        result.meta?.usage
-          ? `(tokens: ${result.meta.usage.totalTokens})`
-          : ''
+        result.meta?.usage ? `(tokens: ${result.meta.usage.totalTokens})` : ''
       );
 
       return parseResult;
@@ -340,7 +362,9 @@ class LLMStatementParserService {
 
     // Step 3: For very large statements, use chunked processing with flash-lite
     if (isVeryLargeStatement) {
-      console.log('[LLM Parser] Very large statement detected. Using chunked processing with flash-lite...');
+      console.log(
+        '[LLM Parser] Very large statement detected. Using chunked processing with flash-lite...'
+      );
       const chunkedResult = await this.parseWithChunks(
         preprocessedText,
         regexResult
@@ -351,7 +375,9 @@ class LLMStatementParserService {
       // If chunked processing failed entirely, fall through to regex fallback.
       // Don't try a single-pass 2.5-flash call on the full text — if chunks failed,
       // a single large request will almost certainly fail/timeout too.
-      console.log('[LLM Parser] Chunked processing failed. Falling back to regex.');
+      console.log(
+        '[LLM Parser] Chunked processing failed. Falling back to regex.'
+      );
       return {
         ...regexResult,
         warnings: [
@@ -366,7 +392,9 @@ class LLMStatementParserService {
 
     if (isLargeStatement) {
       // Large statements (50-500 txns): use 2.5-flash (with thinking disabled for speed)
-      console.log('[LLM Parser] Large statement — using gemini-2.5-flash directly...');
+      console.log(
+        '[LLM Parser] Large statement — using gemini-2.5-flash directly...'
+      );
       llmResult = await this.parseWithLLM(
         preprocessedText,
         regexResult.issuer || undefined,
@@ -390,7 +418,7 @@ class LLMStatementParserService {
       ) {
         console.log(
           `[LLM Parser] Primary model returned only ${llmResult.transactions.length} txns ` +
-          `(expected >= ${opts.minExpectedTransactions}). Retrying with smarter model...`
+            `(expected >= ${opts.minExpectedTransactions}). Retrying with smarter model...`
         );
 
         const retryResult = await this.parseWithLLM(
@@ -400,16 +428,23 @@ class LLMStatementParserService {
           'retry'
         );
 
-        if (retryResult && retryResult.transactions.length > llmResult.transactions.length) {
+        if (
+          retryResult &&
+          retryResult.transactions.length > llmResult.transactions.length
+        ) {
           llmResult = retryResult;
-          llmResult.warnings.push('Upgraded to smarter AI model for better accuracy');
+          llmResult.warnings.push(
+            'Upgraded to smarter AI model for better accuracy'
+          );
         }
       }
     }
 
     // Step 5: If primary/large failed entirely, try retry model once
     if (!llmResult) {
-      console.log('[LLM Parser] Primary/large model failed. Trying retry model...');
+      console.log(
+        '[LLM Parser] Primary/large model failed. Trying retry model...'
+      );
       llmResult = await this.parseWithLLM(
         preprocessedText,
         regexResult.issuer || undefined,
@@ -488,7 +523,9 @@ class LLMStatementParserService {
       chunks.push(currentChunk);
     }
 
-    console.log(`[LLM Parser] Split into ${chunks.length} chunks (~${CHUNK_SIZE} txns each)`);
+    console.log(
+      `[LLM Parser] Split into ${chunks.length} chunks (~${CHUNK_SIZE} txns each)`
+    );
 
     // Process each chunk sequentially using the fast primary model (flash-lite).
     // Each chunk is small enough to fit within flash-lite's 8192 output token limit.
@@ -531,7 +568,9 @@ class LLMStatementParserService {
         }
       } else {
         consecutiveFailures++;
-        allWarnings.push(`Chunk ${i + 1} failed to parse — some transactions may be missing.`);
+        allWarnings.push(
+          `Chunk ${i + 1} failed to parse — some transactions may be missing.`
+        );
 
         // If too many consecutive failures, the API is likely down — bail out early
         if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
@@ -540,7 +579,7 @@ class LLMStatementParserService {
           );
           allWarnings.push(
             `Stopped after ${MAX_CONSECUTIVE_FAILURES} consecutive API failures. ` +
-            `${chunks.length - i - 1} chunk(s) skipped.`
+              `${chunks.length - i - 1} chunk(s) skipped.`
           );
           break;
         }
@@ -559,7 +598,9 @@ class LLMStatementParserService {
       .filter((t) => t.type === 'debit' || t.type === 'fee')
       .reduce((sum, t) => sum + t.amount, 0);
     const totalCredits = deduped
-      .filter((t) => ['credit', 'payment', 'refund', 'interest'].includes(t.type))
+      .filter((t) =>
+        ['credit', 'payment', 'refund', 'interest'].includes(t.type)
+      )
       .reduce((sum, t) => sum + t.amount, 0);
 
     return {
@@ -638,9 +679,10 @@ class LLMStatementParserService {
     // bank names in NEFT/RTGS references (e.g., "NEFT-HDFCN..." in an ICICI statement).
     const merged: StatementParseResult = {
       ...llmResult,
-      issuer: (regexResult.issuer && regexResult.issuer !== 'Unknown')
-        ? regexResult.issuer
-        : llmResult.issuer || regexResult.issuer,
+      issuer:
+        regexResult.issuer && regexResult.issuer !== 'Unknown'
+          ? regexResult.issuer
+          : llmResult.issuer || regexResult.issuer,
       accountLast4: llmResult.accountLast4 || regexResult.accountLast4,
       statementPeriod: this.bestStatementPeriod(
         llmResult.statementPeriod,
@@ -654,7 +696,9 @@ class LLMStatementParserService {
     if (filteredTransactions.length < merged.transactions.length) {
       const removed = merged.transactions.length - filteredTransactions.length;
       merged.transactions = filteredTransactions;
-      merged.warnings.push(`${removed} suspicious transaction(s) removed by validation.`);
+      merged.warnings.push(
+        `${removed} suspicious transaction(s) removed by validation.`
+      );
     }
 
     // Phase 3B: Validate dates are within statement period
@@ -679,7 +723,7 @@ class LLMStatementParserService {
       if (diff > 1 && diff / regexResult.totals.statementTotal > 0.05) {
         merged.warnings.push(
           `Parsed debit total (${llmTotal.toFixed(2)}) differs from statement total ` +
-          `(${regexResult.totals.statementTotal.toFixed(2)}) by ${diff.toFixed(2)}. Please verify.`
+            `(${regexResult.totals.statementTotal.toFixed(2)}) by ${diff.toFixed(2)}. Please verify.`
         );
       }
     }
@@ -695,16 +739,23 @@ class LLMStatementParserService {
     // Debits: debit + fee (money out)
     // Credits: credit + payment + refund + interest (money in)
     const totalDebits = merged.transactions
-      .filter((t) => t.amount > 0 && !['payment', 'credit', 'refund', 'interest'].includes(t.type))
+      .filter(
+        (t) =>
+          t.amount > 0 &&
+          !['payment', 'credit', 'refund', 'interest'].includes(t.type)
+      )
       .reduce((sum, t) => sum + t.amount, 0);
     const totalCredits = merged.transactions
-      .filter((t) => ['payment', 'credit', 'refund', 'interest'].includes(t.type))
+      .filter((t) =>
+        ['payment', 'credit', 'refund', 'interest'].includes(t.type)
+      )
       .reduce((sum, t) => sum + t.amount, 0);
 
     merged.totals.totalDebits = Math.round(totalDebits * 100) / 100;
     merged.totals.totalCredits = Math.round(totalCredits * 100) / 100;
     // Net Balance = Credits - Debits (positive = net inflow, negative = net outflow)
-    merged.totals.netBalance = Math.round((totalCredits - totalDebits) * 100) / 100;
+    merged.totals.netBalance =
+      Math.round((totalCredits - totalDebits) * 100) / 100;
 
     return merged;
   }
@@ -726,7 +777,9 @@ class LLMStatementParserService {
   private filterAmountOutliers(
     transactions: ParsedStatementTransaction[]
   ): ParsedStatementTransaction[] {
-    if (transactions.length < 5) return transactions; // Too few to detect outliers
+    if (transactions.length < 5) {
+      return transactions;
+    } // Too few to detect outliers
 
     // Only consider debit-type transactions for outlier detection
     const debitAmounts = transactions
@@ -734,10 +787,14 @@ class LLMStatementParserService {
       .map((t) => Math.abs(t.amount))
       .sort((a, b) => a - b);
 
-    if (debitAmounts.length < 3) return transactions; // Too few debits to detect outliers
+    if (debitAmounts.length < 3) {
+      return transactions;
+    } // Too few debits to detect outliers
 
     const median = debitAmounts[Math.floor(debitAmounts.length / 2)] || 0;
-    if (median === 0) return transactions;
+    if (median === 0) {
+      return transactions;
+    }
 
     // Use 500x median with a minimum floor of 5,00,000 (5 lakh / ~$6,000)
     // This prevents filtering legitimate large expenses like rent, car payments, etc.
@@ -799,8 +856,12 @@ class LLMStatementParserService {
     const aHasBoth = a.start && a.end;
     const bHasBoth = b.start && b.end;
 
-    if (aHasBoth) return a;
-    if (bHasBoth) return b;
+    if (aHasBoth) {
+      return a;
+    }
+    if (bHasBoth) {
+      return b;
+    }
 
     return {
       start: a.start || b.start,

@@ -22,8 +22,11 @@ import {
   addDays,
   calculateDuplicateConfidence,
 } from './utils';
-import type { LocalTransaction, TransactionId } from '@/types/database';
-import type { ParsedStatementTransaction, StatementParseResult } from '@/types/statement';
+import type { TransactionId } from '@/types/database';
+import type {
+  ParsedStatementTransaction,
+  StatementParseResult,
+} from '@/types/statement';
 
 // ============================================
 // Types
@@ -165,7 +168,12 @@ class ImportDuplicateCheckerService {
     amount: number
   ): Promise<ImportDuplicateResult> {
     if (!date || !vendor || amount === 0) {
-      return { isDuplicate: false, confidence: 0, matchingTransactionId: null, reason: '' };
+      return {
+        isDuplicate: false,
+        confidence: 0,
+        matchingTransactionId: null,
+        reason: '',
+      };
     }
 
     try {
@@ -183,7 +191,9 @@ class ImportDuplicateCheckerService {
 
       for (const candidate of candidates) {
         // Amount check
-        if (!amountsMatch(candidate.amount, amount, this.config.amountTolerance)) {
+        if (
+          !amountsMatch(candidate.amount, amount, this.config.amountTolerance)
+        ) {
           continue;
         }
 
@@ -221,15 +231,22 @@ class ImportDuplicateCheckerService {
         }
       }
 
-      return bestMatch || {
+      return (
+        bestMatch || {
+          isDuplicate: false,
+          confidence: 0,
+          matchingTransactionId: null,
+          reason: '',
+        }
+      );
+    } catch (error) {
+      console.error('[ImportDuplicateChecker] Check failed:', error);
+      return {
         isDuplicate: false,
         confidence: 0,
         matchingTransactionId: null,
         reason: '',
       };
-    } catch (error) {
-      console.error('[ImportDuplicateChecker] Check failed:', error);
-      return { isDuplicate: false, confidence: 0, matchingTransactionId: null, reason: '' };
     }
   }
 
@@ -329,11 +346,17 @@ class ImportDuplicateCheckerService {
         }
 
         // Period match (weighted 3)
-        if (fp.periodStart && fp.periodEnd &&
-            result.statementPeriod.start && result.statementPeriod.end) {
+        if (
+          fp.periodStart &&
+          fp.periodEnd &&
+          result.statementPeriod.start &&
+          result.statementPeriod.end
+        ) {
           maxScore += 3;
-          if (fp.periodStart === result.statementPeriod.start &&
-              fp.periodEnd === result.statementPeriod.end) {
+          if (
+            fp.periodStart === result.statementPeriod.start &&
+            fp.periodEnd === result.statementPeriod.end
+          ) {
             matchScore += 3;
           }
         }
@@ -341,7 +364,9 @@ class ImportDuplicateCheckerService {
         // Total amount match (weighted 2, with 1% tolerance)
         maxScore += 2;
         const totalTolerance = Math.max(0.01, result.totals.totalDebits * 0.01);
-        if (Math.abs(fp.totalDebits - result.totals.totalDebits) <= totalTolerance) {
+        if (
+          Math.abs(fp.totalDebits - result.totals.totalDebits) <= totalTolerance
+        ) {
           matchScore += 2;
         }
 
@@ -369,7 +394,10 @@ class ImportDuplicateCheckerService {
 
       return { isAlreadyImported: false, confidence: 0 };
     } catch (error) {
-      console.error('[ImportDuplicateChecker] Fingerprint check failed:', error);
+      console.error(
+        '[ImportDuplicateChecker] Fingerprint check failed:',
+        error
+      );
       return { isAlreadyImported: false, confidence: 0 };
     }
   }
@@ -385,7 +413,10 @@ class ImportDuplicateCheckerService {
           `(${fingerprint.periodStart} - ${fingerprint.periodEnd})`
       );
     } catch (error) {
-      console.error('[ImportDuplicateChecker] Failed to save fingerprint:', error);
+      console.error(
+        '[ImportDuplicateChecker] Failed to save fingerprint:',
+        error
+      );
     }
   }
 

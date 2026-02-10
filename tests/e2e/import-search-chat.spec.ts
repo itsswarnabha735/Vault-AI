@@ -14,7 +14,7 @@ import { test, expect, Page } from '@playwright/test';
 // Test Configuration
 // ============================================
 
-const TEST_EMAIL = 'test@example.com';
+const _TEST_EMAIL = 'test@example.com';
 
 // ============================================
 // Helper Functions
@@ -27,7 +27,7 @@ async function waitForNetworkIdle(
   await page.waitForLoadState('networkidle', { timeout });
 }
 
-async function uploadFile(page: Page, filePath: string): Promise<void> {
+async function _uploadFile(page: Page, filePath: string): Promise<void> {
   const fileInput = page.locator('input[type="file"]');
   await fileInput.setInputFiles(filePath);
 }

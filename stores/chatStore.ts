@@ -237,7 +237,8 @@ const initialState: ChatState = {
   suggestedQueries: DEFAULT_SUGGESTED_QUERIES,
   userPreferences: {
     currency: 'INR',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+    timezone:
+      Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
   },
 };
 
@@ -302,7 +303,7 @@ export const useChatStore = create<ChatStore>()(
           deleteSession: (sessionId) => {
             set(
               (state) => {
-                const { [sessionId]: deleted, ...remainingSessions } =
+                const { [sessionId]: _deleted, ...remainingSessions } =
                   state.sessions;
                 const isCurrentSession = state.currentSessionId === sessionId;
 
@@ -677,7 +678,11 @@ export const useChatStore = create<ChatStore>()(
               // Must use setState — direct mutation doesn't work in Zustand v5
               if (state && state.currentSessionId) {
                 const session = state.sessions[state.currentSessionId];
-                if (session && session.messages && session.messages.length > 0) {
+                if (
+                  session &&
+                  session.messages &&
+                  session.messages.length > 0
+                ) {
                   useChatStore.setState({
                     messages: session.messages,
                   });
@@ -812,5 +817,5 @@ export function generateSessionTitle(messages: ChatMessage[]): string {
   if (content.length <= 40) {
     return content;
   }
-  return content.substring(0, 37) + '...';
+  return `${content.substring(0, 37)}...`;
 }

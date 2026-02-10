@@ -567,7 +567,7 @@ export function useSemanticSearch(
   const [query, setQuery] = useState('');
   const [isGeneratingEmbedding, setIsGeneratingEmbedding] = useState(false);
   const {
-    search: vectorSearch,
+    search: _vectorSearch,
     searchImmediate,
     reset,
     ...searchState

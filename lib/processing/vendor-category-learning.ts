@@ -74,7 +74,9 @@ class VendorCategoryLearningService {
    * Call this once at app startup or first use.
    */
   async initialize(): Promise<void> {
-    if (this.initialized) return;
+    if (this.initialized) {
+      return;
+    }
 
     try {
       const mappings = await db.vendorCategories.toArray();
@@ -103,7 +105,9 @@ class VendorCategoryLearningService {
    * 3. Contains match (vendor contains a known pattern)
    */
   lookup(vendor: string): LearnedCategorySuggestion | null {
-    if (!vendor || vendor.trim().length === 0) return null;
+    if (!vendor || vendor.trim().length === 0) {
+      return null;
+    }
 
     const normalized = this.normalizeVendor(vendor);
 
@@ -124,10 +128,7 @@ class VendorCategoryLearningService {
 
     for (const [pattern, mapping] of this.cache) {
       // Vendor contains the learned pattern (or pattern contains vendor)
-      if (
-        normalized.includes(pattern) ||
-        pattern.includes(normalized)
-      ) {
+      if (normalized.includes(pattern) || pattern.includes(normalized)) {
         // Prefer longer pattern matches (more specific)
         if (pattern.length > bestMatchLength) {
           bestMatch = mapping;
@@ -142,7 +143,10 @@ class VendorCategoryLearningService {
         categoryId: bestMatch.categoryId,
         matchedPattern: bestMatch.vendorPattern,
         usageCount: bestMatch.usageCount,
-        confidence: Math.min(0.90, 0.65 + specificity * 0.2 + bestMatch.usageCount * 0.01),
+        confidence: Math.min(
+          0.9,
+          0.65 + specificity * 0.2 + bestMatch.usageCount * 0.01
+        ),
       };
     }
 
@@ -156,7 +160,9 @@ class VendorCategoryLearningService {
    * @param categoryId - The category the user selected
    */
   async learn(vendor: string, categoryId: CategoryId): Promise<void> {
-    if (!vendor || vendor.trim().length === 0 || !categoryId) return;
+    if (!vendor || vendor.trim().length === 0 || !categoryId) {
+      return;
+    }
 
     const normalized = this.normalizeVendor(vendor);
     const now = new Date();
@@ -270,10 +276,10 @@ class VendorCategoryLearningService {
     return vendor
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, ' ')        // Collapse whitespace
-      .replace(/[#*]+\d+$/g, '')    // Remove store numbers
-      .replace(/\s+$/, '')          // Trim trailing spaces
-      .replace(/[.,;:!]+$/, '');    // Remove trailing punctuation
+      .replace(/\s+/g, ' ') // Collapse whitespace
+      .replace(/[#*]+\d+$/g, '') // Remove store numbers
+      .replace(/\s+$/, '') // Trim trailing spaces
+      .replace(/[.,;:!]+$/, ''); // Remove trailing punctuation
   }
 }
 

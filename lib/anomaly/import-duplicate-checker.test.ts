@@ -12,8 +12,15 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { LocalTransaction, TransactionId, CategoryId } from '@/types/database';
-import type { ParsedStatementTransaction, StatementParseResult } from '@/types/statement';
+import type {
+  LocalTransaction,
+  TransactionId,
+  CategoryId,
+} from '@/types/database';
+import type {
+  ParsedStatementTransaction,
+  StatementParseResult,
+} from '@/types/statement';
 
 // ============================================
 // Mock Database
@@ -196,7 +203,7 @@ describe('Import Duplicate Checker', () => {
         createMockLocalTransaction({
           date: '2024-01-15',
           vendor: 'Starbucks Coffee',
-          amount: 10.50, // Different amount
+          amount: 10.5, // Different amount
         })
       );
 
@@ -338,7 +345,7 @@ describe('Import Duplicate Checker', () => {
         createMockLocalTransaction({
           date: '2024-01-15',
           vendor: 'Store',
-          amount: 50.00,
+          amount: 50.0,
         })
       );
 
@@ -386,7 +393,7 @@ describe('Import Duplicate Checker', () => {
         createMockLocalTransaction({
           date: '2024-01-15',
           vendor: 'Existing Store',
-          amount: 50.00,
+          amount: 50.0,
         })
       );
 
@@ -395,19 +402,18 @@ describe('Import Duplicate Checker', () => {
           id: 'tx-1',
           date: '2024-01-15',
           vendor: 'Existing Store',
-          amount: 50.00,
+          amount: 50.0,
         }),
         createMockParsedTransaction({
           id: 'tx-2',
           date: '2024-01-20',
           vendor: 'New Store',
-          amount: 30.00,
+          amount: 30.0,
         }),
       ];
 
-      const result = await importDuplicateChecker.checkStatementTransactions(
-        transactions
-      );
+      const result =
+        await importDuplicateChecker.checkStatementTransactions(transactions);
 
       expect(result.totalChecked).toBe(2);
       expect(result.duplicateCount).toBe(1);
@@ -416,13 +422,17 @@ describe('Import Duplicate Checker', () => {
     });
 
     it('should return checkTimeMs', async () => {
-      const result = await importDuplicateChecker.checkStatementTransactions([]);
+      const result = await importDuplicateChecker.checkStatementTransactions(
+        []
+      );
 
       expect(result.checkTimeMs).toBeGreaterThanOrEqual(0);
     });
 
     it('should handle empty transaction array', async () => {
-      const result = await importDuplicateChecker.checkStatementTransactions([]);
+      const result = await importDuplicateChecker.checkStatementTransactions(
+        []
+      );
 
       expect(result.totalChecked).toBe(0);
       expect(result.duplicateCount).toBe(0);
@@ -434,12 +444,12 @@ describe('Import Duplicate Checker', () => {
         createMockLocalTransaction({
           date: '2024-01-15',
           vendor: 'Store A',
-          amount: 50.00,
+          amount: 50.0,
         }),
         createMockLocalTransaction({
           date: '2024-01-16',
           vendor: 'Store B',
-          amount: 30.00,
+          amount: 30.0,
         })
       );
 
@@ -448,25 +458,24 @@ describe('Import Duplicate Checker', () => {
           id: 'tx-1',
           date: '2024-01-15',
           vendor: 'Store A',
-          amount: 50.00,
+          amount: 50.0,
         }),
         createMockParsedTransaction({
           id: 'tx-2',
           date: '2024-01-16',
           vendor: 'Store B',
-          amount: 30.00,
+          amount: 30.0,
         }),
         createMockParsedTransaction({
           id: 'tx-3',
           date: '2024-01-20',
           vendor: 'Store C',
-          amount: 20.00,
+          amount: 20.0,
         }),
       ];
 
-      const result = await importDuplicateChecker.checkStatementTransactions(
-        transactions
-      );
+      const result =
+        await importDuplicateChecker.checkStatementTransactions(transactions);
 
       expect(result.duplicateCount).toBe(2);
     });
@@ -487,7 +496,12 @@ describe('Import Duplicate Checker', () => {
           createMockParsedTransaction(),
           createMockParsedTransaction(),
         ],
-        totals: { totalDebits: 500, totalCredits: 100, netBalance: 400, statementTotal: null },
+        totals: {
+          totalDebits: 500,
+          totalCredits: 100,
+          netBalance: 400,
+          statementTotal: null,
+        },
       });
 
       const fingerprint = importDuplicateChecker.generateFingerprint(
@@ -542,9 +556,8 @@ describe('Import Duplicate Checker', () => {
     it('should return not imported when no fingerprints exist', async () => {
       const statementResult = createMockStatementResult();
 
-      const result = await importDuplicateChecker.checkStatementFingerprint(
-        statementResult
-      );
+      const result =
+        await importDuplicateChecker.checkStatementFingerprint(statementResult);
 
       expect(result.isAlreadyImported).toBe(false);
       expect(result.confidence).toBe(0);
@@ -578,9 +591,8 @@ describe('Import Duplicate Checker', () => {
         },
       });
 
-      const result = await importDuplicateChecker.checkStatementFingerprint(
-        statementResult
-      );
+      const result =
+        await importDuplicateChecker.checkStatementFingerprint(statementResult);
 
       expect(result.isAlreadyImported).toBe(true);
       expect(result.confidence).toBeGreaterThanOrEqual(0.7);
@@ -617,9 +629,8 @@ describe('Import Duplicate Checker', () => {
         },
       });
 
-      const result = await importDuplicateChecker.checkStatementFingerprint(
-        statementResult
-      );
+      const result =
+        await importDuplicateChecker.checkStatementFingerprint(statementResult);
 
       // Should not be flagged - different period and totals
       expect(result.isAlreadyImported).toBe(false);
@@ -653,9 +664,8 @@ describe('Import Duplicate Checker', () => {
         },
       });
 
-      const result = await importDuplicateChecker.checkStatementFingerprint(
-        statementResult
-      );
+      const result =
+        await importDuplicateChecker.checkStatementFingerprint(statementResult);
 
       expect(result.isAlreadyImported).toBe(true);
     });
@@ -667,9 +677,8 @@ describe('Import Duplicate Checker', () => {
 
       const statementResult = createMockStatementResult();
 
-      const result = await importDuplicateChecker.checkStatementFingerprint(
-        statementResult
-      );
+      const result =
+        await importDuplicateChecker.checkStatementFingerprint(statementResult);
 
       expect(result.isAlreadyImported).toBe(false);
       expect(result.confidence).toBe(0);
@@ -703,9 +712,8 @@ describe('Import Duplicate Checker', () => {
         },
       });
 
-      const result = await importDuplicateChecker.checkStatementFingerprint(
-        statementResult
-      );
+      const result =
+        await importDuplicateChecker.checkStatementFingerprint(statementResult);
 
       expect(result.isAlreadyImported).toBe(true);
     });

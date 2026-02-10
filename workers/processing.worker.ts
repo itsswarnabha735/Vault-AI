@@ -245,16 +245,10 @@ function normalizeOCRText(text: string): string {
 
   if (hasSystematicMisread) {
     // Systematic misread detected: replace ALL '3' before price patterns with ₹
-    normalized = normalized.replace(
-      /(?<!\d)3(\d{1,6}\.\d{2})(?!\d)/g,
-      '₹$1'
-    );
+    normalized = normalized.replace(/(?<!\d)3(\d{1,6}\.\d{2})(?!\d)/g, '₹$1');
 
     // Also fix negative amounts
-    normalized = normalized.replace(
-      /-3(\d{1,6}\.\d{2})(?!\d)/g,
-      '-₹$1'
-    );
+    normalized = normalized.replace(/-3(\d{1,6}\.\d{2})(?!\d)/g, '-₹$1');
   } else {
     // No systematic misread: only replace '3' near known keywords
     normalized = normalized.replace(
@@ -276,10 +270,7 @@ function normalizeOCRText(text: string): string {
   );
 
   // Normalize "Rs " / "Rs." patterns with extra OCR noise
-  normalized = normalized.replace(
-    /\bRs?\s*[.,:]?\s*(\d)/gi,
-    'Rs. $1'
-  );
+  normalized = normalized.replace(/\bRs?\s*[.,:]?\s*(\d)/gi, 'Rs. $1');
 
   return normalized;
 }
@@ -488,13 +479,16 @@ class ProcessingWorker {
 
         // Set optimized parameters for receipt/invoice OCR
         await this.tesseractWorker.setParameters({
-          tessedit_pageseg_mode: '3',     // Fully automatic page segmentation
+          tessedit_pageseg_mode: '3', // Fully automatic page segmentation
           preserve_interword_spaces: '1', // Preserve spacing structure
         });
 
         console.log('[ProcessingWorker] Tesseract worker initialized');
       } catch (err) {
-        console.error('[ProcessingWorker] Failed to initialize Tesseract worker:', err);
+        console.error(
+          '[ProcessingWorker] Failed to initialize Tesseract worker:',
+          err
+        );
         throw err;
       }
     }
@@ -787,7 +781,7 @@ class ProcessingWorker {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       const stack = error instanceof Error ? error.stack : '';
-      
+
       // Log detailed error for debugging
       console.error('[ProcessingWorker] Document processing failed:', {
         fileName: file.name,
@@ -875,7 +869,9 @@ class ProcessingWorker {
       const m = parseInt(match[1] ?? '0', 10);
       const d = parseInt(match[2] ?? '0', 10);
       let y = parseInt(match[3] ?? '0', 10);
-      if (y < 100) y = y > 50 ? 1900 + y : 2000 + y;
+      if (y < 100) {
+        y = y > 50 ? 1900 + y : 2000 + y;
+      }
 
       if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
         const dateStr = `${y}-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
@@ -950,11 +946,21 @@ class ProcessingWorker {
   }
 
   private detectCurrency(text: string): string {
-    if (text.includes('$')) return 'USD';
-    if (text.includes('€')) return 'EUR';
-    if (text.includes('£')) return 'GBP';
-    if (text.includes('¥')) return 'JPY';
-    if (text.includes('₹')) return 'INR';
+    if (text.includes('$')) {
+      return 'USD';
+    }
+    if (text.includes('€')) {
+      return 'EUR';
+    }
+    if (text.includes('£')) {
+      return 'GBP';
+    }
+    if (text.includes('¥')) {
+      return 'JPY';
+    }
+    if (text.includes('₹')) {
+      return 'INR';
+    }
 
     const match = text.match(/\b(USD|EUR|GBP|CAD|AUD|JPY|CNY|INR)\b/i);
     return match ? (match[1]?.toUpperCase() ?? 'USD') : 'USD';
@@ -968,7 +974,9 @@ class ProcessingWorker {
 
     let description = '';
     for (const line of lines.slice(0, 3)) {
-      if (description.length + line.length > 200) break;
+      if (description.length + line.length > 200) {
+        break;
+      }
       description += (description ? ' | ' : '') + line;
     }
 
@@ -981,11 +989,19 @@ class ProcessingWorker {
   ): number {
     const scores: number[] = [];
 
-    if (entities.date) scores.push(entities.date.confidence);
-    if (entities.amount) scores.push(entities.amount.confidence);
-    if (entities.vendor) scores.push(entities.vendor.confidence);
+    if (entities.date) {
+      scores.push(entities.date.confidence);
+    }
+    if (entities.amount) {
+      scores.push(entities.amount.confidence);
+    }
+    if (entities.vendor) {
+      scores.push(entities.vendor.confidence);
+    }
 
-    if (scores.length === 0) return 0.3;
+    if (scores.length === 0) {
+      return 0.3;
+    }
 
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     return ocrUsed ? avg * 0.9 : avg;

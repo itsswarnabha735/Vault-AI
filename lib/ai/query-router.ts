@@ -338,7 +338,10 @@ export function classifyIntent(query: string): QueryIntent {
  * against these centroids via cosine similarity, which handles paraphrases
  * far better than regex patterns.
  */
-const INTENT_EXAMPLES: Record<Exclude<QueryIntent, 'general_query'>, string[]> = {
+const INTENT_EXAMPLES: Record<
+  Exclude<QueryIntent, 'general_query'>,
+  string[]
+> = {
   spending_query: [
     'How much did I spend this month?',
     'What are my total expenses?',
@@ -424,8 +427,12 @@ let intentEmbeddingCachePromise: Promise<IntentEmbeddingEntry[]> | null = null;
  * Called once, subsequent calls return the cached result.
  */
 async function getIntentEmbeddings(): Promise<IntentEmbeddingEntry[]> {
-  if (intentEmbeddingCache) return intentEmbeddingCache;
-  if (intentEmbeddingCachePromise) return intentEmbeddingCachePromise;
+  if (intentEmbeddingCache) {
+    return intentEmbeddingCache;
+  }
+  if (intentEmbeddingCachePromise) {
+    return intentEmbeddingCachePromise;
+  }
 
   intentEmbeddingCachePromise = (async () => {
     const entries: IntentEmbeddingEntry[] = [];
@@ -476,7 +483,9 @@ async function classifyIntentWithEmbeddings(
   query: string
 ): Promise<{ intent: QueryIntent; confidence: number } | null> {
   // Bail out if the embedding model isn't ready
-  if (!embeddingService.isReady()) return null;
+  if (!embeddingService.isReady()) {
+    return null;
+  }
 
   try {
     const [queryEmbedding, intentEntries] = await Promise.all([
@@ -802,11 +811,15 @@ function extractMonthNameDateRange(
     /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b(?:\s+(\d{4}))?/i;
 
   const match = query.match(monthPattern);
-  if (!match?.[1]) return null;
+  if (!match?.[1]) {
+    return null;
+  }
 
   const monthName = match[1].toLowerCase();
   const monthIndex = MONTH_NAMES[monthName];
-  if (monthIndex === undefined) return null;
+  if (monthIndex === undefined) {
+    return null;
+  }
 
   const now = new Date();
   let year = match[2] ? parseInt(match[2], 10) : now.getFullYear();
@@ -941,20 +954,73 @@ function extractVendors(query: string): string[] {
   const properNounPattern = /\b([A-Z][a-zA-Z]{2,}(?:\s+[A-Z][a-zA-Z]+)*)\b/g;
   const ignoreWords = new Set([
     // Common English
-    'The', 'This', 'That', 'These', 'Those', 'What', 'Which', 'Where',
-    'When', 'Why', 'How', 'Who', 'Can', 'Could', 'Would', 'Should',
-    'Did', 'Does', 'Have', 'Has', 'Show', 'Find', 'Get', 'Search',
-    'Compare', 'Total', 'Amount', 'Much', 'Many', 'All', 'Most',
+    'The',
+    'This',
+    'That',
+    'These',
+    'Those',
+    'What',
+    'Which',
+    'Where',
+    'When',
+    'Why',
+    'How',
+    'Who',
+    'Can',
+    'Could',
+    'Would',
+    'Should',
+    'Did',
+    'Does',
+    'Have',
+    'Has',
+    'Show',
+    'Find',
+    'Get',
+    'Search',
+    'Compare',
+    'Total',
+    'Amount',
+    'Much',
+    'Many',
+    'All',
+    'Most',
     // Months
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
     // Days
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-    'Saturday', 'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
     // Financial terms
-    'Budget', 'Spending', 'Income', 'Expense', 'Expenses',
-    'Transaction', 'Transactions', 'Category', 'Categories',
-    'Credit', 'Debit', 'Deposit', 'Salary', 'Payment',
+    'Budget',
+    'Spending',
+    'Income',
+    'Expense',
+    'Expenses',
+    'Transaction',
+    'Transactions',
+    'Category',
+    'Categories',
+    'Credit',
+    'Debit',
+    'Deposit',
+    'Salary',
+    'Payment',
   ]);
 
   let nounMatch;

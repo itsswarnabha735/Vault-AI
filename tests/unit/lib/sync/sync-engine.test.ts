@@ -138,7 +138,7 @@ class MockSyncEngine {
         await this.db.update(tx.id, { syncStatus: 'syncing' as SyncStatus });
 
         // Create sanitized payload (CRITICAL for privacy)
-        const payload = createSyncableTransaction(tx);
+        const _payload = createSyncableTransaction(tx);
 
         // Simulate upload (check for conflicts)
         const remoteVersion = mockSupabaseResponses.find((r) => r.id === tx.id);
@@ -208,7 +208,9 @@ class MockSyncEngine {
     const conflict = this.conflicts.find(
       (c) => c.transactionId === transactionId
     );
-    if (!conflict) return;
+    if (!conflict) {
+      return;
+    }
 
     if (resolution === 'local') {
       // Keep local, force sync

@@ -232,7 +232,9 @@ export function useTransactions(filters?: TransactionFilters) {
  */
 export function useTransaction(id: TransactionId | undefined) {
   const transaction = useLiveQuery(async () => {
-    if (!id) return undefined;
+    if (!id) {
+      return undefined;
+    }
     return db.transactions.get(id);
   }, [id]);
 
@@ -277,7 +279,9 @@ export function useCategories() {
  */
 export function useCategory(id: CategoryId | undefined) {
   const category = useLiveQuery(async () => {
-    if (!id) return undefined;
+    if (!id) {
+      return undefined;
+    }
     return db.categories.get(id);
   }, [id]);
 
@@ -382,7 +386,9 @@ export function useBudgets() {
  */
 export function useBudget(id: BudgetId | undefined) {
   const budget = useLiveQuery(async () => {
-    if (!id) return undefined;
+    if (!id) {
+      return undefined;
+    }
     return db.budgets.get(id);
   }, [id]);
 
@@ -435,7 +441,9 @@ export function useTransactionAnomalies(
   transactionId: TransactionId | undefined
 ) {
   const anomalies = useLiveQuery(async () => {
-    if (!transactionId) return [];
+    if (!transactionId) {
+      return [];
+    }
     return db.anomalies.where('transactionId').equals(transactionId).toArray();
   }, [transactionId]);
 
@@ -852,7 +860,7 @@ export function useBudgetActions() {
 export function useAnomalyActions() {
   const resolveAnomaly = useCallback(
     async (id: string, action: 'confirmed' | 'dismissed') => {
-      await db.resolveAnomaly(id as any, action);
+      await db.resolveAnomaly(id as unknown as Parameters<typeof db.resolveAnomaly>[0], action);
     },
     []
   );

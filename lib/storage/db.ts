@@ -156,38 +156,44 @@ export class VaultDatabase extends Dexie {
     // Version 4: Migrate existing user settings from USD defaults to INR.
     // This fixes existing users who were created with the old hardcoded USD default.
     // Using toCollection().modify() which is the recommended Dexie upgrade pattern.
-    this.version(4).stores({
-      // No schema changes — same indexes as version 3
-      transactions: 'id, date, vendor, category, syncStatus, createdAt',
-      categories: 'id, parentId, isDefault',
-      budgets: 'id, categoryId, isActive',
-      searchHistory: 'id, timestamp',
-      anomalies: 'id, transactionId, isResolved',
-      settings: 'id',
-      vendorCategories: 'id, &vendorPattern, categoryId',
-      statementFingerprints: 'id, issuer, periodStart',
-    }).upgrade((tx) => {
-      // Migrate settings: USD → INR for existing users
-      const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
-      return tx.table('settings').toCollection().modify((setting: Record<string, unknown>) => {
-        let changed = false;
-        if (setting.defaultCurrency === 'USD') {
-          setting.defaultCurrency = 'INR';
-          changed = true;
-        }
-        if (setting.timezone === 'UTC') {
-          setting.timezone = localTz;
-          changed = true;
-        }
-        if (setting.numberLocale === 'en-US') {
-          setting.numberLocale = 'en-IN';
-          changed = true;
-        }
-        if (changed) {
-          setting.updatedAt = new Date();
-        }
+    this.version(4)
+      .stores({
+        // No schema changes — same indexes as version 3
+        transactions: 'id, date, vendor, category, syncStatus, createdAt',
+        categories: 'id, parentId, isDefault',
+        budgets: 'id, categoryId, isActive',
+        searchHistory: 'id, timestamp',
+        anomalies: 'id, transactionId, isResolved',
+        settings: 'id',
+        vendorCategories: 'id, &vendorPattern, categoryId',
+        statementFingerprints: 'id, issuer, periodStart',
+      })
+      .upgrade((tx) => {
+        // Migrate settings: USD → INR for existing users
+        const localTz =
+          Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+        return tx
+          .table('settings')
+          .toCollection()
+          .modify((setting: Record<string, unknown>) => {
+            let changed = false;
+            if (setting.defaultCurrency === 'USD') {
+              setting.defaultCurrency = 'INR';
+              changed = true;
+            }
+            if (setting.timezone === 'UTC') {
+              setting.timezone = localTz;
+              changed = true;
+            }
+            if (setting.numberLocale === 'en-US') {
+              setting.numberLocale = 'en-IN';
+              changed = true;
+            }
+            if (changed) {
+              setting.updatedAt = new Date();
+            }
+          });
       });
-    });
 
     // Middleware to handle Date serialization
     this.transactions.hook('reading', (obj) => {

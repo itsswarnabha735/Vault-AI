@@ -10,7 +10,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   getConflictResolver,
-  type ConflictResolver,
   type DetailedConflict,
   type AutoResolveStrategy,
   type ConflictResolverConfig,
@@ -245,7 +244,9 @@ export function useConflicts(): UseConflictsReturn {
   const resolveWithNewest = useCallback(
     async (conflictId: string) => {
       const conflict = conflicts.find((c) => c.id === conflictId);
-      if (!conflict) return;
+      if (!conflict) {
+        return;
+      }
 
       const isLocalNewer =
         conflict.localVersion.updatedAt > conflict.remoteVersion.updatedAt;
@@ -359,7 +360,9 @@ export function useConflictDiffs(
   conflict: DetailedConflict | null
 ): ConflictFieldDiff[] {
   return useMemo(() => {
-    if (!conflict) return [];
+    if (!conflict) {
+      return [];
+    }
 
     return conflict.differingFields.map((field) => {
       const { localValue, remoteValue } = getDifferenceDescription(
@@ -385,7 +388,9 @@ export function useNewerVersion(
   conflict: DetailedConflict | null
 ): 'local' | 'remote' | null {
   return useMemo(() => {
-    if (!conflict) return null;
+    if (!conflict) {
+      return null;
+    }
 
     return conflict.localVersion.updatedAt > conflict.remoteVersion.updatedAt
       ? 'local'

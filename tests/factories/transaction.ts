@@ -212,7 +212,8 @@ export function createBudget(overrides?: Partial<Budget>): Budget {
     categoryId: null,
     amount: 500,
     period: 'monthly',
-    startDate: now.toISOString().split('T')[0] ?? now.toISOString().slice(0, 10),
+    startDate:
+      now.toISOString().split('T')[0] ?? now.toISOString().slice(0, 10),
     isActive: true,
     createdAt: now,
     updatedAt: now,

@@ -356,7 +356,9 @@ describe('Credit Card Statement Parsing', () => {
     const result = parseStatement(SAMPLE_CREDIT_CARD_STATEMENT);
 
     const payment = result.transactions.find(
-      (tx) => tx.type === 'payment' || (tx.amount < 0 && tx.vendor.toLowerCase().includes('payment'))
+      (tx) =>
+        tx.type === 'payment' ||
+        (tx.amount < 0 && tx.vendor.toLowerCase().includes('payment'))
     );
     expect(payment).toBeDefined();
     expect(payment?.amount).toBeLessThan(0);
@@ -857,7 +859,14 @@ describe('Transaction Shape', () => {
       expect(typeof tx.amount).toBe('number');
       expect(!isNaN(tx.amount)).toBe(true);
 
-      expect(['debit', 'credit', 'payment', 'fee', 'interest', 'refund']).toContain(tx.type);
+      expect([
+        'debit',
+        'credit',
+        'payment',
+        'fee',
+        'interest',
+        'refund',
+      ]).toContain(tx.type);
 
       expect(typeof tx.confidence).toBe('number');
       expect(tx.confidence).toBeGreaterThanOrEqual(0);

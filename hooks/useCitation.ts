@@ -144,7 +144,9 @@ export function useCitation(
 
   // Get transaction from database using live query
   const transaction = useLiveQuery(async () => {
-    if (!autoLoad) return null;
+    if (!autoLoad) {
+      return null;
+    }
     return db.transactions.get(citation.transactionId);
   }, [citation.transactionId, autoLoad]);
 
@@ -169,7 +171,9 @@ export function useCitation(
 
   // Load document for preview
   const loadDocument = useCallback(async (): Promise<string | null> => {
-    if (!transaction?.filePath) return null;
+    if (!transaction?.filePath) {
+      return null;
+    }
 
     try {
       setIsLoading(true);
@@ -201,7 +205,9 @@ export function useCitation(
 
   // Load thumbnail
   const loadThumbnail = useCallback(async (): Promise<string | null> => {
-    if (!transaction?.filePath) return null;
+    if (!transaction?.filePath) {
+      return null;
+    }
 
     try {
       // Check for cached thumbnail
@@ -228,7 +234,9 @@ export function useCitation(
 
   // Track citation click
   const trackClick = useCallback(() => {
-    if (!trackClicks) return;
+    if (!trackClicks) {
+      return;
+    }
 
     // Log citation click for analytics (can be enhanced to use proper analytics table)
     console.debug('[Citation Analytics]', {
@@ -255,8 +263,12 @@ export function useCitation(
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (documentUrl) URL.revokeObjectURL(documentUrl);
-      if (thumbnailUrl) URL.revokeObjectURL(thumbnailUrl);
+      if (documentUrl) {
+        URL.revokeObjectURL(documentUrl);
+      }
+      if (thumbnailUrl) {
+        URL.revokeObjectURL(thumbnailUrl);
+      }
     };
   }, [documentUrl, thumbnailUrl]);
 
@@ -325,7 +337,9 @@ export function useCitations(citations: Citation[]): UseCitationsReturn {
   );
 
   const transactions = useLiveQuery(async () => {
-    if (transactionIds.length === 0) return [];
+    if (transactionIds.length === 0) {
+      return [];
+    }
     return db.transactions.where('id').anyOf(transactionIds).toArray();
   }, [transactionIds]);
 
@@ -402,7 +416,9 @@ export function useTransactionForCitation(
   transactionId: TransactionId | string | null
 ) {
   const transaction = useLiveQuery(async () => {
-    if (!transactionId) return null;
+    if (!transactionId) {
+      return null;
+    }
     return db.transactions.get(transactionId as TransactionId);
   }, [transactionId]);
 

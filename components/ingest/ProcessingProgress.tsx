@@ -79,7 +79,12 @@ export function ProcessingProgress({
 
   // Start processing when ready — only once per file set
   useEffect(() => {
-    if (isReady && files.length > 0 && !isProcessing && !hasStartedRef.current) {
+    if (
+      isReady &&
+      files.length > 0 &&
+      !isProcessing &&
+      !hasStartedRef.current
+    ) {
       hasStartedRef.current = true;
       processFiles(files);
     }

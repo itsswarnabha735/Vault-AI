@@ -158,8 +158,12 @@ export function PricingSection() {
               {/* Price */}
               <div className="mb-6 text-center">
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="font-display text-4xl font-bold">{plan.price}</span>
-                  <span className="text-vault-text-secondary">/{plan.period}</span>
+                  <span className="font-display text-4xl font-bold">
+                    {plan.price}
+                  </span>
+                  <span className="text-vault-text-secondary">
+                    /{plan.period}
+                  </span>
                 </div>
               </div>
 

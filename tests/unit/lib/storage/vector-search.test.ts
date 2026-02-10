@@ -4,7 +4,7 @@
  * Tests the HNSW-based vector search functionality for semantic search.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // ============================================
 // Mock Vector Search Implementation

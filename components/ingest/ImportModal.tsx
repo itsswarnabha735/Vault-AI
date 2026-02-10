@@ -39,7 +39,10 @@ import { importDuplicateChecker } from '@/lib/anomaly/import-duplicate-checker';
 import type { ProcessedDocumentResult } from '@/lib/processing/processing-worker-client';
 import type { TransactionId, CategoryId } from '@/types/database';
 import type { EditableDocument } from './ExtractionCard';
-import type { StatementParseResult, ParsedStatementTransaction } from '@/types/statement';
+import type {
+  StatementParseResult,
+  ParsedStatementTransaction,
+} from '@/types/statement';
 
 // ============================================
 // Types
@@ -118,16 +121,21 @@ export function ImportModal({
   useEffect(() => {
     if (open) {
       autoCategorizer.initializeLearning().catch((e) => {
-        console.error('[ImportModal] Failed to initialize category learning:', e);
+        console.error(
+          '[ImportModal] Failed to initialize category learning:',
+          e
+        );
       });
     }
   }, [open]);
 
   // Statement fingerprint warning (re-import detection)
-  const [statementFingerprintWarning, setStatementFingerprintWarning] = useState<string | null>(null);
+  const [statementFingerprintWarning, setStatementFingerprintWarning] =
+    useState<string | null>(null);
 
   // Statement-specific state
-  const [statementResult, setStatementResult] = useState<StatementParseResult | null>(null);
+  const [statementResult, setStatementResult] =
+    useState<StatementParseResult | null>(null);
   const [statementRawText, setStatementRawText] = useState<string>('');
   const [statementFileMetadata, setStatementFileMetadata] = useState<{
     originalName: string;
@@ -176,7 +184,9 @@ export function ImportModal({
       // For single-file uploads, detect if it's a statement
       if (successful.length === 1 && successful[0]) {
         const doc = successful[0];
-        const detection = processingWorkerClient.detectDocumentType(doc.rawText);
+        const detection = processingWorkerClient.detectDocumentType(
+          doc.rawText
+        );
 
         console.log('[ImportModal] Document type detected:', detection);
 
@@ -185,21 +195,24 @@ export function ImportModal({
           try {
             // Use the LLM-enhanced parser which runs regex first,
             // then automatically falls back to Gemini if confidence is low
-            const result = await processingWorkerClient.parseStatementWithLLMFallback(
-              doc.rawText,
-              { minConfidence: 0.5 }
-            );
+            const result =
+              await processingWorkerClient.parseStatementWithLLMFallback(
+                doc.rawText,
+                { minConfidence: 0.5 }
+              );
 
             if (result.transactions.length > 0) {
               // Check if this statement was previously imported
-              const fpResult = await importDuplicateChecker.checkStatementFingerprint(result);
+              const fpResult =
+                await importDuplicateChecker.checkStatementFingerprint(result);
               if (fpResult.isAlreadyImported && fpResult.previousImport) {
-                const prevDate = fpResult.previousImport.importedAt.toLocaleDateString();
+                const prevDate =
+                  fpResult.previousImport.importedAt.toLocaleDateString();
                 setStatementFingerprintWarning(
                   `This statement may have already been imported on ${prevDate} ` +
-                  `from "${fpResult.previousImport.fileName}" ` +
-                  `(${fpResult.previousImport.transactionCount} transactions). ` +
-                  `Duplicate transactions have been auto-deselected below.`
+                    `from "${fpResult.previousImport.fileName}" ` +
+                    `(${fpResult.previousImport.transactionCount} transactions). ` +
+                    `Duplicate transactions have been auto-deselected below.`
                 );
               }
 
@@ -211,7 +224,9 @@ export function ImportModal({
               return;
             } else {
               // Detected as statement but no transactions found - fall through to receipt view
-              console.log('[ImportModal] Statement detected but no transactions parsed, falling back to receipt view');
+              console.log(
+                '[ImportModal] Statement detected but no transactions parsed, falling back to receipt view'
+              );
             }
           } catch (e) {
             console.error('[ImportModal] Statement parsing failed:', e);
@@ -345,21 +360,23 @@ export function ImportModal({
               for (const txId of savedIds) {
                 try {
                   const tx = await db.transactions.get(txId);
-                  if (!tx) continue;
+                  if (!tx) {
+                    continue;
+                  }
 
                   // Skip if transaction already has a real embedding
                   const emb = tx.embedding;
                   const alreadyHasEmbedding =
-                    emb &&
-                    emb.length > 0 &&
-                    !emb.every((v: number) => v === 0);
-                  if (alreadyHasEmbedding) continue;
+                    emb && emb.length > 0 && !emb.every((v: number) => v === 0);
+                  if (alreadyHasEmbedding) {
+                    continue;
+                  }
 
                   // Build natural-language search text for embedding
                   const absAmt = Math.abs(tx.amount).toFixed(2);
                   let dateText = tx.date;
                   try {
-                    const d = new Date(tx.date + 'T00:00:00');
+                    const d = new Date(`${tx.date}T00:00:00`);
                     dateText = d.toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
@@ -375,16 +392,20 @@ export function ImportModal({
                       currency: tx.currency || 'INR',
                       currencyDisplay: 'narrowSymbol',
                     }).formatToParts(0);
-                    currSymbol = parts.find((p) => p.type === 'currency')?.value || tx.currency || '₹';
+                    currSymbol =
+                      parts.find((p) => p.type === 'currency')?.value ||
+                      tx.currency ||
+                      '₹';
                   } catch {
                     // fallback
                   }
                   const searchText =
                     tx.amount < 0
-                      ? `Income credit of ${currSymbol}${absAmt} from ${tx.vendor || 'unknown'} on ${dateText}${tx.note ? '. ' + tx.note : ''}`
-                      : `Expense payment of ${currSymbol}${absAmt} at ${tx.vendor || 'unknown'} on ${dateText}${tx.note ? '. ' + tx.note : ''}`;
+                      ? `Income credit of ${currSymbol}${absAmt} from ${tx.vendor || 'unknown'} on ${dateText}${tx.note ? `. ${tx.note}` : ''}`
+                      : `Expense payment of ${currSymbol}${absAmt} at ${tx.vendor || 'unknown'} on ${dateText}${tx.note ? `. ${tx.note}` : ''}`;
 
-                  const embedding = await embeddingService.embedText(searchText);
+                  const embedding =
+                    await embeddingService.embedText(searchText);
 
                   // Update transaction in IndexedDB
                   await db.transactions.update(txId, { embedding });
@@ -467,7 +488,10 @@ export function ImportModal({
         }
 
         // Collect vendor-category mappings for learning
-        const categoryLearnings: Array<{ vendor: string; categoryId: CategoryId }> = [];
+        const categoryLearnings: Array<{
+          vendor: string;
+          categoryId: CategoryId;
+        }> = [];
 
         // Save each transaction
         for (const tx of transactions) {
@@ -544,14 +568,16 @@ export function ImportModal({
               for (const txId of savedIds) {
                 try {
                   const tx = await db.transactions.get(txId);
-                  if (!tx) continue;
+                  if (!tx) {
+                    continue;
+                  }
 
                   // Build natural-language search text for embedding
                   // (mirrors ChatServiceImpl.buildSearchText for consistency)
                   const absAmt = Math.abs(tx.amount).toFixed(2);
                   let dateText = tx.date;
                   try {
-                    const d = new Date(tx.date + 'T00:00:00');
+                    const d = new Date(`${tx.date}T00:00:00`);
                     dateText = d.toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
@@ -568,14 +594,17 @@ export function ImportModal({
                       currency: tx.currency || currency,
                       currencyDisplay: 'narrowSymbol',
                     }).formatToParts(0);
-                    currSymbol = parts.find((p) => p.type === 'currency')?.value || tx.currency || '₹';
+                    currSymbol =
+                      parts.find((p) => p.type === 'currency')?.value ||
+                      tx.currency ||
+                      '₹';
                   } catch {
                     // fallback
                   }
                   const searchText =
                     tx.amount < 0
-                      ? `Income credit of ${currSymbol}${absAmt} from ${tx.vendor || 'unknown'} on ${dateText}${tx.note ? '. ' + tx.note : ''}`
-                      : `Expense payment of ${currSymbol}${absAmt} at ${tx.vendor || 'unknown'} on ${dateText}${tx.note ? '. ' + tx.note : ''}`;
+                      ? `Income credit of ${currSymbol}${absAmt} from ${tx.vendor || 'unknown'} on ${dateText}${tx.note ? `. ${tx.note}` : ''}`
+                      : `Expense payment of ${currSymbol}${absAmt} at ${tx.vendor || 'unknown'} on ${dateText}${tx.note ? `. ${tx.note}` : ''}`;
 
                   const embedding =
                     await embeddingService.embedText(searchText);
@@ -748,31 +777,33 @@ export function ImportModal({
             />
           )}
 
-          {stage === 'statement-review' && statementResult && statementFileMetadata && (
-            <div className="flex flex-col gap-3">
-              {statementFingerprintWarning && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-50 p-3 dark:bg-amber-950/20">
-                  <ReimportWarningIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                      Previously Imported Statement
-                    </p>
-                    <p className="mt-0.5 text-xs text-amber-600/80 dark:text-amber-400/80">
-                      {statementFingerprintWarning}
-                    </p>
+          {stage === 'statement-review' &&
+            statementResult &&
+            statementFileMetadata && (
+              <div className="flex flex-col gap-3">
+                {statementFingerprintWarning && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-50 p-3 dark:bg-amber-950/20">
+                    <ReimportWarningIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                        Previously Imported Statement
+                      </p>
+                      <p className="mt-0.5 text-xs text-amber-600/80 dark:text-amber-400/80">
+                        {statementFingerprintWarning}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-              <StatementReview
-                statementResult={statementResult}
-                rawText={statementRawText}
-                fileMetadata={statementFileMetadata}
-                ocrUsed={statementOcrUsed}
-                onConfirm={handleStatementConfirm}
-                onCancel={handleReviewCancel}
-              />
-            </div>
-          )}
+                )}
+                <StatementReview
+                  statementResult={statementResult}
+                  rawText={statementRawText}
+                  fileMetadata={statementFileMetadata}
+                  ocrUsed={statementOcrUsed}
+                  onConfirm={handleStatementConfirm}
+                  onCancel={handleReviewCancel}
+                />
+              </div>
+            )}
 
           {stage === 'complete' && (
             <ImportComplete
@@ -791,7 +822,8 @@ export function ImportModal({
             <div className="flex flex-col items-center gap-3">
               <LoadingSpinner className="h-8 w-8 text-primary" />
               <p className="text-sm text-muted-foreground">
-                Saving {stage === 'statement-review' ? 'transactions' : 'documents'}...
+                Saving{' '}
+                {stage === 'statement-review' ? 'transactions' : 'documents'}...
               </p>
             </div>
           </div>

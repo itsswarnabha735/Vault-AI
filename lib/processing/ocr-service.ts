@@ -196,7 +196,7 @@ class OCRServiceImpl {
 
       // Set optimized parameters for receipt/invoice OCR
       await this.worker.setParameters({
-        tessedit_pageseg_mode: '3',     // Fully automatic page segmentation (handles varied layouts)
+        tessedit_pageseg_mode: '3', // Fully automatic page segmentation (handles varied layouts)
         preserve_interword_spaces: '1', // Preserve spacing structure
       });
 

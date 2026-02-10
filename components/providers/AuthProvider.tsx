@@ -169,7 +169,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+        const appUrl =
+          process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
 
         const { error: signUpError } = await supabase.auth.signUp({
           email,
@@ -200,7 +201,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+        const appUrl =
+          process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
 
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(
           email,

@@ -13,7 +13,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   createTransaction,
   createMockFile,
-  createMockEmbedding,
 } from '../factories';
 
 // ============================================

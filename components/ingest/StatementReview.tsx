@@ -19,8 +19,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useCategories } from '@/hooks/useLocalDB';
-import { importDuplicateChecker, type ImportDuplicateResult } from '@/lib/anomaly/import-duplicate-checker';
-import type { StatementParseResult, ParsedStatementTransaction } from '@/types/statement';
+import {
+  importDuplicateChecker,
+  type ImportDuplicateResult,
+} from '@/lib/anomaly/import-duplicate-checker';
+import type {
+  StatementParseResult,
+  ParsedStatementTransaction,
+} from '@/types/statement';
 import type { CategoryId } from '@/types/database';
 
 // ============================================
@@ -61,7 +67,7 @@ export interface StatementReviewProps {
 
 export function StatementReview({
   statementResult,
-  rawText,
+  rawText: _rawText,
   fileMetadata,
   ocrUsed,
   onConfirm,
@@ -71,17 +77,17 @@ export function StatementReview({
   const { data: categories } = useCategories();
 
   // Local state for editable transactions
-  const [transactions, setTransactions] = useState<ParsedStatementTransaction[]>(
-    () => statementResult.transactions.map((tx) => ({ ...tx }))
-  );
+  const [transactions, setTransactions] = useState<
+    ParsedStatementTransaction[]
+  >(() => statementResult.transactions.map((tx) => ({ ...tx })));
 
   // Track which row is being edited
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Duplicate detection state
-  const [duplicateResults, setDuplicateResults] = useState<Map<string, ImportDuplicateResult>>(
-    () => new Map()
-  );
+  const [duplicateResults, setDuplicateResults] = useState<
+    Map<string, ImportDuplicateResult>
+  >(() => new Map());
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
 
   // Run duplicate check on mount
@@ -95,7 +101,9 @@ export function StatementReview({
           statementResult.transactions
         );
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setDuplicateResults(result.transactionResults);
 
@@ -114,19 +122,25 @@ export function StatementReview({
       } catch (error) {
         console.error('[StatementReview] Duplicate check failed:', error);
       } finally {
-        if (!cancelled) setIsCheckingDuplicates(false);
+        if (!cancelled) {
+          setIsCheckingDuplicates(false);
+        }
       }
     }
 
     void checkDuplicates();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [statementResult.transactions]);
 
   // Count duplicates found
   const duplicateCount = useMemo(() => {
     let count = 0;
     for (const result of duplicateResults.values()) {
-      if (result.isDuplicate) count++;
+      if (result.isDuplicate) {
+        count++;
+      }
     }
     return count;
   }, [duplicateResults]);
@@ -245,11 +259,17 @@ export function StatementReview({
               {Math.round(statementResult.confidence * 100)}% confidence
             </Badge>
             {ocrUsed && (
-              <Badge variant="outline" className="border-blue-500/50 bg-blue-500/10 text-blue-600">
+              <Badge
+                variant="outline"
+                className="border-blue-500/50 bg-blue-500/10 text-blue-600"
+              >
                 OCR
               </Badge>
             )}
-            <Badge variant="outline" className="border-purple-500/50 bg-purple-500/10 text-purple-600">
+            <Badge
+              variant="outline"
+              className="border-purple-500/50 bg-purple-500/10 text-purple-600"
+            >
               <ShieldIcon className="mr-1 h-3 w-3" />
               Local Only
             </Badge>
@@ -261,26 +281,37 @@ export function StatementReview({
           <div className="rounded-md bg-background p-2 text-center">
             <p className="text-xs text-muted-foreground">Total Debits</p>
             <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-              {formatCurrency(statementResult.totals.totalDebits, statementResult.currency)}
+              {formatCurrency(
+                statementResult.totals.totalDebits,
+                statementResult.currency
+              )}
             </p>
           </div>
           <div className="rounded-md bg-background p-2 text-center">
             <p className="text-xs text-muted-foreground">Total Credits</p>
             <p className="text-sm font-semibold text-green-600 dark:text-green-400">
-              {formatCurrency(statementResult.totals.totalCredits, statementResult.currency)}
+              {formatCurrency(
+                statementResult.totals.totalCredits,
+                statementResult.currency
+              )}
             </p>
           </div>
           <div className="rounded-md bg-background p-2 text-center">
             <p className="text-xs text-muted-foreground">Net Balance</p>
-            <p className={cn(
-              "text-sm font-semibold",
-              statementResult.totals.netBalance > 0
-                ? "text-green-600 dark:text-green-400"
-                : statementResult.totals.netBalance < 0
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-foreground"
-            )}>
-              {formatCurrency(statementResult.totals.netBalance, statementResult.currency)}
+            <p
+              className={cn(
+                'text-sm font-semibold',
+                statementResult.totals.netBalance > 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : statementResult.totals.netBalance < 0
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-foreground'
+              )}
+            >
+              {formatCurrency(
+                statementResult.totals.netBalance,
+                statementResult.currency
+              )}
             </p>
           </div>
         </div>
@@ -289,7 +320,10 @@ export function StatementReview({
         {statementResult.warnings.length > 0 && (
           <div className="mt-3 space-y-1">
             {statementResult.warnings.map((warning, i) => (
-              <p key={i} className="flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400">
+              <p
+                key={i}
+                className="flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400"
+              >
                 <WarningIcon className="h-3.5 w-3.5 shrink-0" />
                 {warning}
               </p>
@@ -304,12 +338,13 @@ export function StatementReview({
           <div className="flex items-center gap-2">
             <DuplicateIcon className="h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
             <p className="text-sm font-medium text-orange-700 dark:text-orange-300">
-              {duplicateCount} potential duplicate{duplicateCount > 1 ? 's' : ''} detected
+              {duplicateCount} potential duplicate
+              {duplicateCount > 1 ? 's' : ''} detected
             </p>
           </div>
           <p className="mt-1 text-xs text-orange-600/80 dark:text-orange-400/80">
-            These transactions appear to already exist in your vault.
-            They have been automatically deselected. You can re-select them if they are
+            These transactions appear to already exist in your vault. They have
+            been automatically deselected. You can re-select them if they are
             different transactions.
           </p>
         </div>
@@ -337,7 +372,11 @@ export function StatementReview({
         </div>
         <div className="font-medium">
           Selected total:{' '}
-          <span className={cn(selectedTotal >= 0 ? 'text-red-600' : 'text-green-600')}>
+          <span
+            className={cn(
+              selectedTotal >= 0 ? 'text-red-600' : 'text-green-600'
+            )}
+          >
             {formatCurrency(Math.abs(selectedTotal), statementResult.currency)}
           </span>
         </div>
@@ -389,8 +428,12 @@ export function StatementReview({
         {transactions.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <FileIcon className="h-12 w-12 opacity-40" />
-            <p className="mt-2 text-sm">No transactions could be parsed from this statement.</p>
-            <p className="text-xs">The document may not be a supported statement format.</p>
+            <p className="mt-2 text-sm">
+              No transactions could be parsed from this statement.
+            </p>
+            <p className="text-xs">
+              The document may not be a supported statement format.
+            </p>
           </div>
         )}
       </div>
@@ -405,10 +448,7 @@ export function StatementReview({
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={selectedCount === 0}
-          >
+          <Button onClick={handleConfirm} disabled={selectedCount === 0}>
             <CheckIcon className="mr-2 h-4 w-4" />
             Import {selectedCount} Transaction{selectedCount !== 1 ? 's' : ''}
           </Button>
@@ -425,7 +465,12 @@ export function StatementReview({
 interface TransactionRowProps {
   transaction: ParsedStatementTransaction;
   currency: string;
-  categories: Array<{ id: CategoryId; name: string; icon: string; color: string }>;
+  categories: Array<{
+    id: CategoryId;
+    name: string;
+    icon: string;
+    color: string;
+  }>;
   isEditing: boolean;
   duplicateResult?: ImportDuplicateResult;
   onToggleSelect: () => void;
@@ -485,7 +530,17 @@ function TransactionRow({
         </td>
         <td className="px-3 py-2">
           <select
-            value={tx.category || (tx.suggestedCategoryName ? categories.find(c => c.name.toLowerCase() === tx.suggestedCategoryName?.toLowerCase())?.id : '') || ''}
+            value={
+              tx.category ||
+              (tx.suggestedCategoryName
+                ? categories.find(
+                    (c) =>
+                      c.name.toLowerCase() ===
+                      tx.suggestedCategoryName?.toLowerCase()
+                  )?.id
+                : '') ||
+              ''
+            }
             onChange={(e) =>
               onUpdate({
                 category: (e.target.value || null) as CategoryId | null,
@@ -506,7 +561,9 @@ function TransactionRow({
             type="number"
             step="0.01"
             value={tx.amount}
-            onChange={(e) => onUpdate({ amount: parseFloat(e.target.value) || 0 })}
+            onChange={(e) =>
+              onUpdate({ amount: parseFloat(e.target.value) || 0 })
+            }
             className="h-8 w-28 text-right text-xs"
           />
         </td>
@@ -558,7 +615,7 @@ function TransactionRow({
           <Badge
             variant="outline"
             className={cn(
-              'ml-2 text-[10px] px-1.5 py-0',
+              'ml-2 px-1.5 py-0 text-[10px]',
               tx.type === 'payment' && 'border-green-500/50 text-green-600',
               tx.type === 'refund' && 'border-blue-500/50 text-blue-600',
               tx.type === 'fee' && 'border-orange-500/50 text-orange-600',
@@ -574,10 +631,12 @@ function TransactionRow({
         {matchedCategory ? (
           <span className="inline-flex items-center gap-1 text-xs">
             <span>{matchedCategory.icon}</span>
-            <span className="text-muted-foreground">{matchedCategory.name}</span>
+            <span className="text-muted-foreground">
+              {matchedCategory.name}
+            </span>
           </span>
         ) : tx.suggestedCategoryName ? (
-          <span className="text-xs text-muted-foreground/60 italic">
+          <span className="text-xs italic text-muted-foreground/60">
             {tx.suggestedCategoryName}
           </span>
         ) : (
@@ -587,9 +646,7 @@ function TransactionRow({
       <td
         className={cn(
           'whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums',
-          isCredit
-            ? 'text-green-600 dark:text-green-400'
-            : 'text-foreground'
+          isCredit ? 'text-green-600 dark:text-green-400' : 'text-foreground'
         )}
       >
         {isCredit ? '-' : ''}
@@ -615,23 +672,49 @@ function TransactionRow({
 
 function ShieldIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
+      />
     </svg>
   );
 }
 
 function WarningIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+      />
     </svg>
   );
 }
 
 function CheckIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </svg>
   );
@@ -639,33 +722,78 @@ function CheckIcon({ className }: { className?: string }) {
 
 function EditIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+      />
     </svg>
   );
 }
 
 function FileIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+      />
     </svg>
   );
 }
 
 function DuplicateIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"
+      />
     </svg>
   );
 }
 
 function LoadingSpinner({ className }: { className?: string }) {
   return (
-    <svg className={cn('animate-spin', className)} fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    <svg
+      className={cn('animate-spin', className)}
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
     </svg>
   );
 }

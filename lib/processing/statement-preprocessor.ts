@@ -162,10 +162,7 @@ function detectRepeatedLines(lines: string[]): Set<string> {
  * Strip page noise: page headers/footers, repeated lines, known noise patterns.
  * Preserves the first occurrence of metadata lines (issuer info, statement period, etc.).
  */
-function stripPageNoise(
-  lines: string[],
-  repeatedLines: Set<string>
-): string[] {
+function stripPageNoise(lines: string[], repeatedLines: Set<string>): string[] {
   // Track which repeated lines we've seen before. Keep the first occurrence
   // (might be metadata), strip subsequent ones.
   const seenRepeated = new Set<string>();
@@ -190,10 +187,14 @@ function stripPageNoise(
     const trimmed = line.trim();
 
     // Always keep empty lines within the first metadata block
-    if (i < metadataEndIndex && trimmed.length === 0) continue;
+    if (i < metadataEndIndex && trimmed.length === 0) {
+      continue;
+    }
 
     // Skip lines matching known noise patterns
-    if (PAGE_NOISE_PATTERNS.some((p) => p.test(trimmed))) continue;
+    if (PAGE_NOISE_PATTERNS.some((p) => p.test(trimmed))) {
+      continue;
+    }
 
     // Handle repeated lines
     if (repeatedLines.has(trimmed)) {
@@ -214,7 +215,9 @@ function stripPageNoise(
     }
 
     // Skip B/F (Brought Forward) lines
-    if (BALANCE_FORWARD_PATTERNS.some((p) => p.test(trimmed))) continue;
+    if (BALANCE_FORWARD_PATTERNS.some((p) => p.test(trimmed))) {
+      continue;
+    }
 
     // Keep everything else
     result.push(trimmed);
@@ -241,9 +244,15 @@ function detectMultiLineFormat(lines: string[]): boolean {
     const hasDate = TRANSACTION_DATE_PATTERN.test(trimmed);
     const hasAmount = LINE_ENDING_AMOUNT_PATTERN.test(trimmed);
 
-    if (hasDate && !hasAmount) dateOnlyLines++;
-    if (hasDate && hasAmount) dateWithAmountLines++;
-    if (!hasDate && hasAmount) amountOnlyLines++;
+    if (hasDate && !hasAmount) {
+      dateOnlyLines++;
+    }
+    if (hasDate && hasAmount) {
+      dateWithAmountLines++;
+    }
+    if (!hasDate && hasAmount) {
+      amountOnlyLines++;
+    }
   }
 
   // If there are significantly more date-only lines than date+amount lines,
@@ -287,7 +296,9 @@ function joinMultiLineTransactions(lines: string[]): string[] {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
+    if (!trimmed) {
+      continue;
+    }
 
     const startsWithDate = TRANSACTION_DATE_PATTERN.test(trimmed);
 

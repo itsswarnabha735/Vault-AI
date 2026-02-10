@@ -175,8 +175,9 @@ export default function ForgotPasswordPage() {
                 </svg>
               </div>
               <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                We&apos;ve sent a password reset link to <strong>{email}</strong>.
-                Please check your inbox and follow the instructions.
+                We&apos;ve sent a password reset link to{' '}
+                <strong>{email}</strong>. Please check your inbox and follow the
+                instructions.
               </p>
               <button
                 onClick={() => {

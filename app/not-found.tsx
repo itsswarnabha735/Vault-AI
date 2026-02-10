@@ -12,9 +12,7 @@ export default function NotFound() {
       <div className="w-full max-w-md space-y-6 text-center">
         {/* Error Message */}
         <div>
-          <h1 className="text-6xl font-bold text-vault-text-primary">
-            404
-          </h1>
+          <h1 className="text-6xl font-bold text-vault-text-primary">404</h1>
           <h2 className="mt-2 text-xl font-semibold text-vault-text-secondary">
             Page Not Found
           </h2>

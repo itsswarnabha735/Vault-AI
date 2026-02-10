@@ -150,7 +150,7 @@ export function createMockFileList(files: File[]): FileList {
   const fileList = {
     length: files.length,
     item: (index: number) => files[index] ?? null,
-    [Symbol.iterator]: function* () {
+    *[Symbol.iterator]() {
       for (const file of files) {
         yield file;
       }

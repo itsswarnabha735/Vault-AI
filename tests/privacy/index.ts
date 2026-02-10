@@ -120,7 +120,9 @@ export function createNetworkInterceptor() {
     },
     hasViolations: (): boolean => {
       return capturedRequests.some((req) => {
-        if (!req.body) return false;
+        if (!req.body) {
+          return false;
+        }
         const validation = validateNetworkPayload(req.body);
         return !validation.safe;
       });
@@ -128,7 +130,9 @@ export function createNetworkInterceptor() {
     getViolations: (): string[] => {
       const allViolations: string[] = [];
       for (const req of capturedRequests) {
-        if (!req.body) continue;
+        if (!req.body) {
+          continue;
+        }
         const validation = validateNetworkPayload(req.body);
         allViolations.push(...validation.violations);
       }
@@ -144,7 +148,9 @@ export function assertNoSensitiveDataTransmitted(
   requests: Array<{ body: string | null }>
 ): void {
   for (const request of requests) {
-    if (!request.body) continue;
+    if (!request.body) {
+      continue;
+    }
 
     const validation = validateNetworkPayload(request.body);
     if (!validation.safe) {

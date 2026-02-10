@@ -35,7 +35,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex h-16 items-center gap-8 px-6">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-vault shadow-glow">
+            <div className="gradient-vault flex h-8 w-8 items-center justify-center rounded-lg shadow-glow">
               <svg
                 className="h-5 w-5 text-vault-bg-primary"
                 fill="none"
@@ -61,7 +61,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               href="/dashboard"
               className={`rounded-md px-4 py-2 text-sm font-medium transition-all duration-150 ${
                 isActive('/dashboard')
-                  ? 'bg-vault-gold-muted text-vault-gold border-l-2 border-vault-gold'
+                  ? 'border-l-2 border-vault-gold bg-vault-gold-muted text-vault-gold'
                   : 'text-vault-text-secondary hover:bg-vault-bg-surface hover:text-vault-text-primary'
               }`}
             >
@@ -71,7 +71,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               href="/vault"
               className={`rounded-md px-4 py-2 text-sm font-medium transition-all duration-150 ${
                 isActive('/vault')
-                  ? 'bg-vault-gold-muted text-vault-gold border-l-2 border-vault-gold'
+                  ? 'border-l-2 border-vault-gold bg-vault-gold-muted text-vault-gold'
                   : 'text-vault-text-secondary hover:bg-vault-bg-surface hover:text-vault-text-primary'
               }`}
             >
@@ -81,7 +81,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               href="/chat"
               className={`rounded-md px-4 py-2 text-sm font-medium transition-all duration-150 ${
                 isActive('/chat')
-                  ? 'bg-vault-gold-muted text-vault-gold border-l-2 border-vault-gold'
+                  ? 'border-l-2 border-vault-gold bg-vault-gold-muted text-vault-gold'
                   : 'text-vault-text-secondary hover:bg-vault-bg-surface hover:text-vault-text-primary'
               }`}
             >
@@ -91,7 +91,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               href="/settings"
               className={`rounded-md px-4 py-2 text-sm font-medium transition-all duration-150 ${
                 isActive('/settings')
-                  ? 'bg-vault-gold-muted text-vault-gold border-l-2 border-vault-gold'
+                  ? 'border-l-2 border-vault-gold bg-vault-gold-muted text-vault-gold'
                   : 'text-vault-text-secondary hover:bg-vault-bg-surface hover:text-vault-text-primary'
               }`}
             >

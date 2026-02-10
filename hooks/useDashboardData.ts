@@ -19,13 +19,11 @@ import {
   endOfMonth,
   subMonths,
   format,
-  startOfYear,
-  endOfYear,
 } from 'date-fns';
 
 import { db } from '@/lib/storage/db';
-import { useTransactions, useBudgets, useCategories } from './useLocalDB';
-import type { LocalTransaction, Category } from '@/types/database';
+import { useBudgets, useCategories } from './useLocalDB';
+import type { LocalTransaction } from '@/types/database';
 
 // ============================================
 // Types
@@ -421,7 +419,9 @@ export function useRecentTransactions(limit: number = 10) {
   }, [limit]);
 
   const transactionsWithCategory = useMemo(() => {
-    if (!transactions) return [];
+    if (!transactions) {
+      return [];
+    }
     return transactions.map((tx) => ({
       ...tx,
       categoryData: categories.find((c) => c.id === tx.category),

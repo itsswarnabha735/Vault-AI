@@ -215,7 +215,9 @@ export function useDuplicateDetection(
 
   // Combine alerts with transaction data
   const pendingAlerts = useMemo<DuplicateAlertWithTransactions[]>(() => {
-    if (!unresolvedAlerts) return [];
+    if (!unresolvedAlerts) {
+      return [];
+    }
 
     return unresolvedAlerts.map((alert) => {
       const transactions = alertTransactions.get(alert.id);
@@ -428,7 +430,9 @@ export function useDuplicateDetection(
 
   // Auto-refresh interval
   useEffect(() => {
-    if (refreshInterval <= 0) return;
+    if (refreshInterval <= 0) {
+      return;
+    }
 
     const interval = setInterval(() => {
       void refresh();
@@ -485,7 +489,9 @@ export function useHasDuplicateAlert(
 ): boolean {
   const hasAlert = useLiveQuery(
     async () => {
-      if (!transactionId) return false;
+      if (!transactionId) {
+        return false;
+      }
 
       const count = await db.anomalies
         .where('transactionId')

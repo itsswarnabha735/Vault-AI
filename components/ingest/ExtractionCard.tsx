@@ -123,7 +123,9 @@ export function ExtractionCard({
 
   // Auto-categorize based on initial vendor (checks learned mappings first)
   const initialAutoCategory = useMemo(() => {
-    if (!initialVendor) return null;
+    if (!initialVendor) {
+      return null;
+    }
     const suggestion = autoCategorizer.suggestCategory(initialVendor);
     if (suggestion) {
       // If learned mapping, use the direct categoryId
@@ -131,7 +133,9 @@ export function ExtractionCard({
         return suggestion.learnedCategoryId;
       }
       // Otherwise resolve name → id from categories list
-      return categoryNameToId.get(suggestion.categoryName.toLowerCase()) || null;
+      return (
+        categoryNameToId.get(suggestion.categoryName.toLowerCase()) || null
+      );
     }
     return null;
   }, [initialVendor, categoryNameToId]);
@@ -193,15 +197,22 @@ export function ExtractionCard({
   // Re-categorize when vendor changes (debounced via blur)
   // Checks learned mappings first, then falls back to default rules
   const handleVendorBlur = useCallback(() => {
-    if (!editedValues.vendor) return;
+    if (!editedValues.vendor) {
+      return;
+    }
     // Only auto-set if user hasn't manually chosen a category
-    if (editedValues.category && !categoryAutoSet) return;
+    if (editedValues.category && !categoryAutoSet) {
+      return;
+    }
 
     const suggestion = autoCategorizer.suggestCategory(editedValues.vendor);
     if (suggestion) {
       // If learned mapping, use the direct categoryId
       if (suggestion.isLearned && suggestion.learnedCategoryId) {
-        setEditedValues((prev) => ({ ...prev, category: suggestion.learnedCategoryId! }));
+        setEditedValues((prev) => ({
+          ...prev,
+          category: suggestion.learnedCategoryId!,
+        }));
         setCategoryAutoSet(true);
         return;
       }
@@ -212,7 +223,12 @@ export function ExtractionCard({
         setCategoryAutoSet(true);
       }
     }
-  }, [editedValues.vendor, editedValues.category, categoryAutoSet, categoryNameToId]);
+  }, [
+    editedValues.vendor,
+    editedValues.category,
+    categoryAutoSet,
+    categoryNameToId,
+  ]);
 
   // Format display values (use detected currency, fallback to INR)
   const detectedCurrency = document.entities.currency || 'INR';
@@ -373,7 +389,9 @@ export function ExtractionCard({
                 }
                 className={cn(
                   'mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-                  categoryAutoSet && editedValues.category && 'border-emerald-500/50'
+                  categoryAutoSet &&
+                    editedValues.category &&
+                    'border-emerald-500/50'
                 )}
               >
                 <option value="">Select category</option>

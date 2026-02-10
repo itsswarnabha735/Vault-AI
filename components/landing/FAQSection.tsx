@@ -138,7 +138,9 @@ export function FAQSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <p className="mb-4 text-vault-text-secondary">Still have questions?</p>
+          <p className="mb-4 text-vault-text-secondary">
+            Still have questions?
+          </p>
           <Button variant="outline" asChild>
             <a
               href="mailto:support@vault-ai.app"

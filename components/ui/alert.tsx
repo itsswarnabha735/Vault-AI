@@ -8,7 +8,8 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-vault-bg-elevated text-vault-text-primary border-[rgba(255,255,255,0.06)]',
+        default:
+          'border-[rgba(255,255,255,0.06)] bg-vault-bg-elevated text-vault-text-primary',
         destructive:
           'border-vault-danger/30 bg-vault-danger-muted text-vault-danger-text [&>svg]:text-vault-danger',
         warning:

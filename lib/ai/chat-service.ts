@@ -24,13 +24,11 @@ import { db } from '@/lib/storage/db';
 import { vectorSearchService } from '@/lib/storage/vector-search';
 import { embeddingService } from './embedding-service';
 import {
-  classifyQuery,
   classifyQueryAsync,
   type QueryClassification,
   type ExtractedQueryEntities,
 } from './query-router';
 import {
-  buildSafePrompt,
   buildStructuredPrompt,
   verifySafePayload,
   type SafeTransactionData,
@@ -171,7 +169,9 @@ function inferCurrencyFromTransactions(
   transactions: Array<{ currency?: string | null }>,
   fallback: string = 'INR'
 ): string {
-  if (transactions.length === 0) return fallback;
+  if (transactions.length === 0) {
+    return fallback;
+  }
 
   const counts = new Map<string, number>();
   for (const tx of transactions) {
@@ -235,7 +235,9 @@ function isFollowUpQuery(query: string): boolean {
     /^(compare|versus|vs\.?)\s/i,
   ];
   for (const pattern of followUpStarters) {
-    if (pattern.test(lower)) return true;
+    if (pattern.test(lower)) {
+      return true;
+    }
   }
 
   // Short queries (≤ 6 words) that don't look self-contained
@@ -243,11 +245,16 @@ function isFollowUpQuery(query: string): boolean {
   if (words.length <= 6) {
     // Contains anaphoric pronouns
     const anaphora = /\b(that|those|it|them|this|these|the same)\b/i;
-    if (anaphora.test(lower)) return true;
+    if (anaphora.test(lower)) {
+      return true;
+    }
 
     // Just a month name or "last month" etc. without a verb
-    const justTimeRef = /^(january|february|march|april|may|june|july|august|september|october|november|december|last (month|week|year)|this (month|week|year))\s*\??$/i;
-    if (justTimeRef.test(lower)) return true;
+    const justTimeRef =
+      /^(january|february|march|april|may|june|july|august|september|october|november|december|last (month|week|year)|this (month|week|year))\s*\??$/i;
+    if (justTimeRef.test(lower)) {
+      return true;
+    }
   }
 
   return false;
@@ -274,9 +281,7 @@ function reformulateQuery(
   }
 
   // Find the most recent user message
-  const lastUserMessage = [...history]
-    .reverse()
-    .find((m) => m.role === 'user');
+  const lastUserMessage = [...history].reverse().find((m) => m.role === 'user');
 
   if (!lastUserMessage) {
     return { reformulated: query, wasReformulated: false };
@@ -288,12 +293,20 @@ function reformulateQuery(
   // Strategy 1: Month substitution
   // "What about February?" + "How much did I spend in January?" => "How much did I spend in February?"
   const monthNames = [
-    'january', 'february', 'march', 'april', 'may', 'june',
-    'july', 'august', 'september', 'october', 'november', 'december',
+    'january',
+    'february',
+    'march',
+    'april',
+    'may',
+    'june',
+    'july',
+    'august',
+    'september',
+    'october',
+    'november',
+    'december',
   ];
-  const monthInCurrent = monthNames.find((m) =>
-    currentLower.includes(m)
-  );
+  const monthInCurrent = monthNames.find((m) => currentLower.includes(m));
   const monthInPrev = monthNames.find((m) =>
     prevQuery.toLowerCase().includes(m)
   );
@@ -309,12 +322,16 @@ function reformulateQuery(
 
   // Strategy 2: Time period substitution ("last month" -> "this month")
   const timePeriods = [
-    'last month', 'this month', 'last week', 'this week',
-    'last year', 'this year', 'yesterday', 'today',
+    'last month',
+    'this month',
+    'last week',
+    'this week',
+    'last year',
+    'this year',
+    'yesterday',
+    'today',
   ];
-  const periodInCurrent = timePeriods.find((p) =>
-    currentLower.includes(p)
-  );
+  const periodInCurrent = timePeriods.find((p) => currentLower.includes(p));
   if (periodInCurrent) {
     const prevLower = prevQuery.toLowerCase();
     const periodInPrev = timePeriods.find((p) => prevLower.includes(p));
@@ -329,20 +346,38 @@ function reformulateQuery(
 
   // Strategy 3: Direction substitution ("income" vs "spending")
   const directionTerms: Record<string, string[]> = {
-    income: ['income', 'earn', 'earned', 'earnings', 'credit', 'credits', 'deposits', 'salary'],
-    spending: ['spend', 'spent', 'spending', 'expenses', 'expense', 'debit', 'debits', 'payments'],
+    income: [
+      'income',
+      'earn',
+      'earned',
+      'earnings',
+      'credit',
+      'credits',
+      'deposits',
+      'salary',
+    ],
+    spending: [
+      'spend',
+      'spent',
+      'spending',
+      'expenses',
+      'expense',
+      'debit',
+      'debits',
+      'payments',
+    ],
   };
   let currentDirection: string | null = null;
   let prevDirection: string | null = null;
   for (const [dir, terms] of Object.entries(directionTerms)) {
-    if (terms.some((t) => currentLower.includes(t))) currentDirection = dir;
-    if (terms.some((t) => prevQuery.toLowerCase().includes(t))) prevDirection = dir;
+    if (terms.some((t) => currentLower.includes(t))) {
+      currentDirection = dir;
+    }
+    if (terms.some((t) => prevQuery.toLowerCase().includes(t))) {
+      prevDirection = dir;
+    }
   }
-  if (
-    currentDirection &&
-    prevDirection &&
-    currentDirection !== prevDirection
-  ) {
+  if (currentDirection && prevDirection && currentDirection !== prevDirection) {
     // Swap direction terms in the previous query
     let reformulated = prevQuery;
     const prevTerms = directionTerms[prevDirection]!;
@@ -421,7 +456,8 @@ function extractMonetaryAmounts(text: string): number[] {
   const amounts: number[] = [];
   // Match common currency symbols/prefixes followed by numbers
   // Covers: $, ₹, €, £, ¥, Rs., Rs, INR, USD, etc.
-  const pattern = /(?:[\$₹€£¥]|Rs\.?\s*|(?:INR|USD|EUR|GBP|SGD|AUD|CAD|JPY|CNY|HKD)\s*)\s*([\d,]+(?:\.\d{1,2})?)/gi;
+  const pattern =
+    /(?:[\$₹€£¥]|Rs\.?\s*|(?:INR|USD|EUR|GBP|SGD|AUD|CAD|JPY|CNY|HKD)\s*)\s*([\d,]+(?:\.\d{1,2})?)/gi;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(text)) !== null) {
     const numStr = match[1]!.replace(/,/g, '');
@@ -439,10 +475,14 @@ function extractMonetaryAmounts(text: string): number[] {
  * to handle rounding differences.
  */
 function amountsMatch(a: number, b: number): boolean {
-  if (a === b) return true;
+  if (a === b) {
+    return true;
+  }
   const diff = Math.abs(a - b);
   // Absolute tolerance for very small amounts
-  if (diff <= 0.01) return true;
+  if (diff <= 0.01) {
+    return true;
+  }
   // Relative tolerance (1%) for larger amounts
   const maxVal = Math.max(Math.abs(a), Math.abs(b));
   return diff / maxVal <= 0.01;
@@ -507,12 +547,20 @@ function verifyResponseAmounts(
 
   // Build a set of "known good" amounts from verified data
   const knownAmounts = new Set<number>();
-  if (verifiedData.totalExpenses > 0) knownAmounts.add(verifiedData.totalExpenses);
-  if (verifiedData.totalIncome > 0) knownAmounts.add(verifiedData.totalIncome);
-  if (verifiedData.total !== 0) knownAmounts.add(Math.abs(verifiedData.total));
+  if (verifiedData.totalExpenses > 0) {
+    knownAmounts.add(verifiedData.totalExpenses);
+  }
+  if (verifiedData.totalIncome > 0) {
+    knownAmounts.add(verifiedData.totalIncome);
+  }
+  if (verifiedData.total !== 0) {
+    knownAmounts.add(Math.abs(verifiedData.total));
+  }
   if (verifiedData.byCategory) {
     for (const amount of Object.values(verifiedData.byCategory)) {
-      if (amount > 0) knownAmounts.add(amount);
+      if (amount > 0) {
+        knownAmounts.add(amount);
+      }
     }
   }
 
@@ -521,9 +569,18 @@ function verifyResponseAmounts(
   // Supports multiple currency symbols: $, ₹, €, £, ¥, Rs.
   const currencyPrefix = `(?:[\\$₹€£¥]|Rs\\.?\\s*)`;
   const totalPatterns = [
-    new RegExp(`(?:total|spent|spending|expenses?)\\s+(?:of\\s+|was\\s+|is\\s+|:?\\s*)${currencyPrefix}\\s*([\\d,]+(?:\\.\\d{1,2})?)`, 'gi'),
-    new RegExp(`${currencyPrefix}\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:total|in total|altogether|combined)`, 'gi'),
-    new RegExp(`(?:total|received|income|earned|earnings?)\\s+(?:of\\s+|was\\s+|is\\s+|:?\\s*)${currencyPrefix}\\s*([\\d,]+(?:\\.\\d{1,2})?)`, 'gi'),
+    new RegExp(
+      `(?:total|spent|spending|expenses?)\\s+(?:of\\s+|was\\s+|is\\s+|:?\\s*)${currencyPrefix}\\s*([\\d,]+(?:\\.\\d{1,2})?)`,
+      'gi'
+    ),
+    new RegExp(
+      `${currencyPrefix}\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:total|in total|altogether|combined)`,
+      'gi'
+    ),
+    new RegExp(
+      `(?:total|received|income|earned|earnings?)\\s+(?:of\\s+|was\\s+|is\\s+|:?\\s*)${currencyPrefix}\\s*([\\d,]+(?:\\.\\d{1,2})?)`,
+      'gi'
+    ),
   ];
 
   const totalAmountsInResponse: number[] = [];
@@ -575,7 +632,7 @@ function verifyResponseAmounts(
       if (correctAmount !== undefined) {
         corrections.push(
           `Note: The ${label} is ${formatAmountForCorrection(correctAmount, currency)} ` +
-          `(the response mentioned ${formatAmountForCorrection(responseAmount, currency)}).`
+            `(the response mentioned ${formatAmountForCorrection(responseAmount, currency)}).`
         );
       }
     }
@@ -685,7 +742,9 @@ class ChatServiceImpl implements ChatService {
     // embeddings in IndexedDB (e.g. receipt imports that added zero vectors).
     // We need to re-embed and re-index those.
     const zeroEmbeddingTransactions = transactions.filter((tx) => {
-      if (!vectorSearchService.hasVector(tx.id)) return false; // Already in unindexed list
+      if (!vectorSearchService.hasVector(tx.id)) {
+        return false;
+      } // Already in unindexed list
       const embedding = tx.embedding;
       return (
         !embedding ||
@@ -694,7 +753,8 @@ class ChatServiceImpl implements ChatService {
       );
     });
 
-    const totalToProcess = unindexedTransactions.length + zeroEmbeddingTransactions.length;
+    const totalToProcess =
+      unindexedTransactions.length + zeroEmbeddingTransactions.length;
 
     if (totalToProcess === 0) {
       return;
@@ -702,8 +762,8 @@ class ChatServiceImpl implements ChatService {
 
     console.log(
       `[ChatService] Vector index has ${stats.vectorCount} vectors, ` +
-      `but found ${unindexedTransactions.length} unindexed + ${zeroEmbeddingTransactions.length} zero-embedding transactions. ` +
-      `Backfilling...`
+        `but found ${unindexedTransactions.length} unindexed + ${zeroEmbeddingTransactions.length} zero-embedding transactions. ` +
+        `Backfilling...`
     );
 
     const BATCH_SIZE = 20;
@@ -756,7 +816,7 @@ class ChatServiceImpl implements ChatService {
       await vectorSearchService.saveIndex();
       console.log(
         `[ChatService] Vector index backfill complete: ${indexed}/${totalToProcess} transactions indexed ` +
-        `(total index size: ${stats.vectorCount + indexed})`
+          `(total index size: ${stats.vectorCount + indexed})`
       );
     }
   }
@@ -778,7 +838,7 @@ class ChatServiceImpl implements ChatService {
     // Format date as readable text (e.g., "January 15, 2026")
     let dateText = tx.date;
     try {
-      const d = new Date(tx.date + 'T00:00:00');
+      const d = new Date(`${tx.date}T00:00:00`);
       dateText = d.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -790,18 +850,14 @@ class ChatServiceImpl implements ChatService {
 
     if (tx.amount < 0) {
       // Income / credit transaction
-      const vendorPart = tx.vendor
-        ? `from ${tx.vendor}`
-        : 'received';
+      const vendorPart = tx.vendor ? `from ${tx.vendor}` : 'received';
       const catPart = categoryName ? ` categorized as ${categoryName}` : '';
       const notePart = tx.note ? `. ${tx.note}` : '';
       const symbol = getCurrencySymbol(tx.currency || 'INR');
       return `Income credit of ${symbol}${absAmount} ${vendorPart} on ${dateText}${catPart}${notePart}`;
     } else {
       // Expense / debit transaction
-      const vendorPart = tx.vendor
-        ? `at ${tx.vendor}`
-        : '';
+      const vendorPart = tx.vendor ? `at ${tx.vendor}` : '';
       const catPart = categoryName ? ` for ${categoryName}` : '';
       const notePart = tx.note ? `. ${tx.note}` : '';
       const symbol = getCurrencySymbol(tx.currency || 'INR');
@@ -914,7 +970,10 @@ class ChatServiceImpl implements ChatService {
       if (isLLMAvailable()) {
         const structured = buildStructuredPrompt(promptContext);
         const overrides = getGenerationOverrides(classification.intent);
-        const llmResponse = await getLLMClient().generateStructured(structured, overrides);
+        const llmResponse = await getLLMClient().generateStructured(
+          structured,
+          overrides
+        );
         responseText = llmResponse.text;
         suggestedFollowups = this.extractFollowups(llmResponse.text);
       } else {
@@ -1097,7 +1156,9 @@ class ChatServiceImpl implements ChatService {
         );
         if (verification.wasCorrected) {
           // Stream the correction block to the client
-          const correctionSuffix = verification.text.slice(llmResponse.text.length);
+          const correctionSuffix = verification.text.slice(
+            llmResponse.text.length
+          );
           if (correctionSuffix) {
             onChunk(correctionSuffix, false);
             onChunk('', true);
@@ -1247,8 +1308,12 @@ class ChatServiceImpl implements ChatService {
       DEFAULT_CONFIG.maxContextTransactions
     )) {
       const transaction = await db.transactions.get(result.id as TransactionId);
-      if (!transaction) continue;
-      if (!this.matchesFilters(transaction, entities)) continue;
+      if (!transaction) {
+        continue;
+      }
+      if (!this.matchesFilters(transaction, entities)) {
+        continue;
+      }
 
       const existing = resultMap.get(transaction.id);
       if (existing) {
@@ -1449,11 +1514,13 @@ class ChatServiceImpl implements ChatService {
       // Cast data to the expected type
       const transactions = data as unknown as TransactionRow[];
 
-      return this.computeAggregates(transactions.map((tx) => ({
-        amount: Number(tx.amount),
-        categoryId: tx.category_id as CategoryId | null,
-        date: tx.date,
-      })));
+      return this.computeAggregates(
+        transactions.map((tx) => ({
+          amount: Number(tx.amount),
+          categoryId: tx.category_id as CategoryId | null,
+          date: tx.date,
+        }))
+      );
     } catch (error) {
       console.error('Error fetching verified data:', error);
       return undefined;
@@ -1492,11 +1559,13 @@ class ChatServiceImpl implements ChatService {
         return undefined;
       }
 
-      return this.computeAggregates(transactions.map((tx) => ({
-        amount: tx.amount,
-        categoryId: tx.category,
-        date: tx.date,
-      })));
+      return this.computeAggregates(
+        transactions.map((tx) => ({
+          amount: tx.amount,
+          categoryId: tx.category,
+          date: tx.date,
+        }))
+      );
     } catch (error) {
       console.error('Error computing local aggregates:', error);
       return undefined;
@@ -1507,7 +1576,11 @@ class ChatServiceImpl implements ChatService {
    * Shared aggregate computation logic for both cloud and local data.
    */
   private computeAggregates(
-    transactions: Array<{ amount: number; categoryId: CategoryId | null; date: string }>
+    transactions: Array<{
+      amount: number;
+      categoryId: CategoryId | null;
+      date: string;
+    }>
   ): VerifiedFinancialData {
     let totalExpenses = 0;
     let totalIncome = 0;

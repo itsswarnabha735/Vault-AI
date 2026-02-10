@@ -172,15 +172,23 @@ export function TestimonialsSection() {
             <div className="text-2xl font-bold text-vault-text-secondary">
               10,000+
             </div>
-            <div className="text-sm text-vault-text-secondary">Active Users</div>
+            <div className="text-sm text-vault-text-secondary">
+              Active Users
+            </div>
             <div className="h-8 w-px bg-[rgba(255,255,255,0.06)]" />
-            <div className="text-2xl font-bold text-vault-text-secondary">1M+</div>
+            <div className="text-2xl font-bold text-vault-text-secondary">
+              1M+
+            </div>
             <div className="text-sm text-vault-text-secondary">
               Documents Processed
             </div>
             <div className="h-8 w-px bg-[rgba(255,255,255,0.06)]" />
-            <div className="text-2xl font-bold text-vault-text-secondary">4.9</div>
-            <div className="text-sm text-vault-text-secondary">Average Rating</div>
+            <div className="text-2xl font-bold text-vault-text-secondary">
+              4.9
+            </div>
+            <div className="text-sm text-vault-text-secondary">
+              Average Rating
+            </div>
           </div>
         </motion.div>
       </div>

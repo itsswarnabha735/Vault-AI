@@ -208,7 +208,7 @@ if (!global.crypto) {
   (global as Record<string, unknown>).crypto = {};
 }
 Object.defineProperty(global.crypto, 'randomUUID', {
-  value: vi.fn(() => 'test-uuid-' + Math.random().toString(36).substring(7)),
+  value: vi.fn(() => `test-uuid-${Math.random().toString(36).substring(7)}`),
   writable: true,
 });
 

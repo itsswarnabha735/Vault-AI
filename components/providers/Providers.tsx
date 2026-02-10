@@ -45,9 +45,7 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <AuthProvider>
-      <SyncProvider>
-        {children}
-      </SyncProvider>
+      <SyncProvider>{children}</SyncProvider>
     </AuthProvider>
   );
 }

@@ -115,14 +115,38 @@ const config: Config = {
       },
       fontSize: {
         // Design System Type Scale
-        'display': ['48px', { lineHeight: '1.1', letterSpacing: '-0.03em', fontWeight: '700' }],
-        'h1': ['32px', { lineHeight: '1.3', letterSpacing: '-0.02em', fontWeight: '600' }],
-        'h2': ['22px', { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '600' }],
-        'h3': ['16px', { lineHeight: '1.3', letterSpacing: '0', fontWeight: '600' }],
-        'body': ['14px', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
-        'caption': ['12px', { lineHeight: '1.6', letterSpacing: '0.01em', fontWeight: '400' }],
-        'label': ['12px', { lineHeight: '1.6', letterSpacing: '0.03em', fontWeight: '500' }],
-        'mono-data': ['13px', { lineHeight: '1.6', letterSpacing: '0.02em', fontWeight: '500' }],
+        display: [
+          '48px',
+          { lineHeight: '1.1', letterSpacing: '-0.03em', fontWeight: '700' },
+        ],
+        h1: [
+          '32px',
+          { lineHeight: '1.3', letterSpacing: '-0.02em', fontWeight: '600' },
+        ],
+        h2: [
+          '22px',
+          { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '600' },
+        ],
+        h3: [
+          '16px',
+          { lineHeight: '1.3', letterSpacing: '0', fontWeight: '600' },
+        ],
+        body: [
+          '14px',
+          { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' },
+        ],
+        caption: [
+          '12px',
+          { lineHeight: '1.6', letterSpacing: '0.01em', fontWeight: '400' },
+        ],
+        label: [
+          '12px',
+          { lineHeight: '1.6', letterSpacing: '0.03em', fontWeight: '500' },
+        ],
+        'mono-data': [
+          '13px',
+          { lineHeight: '1.6', letterSpacing: '0.02em', fontWeight: '500' },
+        ],
       },
       spacing: {
         // Design System 4px base
@@ -144,11 +168,11 @@ const config: Config = {
         '20': '80px',
       },
       boxShadow: {
-        'sm': '0 1px 3px rgba(0,0,0,0.4)',
-        'md': '0 4px 16px rgba(0,0,0,0.5)',
-        'lg': '0 12px 40px rgba(0,0,0,0.6)',
-        'glow': '0 0 30px rgba(200,164,78,0.1)',
-        'inner': 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        sm: '0 1px 3px rgba(0,0,0,0.4)',
+        md: '0 4px 16px rgba(0,0,0,0.5)',
+        lg: '0 12px 40px rgba(0,0,0,0.6)',
+        glow: '0 0 30px rgba(200,164,78,0.1)',
+        inner: 'inset 0 1px 0 rgba(255,255,255,0.04)',
       },
       keyframes: {
         'accordion-down': {
@@ -211,6 +235,7 @@ const config: Config = {
       },
     },
   },
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   plugins: [require('tailwindcss-animate')],
 };
 

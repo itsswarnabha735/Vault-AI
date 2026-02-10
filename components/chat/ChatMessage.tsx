@@ -131,7 +131,7 @@ export function ChatMessage({
               className={cn(
                 'break-words',
                 isAssistant
-                  ? 'prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-pre:my-2 prose-code:rounded prose-code:bg-background/50 prose-code:px-1 prose-code:py-0.5 prose-code:text-xs'
+                  ? 'prose prose-sm dark:prose-invert prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-pre:my-2 prose-code:rounded prose-code:bg-background/50 prose-code:px-1 prose-code:py-0.5 prose-code:text-xs max-w-none'
                   : 'whitespace-pre-wrap'
               )}
             >
@@ -142,7 +142,9 @@ export function ChatMessage({
               ) : (
                 message.content
               )}
-              {isStreaming && <InlineTypingIndicator className="ml-1 inline-block" />}
+              {isStreaming && (
+                <InlineTypingIndicator className="ml-1 inline-block" />
+              )}
             </div>
 
             {/* Citations for assistant messages */}

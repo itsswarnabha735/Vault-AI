@@ -98,7 +98,12 @@ export const publicRoutes = [
  * Routes that require authentication.
  * Uses prefix matching.
  */
-export const protectedRoutePrefixes = ['/vault', '/chat', '/settings', '/dashboard'];
+export const protectedRoutePrefixes = [
+  '/vault',
+  '/chat',
+  '/settings',
+  '/dashboard',
+];
 
 /**
  * Check if a path is a protected route.

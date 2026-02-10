@@ -36,7 +36,13 @@ export async function middleware(request: NextRequest) {
     // Debug logging
     console.log('[Middleware] Path:', pathname);
     console.log('[Middleware] User:', user?.email ?? 'null');
-    console.log('[Middleware] Cookies:', request.cookies.getAll().map(c => c.name).join(', '));
+    console.log(
+      '[Middleware] Cookies:',
+      request.cookies
+        .getAll()
+        .map((c) => c.name)
+        .join(', ')
+    );
 
     // If accessing a protected route without authentication
     if (isProtectedRoute(pathname) && !user) {

@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get('token_hash');
   if (tokenHash && type === 'recovery') {
     const supabase = await createRouteHandlerClient();
-    
+
     const { error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type: 'recovery',

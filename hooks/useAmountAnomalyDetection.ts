@@ -15,7 +15,6 @@ import {
   amountAnomalyDetector,
   checkAmountAnomaly,
   getVendorStats,
-  getUnresolvedAmountAlerts,
   resolveAmountAlert,
   type AmountAnomalyResult,
   type AmountAnomalyConfig,
@@ -25,7 +24,6 @@ import type {
   LocalTransaction,
   AnomalyAlert,
   AnomalyAlertId,
-  TransactionId,
 } from '@/types/database';
 import type { AmountAnomalyResolution } from '@/components/anomaly';
 
@@ -133,7 +131,7 @@ export function useAmountAnomalyDetection(
   options: UseAmountAnomalyDetectionOptions = {}
 ): UseAmountAnomalyDetectionReturn {
   const {
-    autoCheck = true,
+    autoCheck: _autoCheck = true,
     config: initialConfig,
     onAnomalyDetected,
   } = options;
@@ -457,7 +455,9 @@ export function useAllAnomalies() {
       newVendors: 0,
     };
 
-    if (!alerts) return counts;
+    if (!alerts) {
+      return counts;
+    }
 
     for (const alert of alerts) {
       switch (alert.type) {

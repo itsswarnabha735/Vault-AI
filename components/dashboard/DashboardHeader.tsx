@@ -14,10 +14,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '@/components/providers/AuthProvider';
 import { useKeyboardShortcutsContextOptional } from '@/components/providers/KeyboardShortcutsProvider';
-import {
-  useSyncStore,
-  getSyncStateMessage,
-} from '@/stores/syncStore';
+import { useSyncStore, getSyncStateMessage } from '@/stores/syncStore';
 import type { SyncEngineState } from '@/types/sync';
 import { usePendingSync } from '@/hooks/useLocalDB';
 import { cn } from '@/lib/utils';

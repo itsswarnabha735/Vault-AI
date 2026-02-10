@@ -56,13 +56,13 @@ export function SavingsRateCard() {
             <div className="mt-3 space-y-1.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-vault-text-secondary">Income</span>
-                <span className="font-medium font-mono text-vault-success-text">
+                <span className="font-mono font-medium text-vault-success-text">
                   +{formatCurrency(income)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-vault-text-secondary">Expenses</span>
-                <span className="font-medium font-mono text-vault-danger-text">
+                <span className="font-mono font-medium text-vault-danger-text">
                   -{formatCurrency(expenses)}
                 </span>
               </div>
@@ -70,7 +70,7 @@ export function SavingsRateCard() {
                 <span className="text-vault-text-secondary">Net Savings</span>
                 <span
                   className={cn(
-                    'font-semibold font-mono',
+                    'font-mono font-semibold',
                     savings >= 0
                       ? 'text-vault-success-text'
                       : 'text-vault-danger-text'
@@ -118,9 +118,7 @@ function TrendIndicator({ trend }: TrendIndicatorProps) {
     <span
       className={cn(
         'flex items-center gap-0.5 text-xs',
-        isUp
-          ? 'text-vault-success-text'
-          : 'text-vault-danger-text'
+        isUp ? 'text-vault-success-text' : 'text-vault-danger-text'
       )}
     >
       {isUp ? (

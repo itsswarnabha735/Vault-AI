@@ -69,7 +69,9 @@ export default function DashboardError({
         {/* Debug Info (development only) */}
         {process.env.NODE_ENV === 'development' && (
           <div className="mt-4 rounded-lg bg-vault-bg-tertiary p-4 text-left">
-            <p className="text-xs font-medium text-vault-text-tertiary">Error Details:</p>
+            <p className="text-xs font-medium text-vault-text-tertiary">
+              Error Details:
+            </p>
             <pre className="mt-2 overflow-auto text-xs text-vault-danger-text">
               {error.stack || error.message}
             </pre>

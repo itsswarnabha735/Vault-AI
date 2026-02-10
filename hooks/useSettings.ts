@@ -15,7 +15,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 import { db } from '@/lib/storage/db';
-import type { UserSettings, UserId, Theme } from '@/types/database';
+import type { UserSettings, Theme } from '@/types/database';
 import { DEFAULT_USER_SETTINGS } from '@/types/database';
 
 // ============================================

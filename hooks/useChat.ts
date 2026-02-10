@@ -205,13 +205,22 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   // This ensures the chat pipeline always uses the user's configured currency
   // from IndexedDB, not the hardcoded 'USD' default.
   useEffect(() => {
-    if (settings.defaultCurrency && settings.defaultCurrency !== userPreferences.currency) {
+    if (
+      settings.defaultCurrency &&
+      settings.defaultCurrency !== userPreferences.currency
+    ) {
       storeActions.updatePreferences({ currency: settings.defaultCurrency });
     }
     if (settings.timezone && settings.timezone !== userPreferences.timezone) {
       storeActions.updatePreferences({ timezone: settings.timezone });
     }
-  }, [settings.defaultCurrency, settings.timezone, userPreferences.currency, userPreferences.timezone, storeActions]);
+  }, [
+    settings.defaultCurrency,
+    settings.timezone,
+    userPreferences.currency,
+    userPreferences.timezone,
+    storeActions,
+  ]);
 
   /**
    * Send a message to the AI assistant.
@@ -262,14 +271,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           // Streaming response
           storeActions.startStreaming();
 
-          let fullText = '';
-
           const response = await chatService.processQueryStream(
             messageText,
             context,
             (chunk: string, done: boolean) => {
               // Handle streaming chunk
-              fullText += chunk;
               storeActions.appendStreamingText(chunk);
 
               if (done) {

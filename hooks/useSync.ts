@@ -12,9 +12,7 @@ import { useEffect, useCallback, useRef, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import {
   useSyncStore,
-  selectSyncStatus,
   selectPendingConflicts,
-  selectConfig,
   formatTimeSinceSync,
   getSyncStateMessage,
   getSyncStateColor,
@@ -142,7 +140,7 @@ export function useSync(options?: { autoStart?: boolean }): UseSyncReturn {
     setOnline,
     setSyncState,
     setPendingCount,
-    setSyncProgress,
+    setSyncProgress: _setSyncProgress,
     onSyncComplete,
     onSyncError,
     addConflict,

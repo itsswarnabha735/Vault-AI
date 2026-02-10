@@ -90,7 +90,7 @@ test.describe('Chat Interface', () => {
 
     // Check if we're on chat page or redirected
     const url = page.url();
-    const isOnChatPage = url.includes('/chat');
+    const _isOnChatPage = url.includes('/chat');
     const isRedirected = url.includes('/login') || url.includes('/auth');
 
     // If redirected to login, test passes (auth required)

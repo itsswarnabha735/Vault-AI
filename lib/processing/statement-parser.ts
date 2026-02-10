@@ -17,13 +17,11 @@
  */
 
 import type {
-  DocumentType,
   DocumentTypeDetection,
   ParsedStatementTransaction,
   StatementParseResult,
   StatementParserOptions,
 } from '@/types/statement';
-import type { CategoryId } from '@/types/database';
 import { autoCategorizer } from './auto-categorizer';
 
 // ============================================
@@ -41,12 +39,12 @@ const STATEMENT_KEYWORDS: Array<{ keyword: string; weight: number }> = [
   { keyword: 'credit card statement', weight: 0.98 },
   { keyword: 'bank statement', weight: 0.98 },
   { keyword: 'billing statement', weight: 0.95 },
-  { keyword: 'statement date', weight: 0.90 },
+  { keyword: 'statement date', weight: 0.9 },
   { keyword: 'statement of account', weight: 0.95 },
   { keyword: 'statement of transactions', weight: 0.98 }, // Indian banks (ICICI, HDFC, SBI)
   { keyword: 'account summary', weight: 0.88 },
   { keyword: 'summary of accounts', weight: 0.88 }, // ICICI ("Summary of Accounts held")
-  { keyword: 'transaction history', weight: 0.90 },
+  { keyword: 'transaction history', weight: 0.9 },
   { keyword: 'account activity', weight: 0.88 },
 
   // Medium-confidence indicators
@@ -61,19 +59,19 @@ const STATEMENT_KEYWORDS: Array<{ keyword: string; weight: number }> = [
   { keyword: 'amount due', weight: 0.78 },
   { keyword: 'total due', weight: 0.78 },
   { keyword: 'account number', weight: 0.75 },
-  { keyword: 'savings account', weight: 0.80 },    // Indian bank savings statement
-  { keyword: 'current account', weight: 0.80 },     // Indian bank current account statement
-  { keyword: 'for the period', weight: 0.75 },      // "...for the period Jan 01 - Jan 31"
+  { keyword: 'savings account', weight: 0.8 }, // Indian bank savings statement
+  { keyword: 'current account', weight: 0.8 }, // Indian bank current account statement
+  { keyword: 'for the period', weight: 0.75 }, // "...for the period Jan 01 - Jan 31"
 
   // Indian bank-specific column headers (strong indicator)
-  { keyword: 'particulars', weight: 0.70 },          // ICICI/SBI/HDFC column header
-  { keyword: 'withdrawals', weight: 0.65 },          // ICICI: "DEPOSITS WITHDRAWALS BALANCE"
+  { keyword: 'particulars', weight: 0.7 }, // ICICI/SBI/HDFC column header
+  { keyword: 'withdrawals', weight: 0.65 }, // ICICI: "DEPOSITS WITHDRAWALS BALANCE"
   { keyword: 'deposits', weight: 0.55 },
 
   // Lower-confidence indicators (common in statements but also in other docs)
-  { keyword: 'transactions', weight: 0.60 },
+  { keyword: 'transactions', weight: 0.6 },
   { keyword: 'purchases', weight: 0.55 },
-  { keyword: 'payments', weight: 0.50 },
+  { keyword: 'payments', weight: 0.5 },
   { keyword: 'credits', weight: 0.45 },
   { keyword: 'debits', weight: 0.45 },
 ];
@@ -82,17 +80,33 @@ const STATEMENT_KEYWORDS: Array<{ keyword: string; weight: number }> = [
  * Keywords indicating a receipt (not a statement).
  */
 const RECEIPT_KEYWORDS = [
-  'receipt', 'subtotal', 'tax', 'tip', 'gratuity',
-  'thank you for your purchase', 'order #', 'order number',
-  'item', 'qty', 'quantity', 'unit price',
+  'receipt',
+  'subtotal',
+  'tax',
+  'tip',
+  'gratuity',
+  'thank you for your purchase',
+  'order #',
+  'order number',
+  'item',
+  'qty',
+  'quantity',
+  'unit price',
 ];
 
 /**
  * Keywords indicating an invoice.
  */
 const INVOICE_KEYWORDS = [
-  'invoice', 'bill to', 'ship to', 'due date', 'invoice number',
-  'inv #', 'inv-', 'remittance', 'pay this amount',
+  'invoice',
+  'bill to',
+  'ship to',
+  'due date',
+  'invoice number',
+  'inv #',
+  'inv-',
+  'remittance',
+  'pay this amount',
 ];
 
 /**
@@ -130,7 +144,10 @@ const ISSUER_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
   { pattern: /hdfc\s*bank|hdfc\s*credit|hdfc\s*card/i, name: 'HDFC' },
   { pattern: /icici\s*bank|icici\s*credit|icici\s*card/i, name: 'ICICI' },
   { pattern: /axis\s*bank/i, name: 'Axis Bank' },
-  { pattern: /kotak\s*mahindra|kotak\s*bank|kotak\s*card/i, name: 'Kotak Mahindra' },
+  {
+    pattern: /kotak\s*mahindra|kotak\s*bank|kotak\s*card/i,
+    name: 'Kotak Mahindra',
+  },
   { pattern: /yes\s*bank/i, name: 'Yes Bank' },
   { pattern: /indusind/i, name: 'IndusInd' },
   { pattern: /rbl\s*bank/i, name: 'RBL Bank' },
@@ -144,7 +161,10 @@ const ISSUER_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
   { pattern: /dhanlaxmi/i, name: 'Dhanlaxmi Bank' },
   { pattern: /tamilnad\s*mercantile|tmb\b/i, name: 'Tamilnad Mercantile Bank' },
   { pattern: /nainital\s*bank/i, name: 'Nainital Bank' },
-  { pattern: /jammu\s*(?:&|and)\s*kashmir|j\s*&?\s*k\s*bank/i, name: 'J&K Bank' },
+  {
+    pattern: /jammu\s*(?:&|and)\s*kashmir|j\s*&?\s*k\s*bank/i,
+    name: 'J&K Bank',
+  },
   { pattern: /lakshmi\s*vilas/i, name: 'Lakshmi Vilas Bank' },
   // Broader fallback for HDFC / ICICI (if multi-word didn't match)
   { pattern: /\bhdfc\b/i, name: 'HDFC' },
@@ -167,16 +187,25 @@ const ISSUER_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
   { pattern: /idbi\s*bank/i, name: 'IDBI Bank' },
 
   // Indian Small Finance Banks
-  { pattern: /au\s*(?:small\s*finance)?\s*bank/i, name: 'AU Small Finance Bank' },
+  {
+    pattern: /au\s*(?:small\s*finance)?\s*bank/i,
+    name: 'AU Small Finance Bank',
+  },
   { pattern: /equitas/i, name: 'Equitas Small Finance Bank' },
   { pattern: /ujjivan/i, name: 'Ujjivan Small Finance Bank' },
-  { pattern: /jana\s*(?:small\s*finance)?\s*bank/i, name: 'Jana Small Finance Bank' },
+  {
+    pattern: /jana\s*(?:small\s*finance)?\s*bank/i,
+    name: 'Jana Small Finance Bank',
+  },
   { pattern: /suryoday/i, name: 'Suryoday Small Finance Bank' },
   { pattern: /fincare/i, name: 'Fincare Small Finance Bank' },
   { pattern: /north\s*east\s*small\s*finance/i, name: 'NE Small Finance Bank' },
 
   // US Banks (with word boundaries to avoid false positives)
-  { pattern: /\bchase\s*(?:bank|card|credit|sapphire|freedom|ink)\b/i, name: 'Chase' },
+  {
+    pattern: /\bchase\s*(?:bank|card|credit|sapphire|freedom|ink)\b/i,
+    name: 'Chase',
+  },
   { pattern: /\bjp\s*morgan\s*chase\b/i, name: 'Chase' },
   { pattern: /bank\s*of\s*america|bofa/i, name: 'Bank of America' },
   { pattern: /wells?\s*fargo/i, name: 'Wells Fargo' },
@@ -223,18 +252,30 @@ const ISSUER_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
  * Month name mapping (same as entity-extractor).
  */
 const MONTH_MAP: Record<string, number> = {
-  jan: 1, january: 1,
-  feb: 2, february: 2,
-  mar: 3, march: 3,
-  apr: 4, april: 4,
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  mar: 3,
+  march: 3,
+  apr: 4,
+  april: 4,
   may: 5,
-  jun: 6, june: 6,
-  jul: 7, july: 7,
-  aug: 8, august: 8,
-  sep: 9, sept: 9, september: 9,
-  oct: 10, october: 10,
-  nov: 11, november: 11,
-  dec: 12, december: 12,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  nov: 11,
+  november: 11,
+  dec: 12,
+  december: 12,
 };
 
 /**
@@ -255,7 +296,9 @@ const MONTH_MAP: Record<string, number> = {
 /** Creates date patterns based on whether DD/MM should be preferred for ambiguous dates */
 function createLineDatePatterns(preferDDMM: boolean): Array<{
   regex: RegExp;
-  parser: (match: RegExpMatchArray) => { year: number; month: number; day: number } | null;
+  parser: (
+    match: RegExpMatchArray
+  ) => { year: number; month: number; day: number } | null;
 }> {
   /**
    * Disambiguate two numeric date parts when both could be day or month.
@@ -289,22 +332,34 @@ function createLineDatePatterns(preferDDMM: boolean): Array<{
     },
     // DD Mon YYYY or DD-Mon-YYYY (e.g., 15 Jan 2026, 15-Jan-2026) — unambiguous
     {
-      regex: /^(\d{1,2})[\s\-](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*[\s\-.,](\d{2,4})/i,
+      regex:
+        /^(\d{1,2})[\s\-](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*[\s\-.,](\d{2,4})/i,
       parser: (m: RegExpMatchArray) => {
         const month = MONTH_MAP[m[2]?.toLowerCase() ?? ''];
-        if (!month) return null;
+        if (!month) {
+          return null;
+        }
         let year = parseInt(m[3] ?? '0', 10);
-        if (year < 100) year = year > 50 ? 1900 + year : 2000 + year;
+        if (year < 100) {
+          year = year > 50 ? 1900 + year : 2000 + year;
+        }
         return { year, month, day: parseInt(m[1] ?? '0', 10) };
       },
     },
     // Mon DD, YYYY (e.g., Jan 15, 2026) — unambiguous
     {
-      regex: /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s+(\d{4})/i,
+      regex:
+        /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s+(\d{4})/i,
       parser: (m: RegExpMatchArray) => {
         const month = MONTH_MAP[m[1]?.toLowerCase() ?? ''];
-        if (!month) return null;
-        return { year: parseInt(m[3] ?? '0', 10), month, day: parseInt(m[2] ?? '0', 10) };
+        if (!month) {
+          return null;
+        }
+        return {
+          year: parseInt(m[3] ?? '0', 10),
+          month,
+          day: parseInt(m[2] ?? '0', 10),
+        };
       },
     },
     // N/N/YYYY or N-N-YYYY — context-aware disambiguation
@@ -333,8 +388,14 @@ function createLineDatePatterns(preferDDMM: boolean): Array<{
       regex: /^(\d{1,2})\.(\d{1,2})\.(\d{2,4})/,
       parser: (m: RegExpMatchArray) => {
         let year = parseInt(m[3] ?? '0', 10);
-        if (year < 100) year = year > 50 ? 1900 + year : 2000 + year;
-        return { year, month: parseInt(m[2] ?? '0', 10), day: parseInt(m[1] ?? '0', 10) };
+        if (year < 100) {
+          year = year > 50 ? 1900 + year : 2000 + year;
+        }
+        return {
+          year,
+          month: parseInt(m[2] ?? '0', 10),
+          day: parseInt(m[1] ?? '0', 10),
+        };
       },
     },
     // N/N (no year — common in statements where year is known from header)
@@ -434,8 +495,12 @@ const LINE_AMOUNT_PATTERNS: Array<{
       const amt1 = parseAmountString(m[1] ?? '0');
       const amt2 = parseAmountString(m[2] ?? '0');
       // Usually debit column first, credit column second
-      if (amt1 > 0 && amt2 === 0) return { amount: amt1, isCredit: false };
-      if (amt2 > 0 && amt1 === 0) return { amount: amt2, isCredit: true };
+      if (amt1 > 0 && amt2 === 0) {
+        return { amount: amt1, isCredit: false };
+      }
+      if (amt2 > 0 && amt1 === 0) {
+        return { amount: amt2, isCredit: true };
+      }
       // Both non-zero: first is debit
       return { amount: amt1, isCredit: false };
     },
@@ -454,10 +519,23 @@ const LINE_AMOUNT_PATTERNS: Array<{
  * Keywords that indicate a credit/refund transaction.
  */
 const CREDIT_KEYWORDS = [
-  'payment', 'credit', 'refund', 'return', 'reversal',
-  'cashback', 'cash back', 'reward', 'adjustment',
-  'deposit', 'received', 'cr',
-  'neft transfer', 'neft', 'rtgs', 'salary', 'income',
+  'payment',
+  'credit',
+  'refund',
+  'return',
+  'reversal',
+  'cashback',
+  'cash back',
+  'reward',
+  'adjustment',
+  'deposit',
+  'received',
+  'cr',
+  'neft transfer',
+  'neft',
+  'rtgs',
+  'salary',
+  'income',
 ];
 
 /**
@@ -467,72 +545,72 @@ const CREDIT_KEYWORDS = [
  */
 const SKIP_LINE_PATTERNS: RegExp[] = [
   // --- Structural / Formatting ---
-  /^\s*$/,                                        // Empty lines
-  /^[-=_*]{3,}$/,                                 // Separator lines
-  /^page\s+\d/i,                                  // Page numbers
-  /^\s*\*{2,}/,                                   // Asterisk lines
-  /^\s*continued/i,                               // Continuation markers
-  /^\s*(?:\d+\s*of\s*\d+)\s*$/i,                 // "1 of 3" pagination
+  /^\s*$/, // Empty lines
+  /^[-=_*]{3,}$/, // Separator lines
+  /^page\s+\d/i, // Page numbers
+  /^\s*\*{2,}/, // Asterisk lines
+  /^\s*continued/i, // Continuation markers
+  /^\s*(?:\d+\s*of\s*\d+)\s*$/i, // "1 of 3" pagination
 
   // --- Column Headers ---
   /^\s*(?:date|description|amount|debit|credit|balance|reference|particulars|sr\.?\s*no|transaction\s*details?)\s*$/i,
-  /^\s*(?:date)\s+(?:description|particulars|transaction)/i,   // Multi-word column headers
-  /^\s*(?:sl|sr|s)\.?\s*no\.?\s+date/i,           // "Sl No  Date  Description..." header row
+  /^\s*(?:date)\s+(?:description|particulars|transaction)/i, // Multi-word column headers
+  /^\s*(?:sl|sr|s)\.?\s*no\.?\s+date/i, // "Sl No  Date  Description..." header row
 
   // --- Totals / Balances ---
-  /^\s*(?:total|subtotal|grand total|net)\s/i,    // Total lines
-  /^\s*(?:opening|closing|previous|new)\s+balance/i,  // Balance lines
-  /\bB\s*\/\s*F\b/i,                              // Brought Forward balance lines
-  /\bC\s*\/\s*F\b/i,                              // Carried Forward balance lines
-  /\b(?:brought|carried)\s+forward\b/i,           // Brought/Carried Forward (verbose)
-  /^\s*(?:minimum|payment|amount)\s+(?:due|payable)/i,  // Payment due lines
-  /^\s*(?:credit limit|available credit|cash limit)/i,  // Limit lines
-  /^\s*(?:total\s+)?(?:reward|loyalty)\s*points?/i,    // Reward points lines
+  /^\s*(?:total|subtotal|grand total|net)\s/i, // Total lines
+  /^\s*(?:opening|closing|previous|new)\s+balance/i, // Balance lines
+  /\bB\s*\/\s*F\b/i, // Brought Forward balance lines
+  /\bC\s*\/\s*F\b/i, // Carried Forward balance lines
+  /\b(?:brought|carried)\s+forward\b/i, // Brought/Carried Forward (verbose)
+  /^\s*(?:minimum|payment|amount)\s+(?:due|payable)/i, // Payment due lines
+  /^\s*(?:credit limit|available credit|cash limit)/i, // Limit lines
+  /^\s*(?:total\s+)?(?:reward|loyalty)\s*points?/i, // Reward points lines
 
   // --- Statement Metadata ---
-  /^\s*(?:statement|billing)\s+(?:period|date|cycle)/i,  // Header lines
-  /^\s*(?:account|card)\s+(?:number|no|holder)/i,  // Account info
-  /^\s*(?:interest|finance)\s+(?:charge|rate)/i,   // Interest info lines
-  /^\s*(?:customer\s+(?:id|name|care)|member\s+since)/i,  // Customer info
-  /^\s*(?:payment\s+due\s+date|due\s+date|last\s+date)/i,  // Due date lines
-  /^\s*(?:generated|printed|issued)\s+(?:on|date)/i,  // Generation date
+  /^\s*(?:statement|billing)\s+(?:period|date|cycle)/i, // Header lines
+  /^\s*(?:account|card)\s+(?:number|no|holder)/i, // Account info
+  /^\s*(?:interest|finance)\s+(?:charge|rate)/i, // Interest info lines
+  /^\s*(?:customer\s+(?:id|name|care)|member\s+since)/i, // Customer info
+  /^\s*(?:payment\s+due\s+date|due\s+date|last\s+date)/i, // Due date lines
+  /^\s*(?:generated|printed|issued)\s+(?:on|date)/i, // Generation date
 
   // --- Contact Information ---
-  /^\s*(?:phone|tel|fax|toll\s*free|helpline|customer\s*care)\s*[:\-]?\s*[\d\+\-\(\)]/i,  // Phone numbers
-  /^\s*(?:email|e-mail)\s*[:\-]?\s*\S+@\S+/i,    // Email addresses
-  /^\s*(?:website|web|url|visit)\s*[:\-]?\s*(?:www|https?)/i,  // URLs
-  /^\s*(?:www\.|https?:\/\/)/i,                   // Direct URLs
+  /^\s*(?:phone|tel|fax|toll\s*free|helpline|customer\s*care)\s*[:\-]?\s*[\d\+\-\(\)]/i, // Phone numbers
+  /^\s*(?:email|e-mail)\s*[:\-]?\s*\S+@\S+/i, // Email addresses
+  /^\s*(?:website|web|url|visit)\s*[:\-]?\s*(?:www|https?)/i, // URLs
+  /^\s*(?:www\.|https?:\/\/)/i, // Direct URLs
 
   // --- Physical Addresses ---
-  /^\s*(?:address|regd\.?\s*office|corporate\s*office|head\s*office)\s*[:\-]/i,  // Address labels
-  /^\s*(?:p\.?o\.?\s*box|pin\s*code|zip\s*code)\s*[:\-]?\s*\d/i,  // PO Box / PIN
-  /^\s*(?:\d+[,\s]+(?:floor|street|road|lane|nagar|marg|colony|sector))/i,  // Street addresses
-  /^\s*(?:mumbai|delhi|bangalore|bengaluru|chennai|kolkata|hyderabad|pune|new\s*delhi|noida|gurgaon|gurugram)\s*[-,]?\s*\d{6}/i,  // Indian city + pincode
+  /^\s*(?:address|regd\.?\s*office|corporate\s*office|head\s*office)\s*[:\-]/i, // Address labels
+  /^\s*(?:p\.?o\.?\s*box|pin\s*code|zip\s*code)\s*[:\-]?\s*\d/i, // PO Box / PIN
+  /^\s*(?:\d+[,\s]+(?:floor|street|road|lane|nagar|marg|colony|sector))/i, // Street addresses
+  /^\s*(?:mumbai|delhi|bangalore|bengaluru|chennai|kolkata|hyderabad|pune|new\s*delhi|noida|gurgaon|gurugram)\s*[-,]?\s*\d{6}/i, // Indian city + pincode
 
   // --- Informational / Legal Paragraphs ---
-  /^\s*(?:dear|respected)\s+(?:customer|cardholder|card\s*member|sir|madam)/i,  // Salutations
-  /^\s*(?:this\s+is\s+(?:a\s+)?(?:computer|system|auto)\s*(?:generated|produced))/i,  // Auto-generated disclaimer
-  /^\s*(?:for\s+any\s+(?:queries|dispute|clarification|assistance))/i,  // Support text
-  /^\s*(?:please\s+(?:note|contact|call|visit|refer|check))/i,  // Instructions
-  /^\s*(?:terms\s+(?:and|&)\s+conditions|t\s*&\s*c\s*apply)/i,  // T&C
-  /^\s*(?:important\s+(?:notice|information|update))/i,  // Notices
-  /^\s*(?:in\s+case\s+of|if\s+you\s+(?:have|need|wish))/i,  // Conditional instructions
-  /^\s*(?:registered\s+(?:office|with)|cin|gstin|gst\s*no)/i,  // Legal registration
-  /^\s*(?:subject\s+to\s+(?:terms|conditions|jurisdiction))/i,  // Legal disclaimers
+  /^\s*(?:dear|respected)\s+(?:customer|cardholder|card\s*member|sir|madam)/i, // Salutations
+  /^\s*(?:this\s+is\s+(?:a\s+)?(?:computer|system|auto)\s*(?:generated|produced))/i, // Auto-generated disclaimer
+  /^\s*(?:for\s+any\s+(?:queries|dispute|clarification|assistance))/i, // Support text
+  /^\s*(?:please\s+(?:note|contact|call|visit|refer|check))/i, // Instructions
+  /^\s*(?:terms\s+(?:and|&)\s+conditions|t\s*&\s*c\s*apply)/i, // T&C
+  /^\s*(?:important\s+(?:notice|information|update))/i, // Notices
+  /^\s*(?:in\s+case\s+of|if\s+you\s+(?:have|need|wish))/i, // Conditional instructions
+  /^\s*(?:registered\s+(?:office|with)|cin|gstin|gst\s*no)/i, // Legal registration
+  /^\s*(?:subject\s+to\s+(?:terms|conditions|jurisdiction))/i, // Legal disclaimers
 
   // --- Rewards / Marketing / Promotions ---
   /^\s*(?:you\s+(?:have\s+)?earned|points?\s+(?:earned|redeemed|balance))/i,
   /^\s*(?:cashback|reward)\s+(?:earned|credited|summary)/i,
-  /^\s*(?:offer|promo|promotion|discount|exclusive)\s/i,  // Promotional lines
-  /^\s*(?:emi\s+(?:conversion|available|details?))/i,  // EMI conversion offers
+  /^\s*(?:offer|promo|promotion|discount|exclusive)\s/i, // Promotional lines
+  /^\s*(?:emi\s+(?:conversion|available|details?))/i, // EMI conversion offers
 
   // --- Itemized Breakdowns / Sub-details ---
-  /^\s*(?:gst|cgst|sgst|igst|tax|vat|service\s*tax)\s*(?:@|:|\d)/i,  // Tax breakdowns
-  /^\s*(?:cess|surcharge|convenience\s*fee|processing\s*fee)\s*[:\-]?\s*[\d₹$]/i,  // Fee sub-items
-  /^\s*(?:foreign\s*(?:currency|exchange)|conversion\s*rate|exchange\s*rate)/i,  // FX details
-  /^\s*(?:arn|approval\s*code|auth\s*code|ref\s*no|reference\s*(?:number|no))\s*[:\-]?\s*\w/i,  // Reference codes (standalone)
-  /^\s*(?:merchant\s*(?:category|id|name)|mcc)\s*[:\-]/i,  // MCC details
-  /^\s*(?:cross\s*currency|markup|mark-up)\s*[:\-]?\s*[\d]/i,  // Cross-currency markup
+  /^\s*(?:gst|cgst|sgst|igst|tax|vat|service\s*tax)\s*(?:@|:|\d)/i, // Tax breakdowns
+  /^\s*(?:cess|surcharge|convenience\s*fee|processing\s*fee)\s*[:\-]?\s*[\d₹$]/i, // Fee sub-items
+  /^\s*(?:foreign\s*(?:currency|exchange)|conversion\s*rate|exchange\s*rate)/i, // FX details
+  /^\s*(?:arn|approval\s*code|auth\s*code|ref\s*no|reference\s*(?:number|no))\s*[:\-]?\s*\w/i, // Reference codes (standalone)
+  /^\s*(?:merchant\s*(?:category|id|name)|mcc)\s*[:\-]/i, // MCC details
+  /^\s*(?:cross\s*currency|markup|mark-up)\s*[:\-]?\s*[\d]/i, // Cross-currency markup
 ];
 
 // ============================================
@@ -591,9 +669,15 @@ class StatementParserService {
     for (const line of lines) {
       const hasDate = this.lineHasDate(line);
       const hasAmount = this.lineHasAmount(line);
-      if (hasDate && hasAmount) linesWithDatesAndAmounts++;
-      if (hasDate && !hasAmount) linesWithDateOnly++;
-      if (!hasDate && hasAmount) linesWithAmountOnly++;
+      if (hasDate && hasAmount) {
+        linesWithDatesAndAmounts++;
+      }
+      if (hasDate && !hasAmount) {
+        linesWithDateOnly++;
+      }
+      if (!hasDate && hasAmount) {
+        linesWithAmountOnly++;
+      }
     }
 
     // Single-line format: dates and amounts on the same line
@@ -662,25 +746,67 @@ class StatementParserService {
    */
   private static readonly INDIAN_ISSUERS = new Set([
     // Private sector banks
-    'HDFC', 'ICICI', 'SBI', 'Axis Bank', 'Kotak Mahindra', 'Yes Bank',
-    'IndusInd', 'RBL Bank', 'IDFC First', 'Federal Bank', 'Bandhan Bank',
-    'Karur Vysya Bank', 'South Indian Bank', 'CSB Bank', 'City Union Bank',
-    'Dhanlaxmi Bank', 'Tamilnad Mercantile Bank', 'Nainital Bank', 'J&K Bank',
+    'HDFC',
+    'ICICI',
+    'SBI',
+    'Axis Bank',
+    'Kotak Mahindra',
+    'Yes Bank',
+    'IndusInd',
+    'RBL Bank',
+    'IDFC First',
+    'Federal Bank',
+    'Bandhan Bank',
+    'Karur Vysya Bank',
+    'South Indian Bank',
+    'CSB Bank',
+    'City Union Bank',
+    'Dhanlaxmi Bank',
+    'Tamilnad Mercantile Bank',
+    'Nainital Bank',
+    'J&K Bank',
     'Lakshmi Vilas Bank',
     // PSU banks
-    'Punjab National Bank', 'Bank of Baroda',
-    'Canara Bank', 'Union Bank of India', 'Indian Bank', 'Bank of India',
-    'Bank of Maharashtra', 'Central Bank of India', 'Indian Overseas Bank',
-    'UCO Bank', 'Punjab & Sind Bank', 'IDBI Bank',
+    'Punjab National Bank',
+    'Bank of Baroda',
+    'Canara Bank',
+    'Union Bank of India',
+    'Indian Bank',
+    'Bank of India',
+    'Bank of Maharashtra',
+    'Central Bank of India',
+    'Indian Overseas Bank',
+    'UCO Bank',
+    'Punjab & Sind Bank',
+    'IDBI Bank',
     // Small finance banks
-    'AU Small Finance Bank', 'Equitas Small Finance Bank', 'Ujjivan Small Finance Bank',
-    'Jana Small Finance Bank', 'Suryoday Small Finance Bank',
-    'Fincare Small Finance Bank', 'NE Small Finance Bank',
+    'AU Small Finance Bank',
+    'Equitas Small Finance Bank',
+    'Ujjivan Small Finance Bank',
+    'Jana Small Finance Bank',
+    'Suryoday Small Finance Bank',
+    'Fincare Small Finance Bank',
+    'NE Small Finance Bank',
     // Fintech / NBFC issuers
-    'SBI Card', 'BOB Financial', 'OneCard', 'Slice', 'Uni Card',
-    'Fi Money', 'Jupiter', 'Bajaj Finserv', 'Tata Neu', 'Paytm',
-    'Scapia', 'CRED', 'Kiwi', 'Niyo', 'Freo', 'Freecharge',
-    'LazyPay', 'Simpl', 'ZestMoney',
+    'SBI Card',
+    'BOB Financial',
+    'OneCard',
+    'Slice',
+    'Uni Card',
+    'Fi Money',
+    'Jupiter',
+    'Bajaj Finserv',
+    'Tata Neu',
+    'Paytm',
+    'Scapia',
+    'CRED',
+    'Kiwi',
+    'Niyo',
+    'Freo',
+    'Freecharge',
+    'LazyPay',
+    'Simpl',
+    'ZestMoney',
     // Indian card network
     'RuPay',
   ]);
@@ -688,9 +814,16 @@ class StatementParserService {
   /**
    * Detect whether this statement uses DD/MM date format (Indian convention).
    */
-  private isIndianStatement(issuer: string | null, currency: string | null): boolean {
-    if (currency === 'INR') return true;
-    if (issuer && StatementParserService.INDIAN_ISSUERS.has(issuer)) return true;
+  private isIndianStatement(
+    issuer: string | null,
+    currency: string | null
+  ): boolean {
+    if (currency === 'INR') {
+      return true;
+    }
+    if (issuer && StatementParserService.INDIAN_ISSUERS.has(issuer)) {
+      return true;
+    }
     return false;
   }
 
@@ -738,10 +871,14 @@ class StatementParserService {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]?.trim();
-      if (!line) continue;
+      if (!line) {
+        continue;
+      }
 
       // Skip known non-transaction lines
-      if (this.shouldSkipLine(line)) continue;
+      if (this.shouldSkipLine(line)) {
+        continue;
+      }
 
       // Try to parse as a transaction line (with context-aware date patterns)
       const parsed = this.parseTransactionLine(line, {
@@ -755,7 +892,9 @@ class StatementParserService {
 
       if (parsed) {
         // Auto-categorize the vendor (checks learned mappings first, then rules)
-        const categorySuggestion = autoCategorizer.suggestCategory(parsed.vendor);
+        const categorySuggestion = autoCategorizer.suggestCategory(
+          parsed.vendor
+        );
 
         // If the suggestion is from learned mappings, set category directly
         const learnedCategoryId =
@@ -770,10 +909,9 @@ class StatementParserService {
           amount: parsed.amount,
           type: parsed.type,
           category: learnedCategoryId, // Set directly from learned mapping, or null for UI to resolve
-          suggestedCategoryName:
-            learnedCategoryId
-              ? null // Already have a direct CategoryId, no name needed
-              : categorySuggestion?.categoryName || null,
+          suggestedCategoryName: learnedCategoryId
+            ? null // Already have a direct CategoryId, no name needed
+            : categorySuggestion?.categoryName || null,
           rawLine: line,
           confidence: parsed.confidence,
           selected: true, // Selected by default
@@ -787,8 +925,8 @@ class StatementParserService {
         if (transactions.length > 0 && this.isContinuationLine(line)) {
           const last = transactions[transactions.length - 1];
           if (last) {
-            last.vendor += ' ' + line.trim();
-            last.rawLine += '\n' + line;
+            last.vendor += ` ${line.trim()}`;
+            last.rawLine += `\n${line}`;
           }
         } else if (this.looksLikeTransactionData(line)) {
           unparsedLineCount++;
@@ -809,7 +947,10 @@ class StatementParserService {
     totals.statementTotal = statementTotal;
 
     // Add validation warnings
-    if (statementTotal !== null && Math.abs(totals.netBalance - statementTotal) > 0.01) {
+    if (
+      statementTotal !== null &&
+      Math.abs(totals.netBalance - statementTotal) > 0.01
+    ) {
       warnings.push(
         `Parsed total (${totals.netBalance.toFixed(2)}) differs from statement total (${statementTotal.toFixed(2)}). Please review.`
       );
@@ -888,12 +1029,18 @@ class StatementParserService {
     const codeMatch = text.match(
       /\b(USD|EUR|GBP|INR|CAD|AUD|JPY|CNY|CHF|SGD|HKD|NZD)\b/i
     );
-    if (codeMatch) return codeMatch[1]!.toUpperCase();
+    if (codeMatch) {
+      return codeMatch[1]!.toUpperCase();
+    }
 
     // Check for currency symbols (count occurrences)
     const symbolMap: Record<string, string> = {
-      '$': 'USD', '€': 'EUR', '£': 'GBP', '₹': 'INR',
-      '¥': 'JPY', '₩': 'KRW',
+      $: 'USD',
+      '€': 'EUR',
+      '£': 'GBP',
+      '₹': 'INR',
+      '¥': 'JPY',
+      '₩': 'KRW',
     };
 
     let maxCount = 0;
@@ -921,9 +1068,10 @@ class StatementParserService {
   /**
    * Extract statement period from text.
    */
-  private extractStatementPeriod(
-    text: string
-  ): { start: string | null; end: string | null } {
+  private extractStatementPeriod(text: string): {
+    start: string | null;
+    end: string | null;
+  } {
     // Pattern: "Statement Period: Jan 01, 2026 - Jan 31, 2026"
     const periodPatterns = [
       /statement\s+period\s*:?\s*(.+?)\s*(?:to|-|through)\s*(.+?)(?:\n|$)/i,
@@ -1001,21 +1149,32 @@ class StatementParserService {
     const trimmed = line.trim();
 
     // Too short to be a transaction
-    if (trimmed.length < 5) return true;
+    if (trimmed.length < 5) {
+      return true;
+    }
 
     // Too long to be a single transaction line (likely a paragraph)
-    if (trimmed.length > 300) return true;
+    if (trimmed.length > 300) {
+      return true;
+    }
 
     // Check against all skip patterns
     for (const pattern of SKIP_LINE_PATTERNS) {
-      if (pattern.test(trimmed)) return true;
+      if (pattern.test(trimmed)) {
+        return true;
+      }
     }
 
     // Skip lines that are purely numeric (page numbers, codes, etc.)
-    if (/^\d+$/.test(trimmed)) return true;
+    if (/^\d+$/.test(trimmed)) {
+      return true;
+    }
 
     // Skip lines that look like phone numbers (10+ digit sequences)
-    if (/(?:^|\s)[\+\-\(\)\d\s]{10,}(?:\s|$)/.test(trimmed) && !/\.\d{2}/.test(trimmed)) {
+    if (
+      /(?:^|\s)[\+\-\(\)\d\s]{10,}(?:\s|$)/.test(trimmed) &&
+      !/\.\d{2}/.test(trimmed)
+    ) {
       return true;
     }
 
@@ -1029,7 +1188,9 @@ class StatementParserService {
     const trimmed = line.trim();
     for (const { regex } of LINE_DATE_PATTERNS) {
       regex.lastIndex = 0;
-      if (regex.test(trimmed)) return true;
+      if (regex.test(trimmed)) {
+        return true;
+      }
     }
     return false;
   }
@@ -1101,7 +1262,11 @@ class StatementParserService {
       if (match) {
         const parsed = parser(match);
         if (parsed) {
-          const normalized = this.normalizeDate(parsed.year, parsed.month, parsed.day);
+          const normalized = this.normalizeDate(
+            parsed.year,
+            parsed.month,
+            parsed.day
+          );
           if (normalized) {
             const dateObj = new Date(normalized);
             if (dateObj <= context.maxDate && dateObj >= context.minDate) {
@@ -1154,7 +1319,9 @@ class StatementParserService {
 
     // If we don't have both a date and an amount, it's not a valid transaction line
     // (unless we can infer the date)
-    if (amount === null) return null;
+    if (amount === null) {
+      return null;
+    }
 
     if (date === null) {
       if (context.inferMissingDates && context.lastValidDate) {
@@ -1166,14 +1333,19 @@ class StatementParserService {
     }
 
     // Step 3: Extract vendor/description from the middle
-    let vendor = this.cleanVendorDescription(remainingLine);
-    if (!vendor || !this.isValidVendor(vendor)) return null;
+    const vendor = this.cleanVendorDescription(remainingLine);
+    if (!vendor || !this.isValidVendor(vendor)) {
+      return null;
+    }
 
     // Step 4: Determine transaction type
     const type = this.determineTransactionType(vendor, isCredit);
 
     // Adjust credit detection based on vendor keywords
-    if (!isCredit && CREDIT_KEYWORDS.some((kw) => vendor.toLowerCase().includes(kw))) {
+    if (
+      !isCredit &&
+      CREDIT_KEYWORDS.some((kw) => vendor.toLowerCase().includes(kw))
+    ) {
       isCredit = true;
     }
 
@@ -1182,9 +1354,8 @@ class StatementParserService {
     const signedAmount = isCredit ? -amount : amount;
 
     // Step 6: Calculate overall confidence
-    const confidence = Math.round(
-      ((dateConfidence + amountConfidence) / 2) * 100
-    ) / 100;
+    const confidence =
+      Math.round(((dateConfidence + amountConfidence) / 2) * 100) / 100;
 
     return {
       date,
@@ -1204,11 +1375,21 @@ class StatementParserService {
   ): ParsedStatementTransaction['type'] {
     const lower = vendor.toLowerCase();
 
-    if (/(?:payment|thank you|autopay)/.test(lower)) return 'payment';
-    if (/(?:refund|return|reversal)/.test(lower)) return 'refund';
-    if (/(?:interest|finance charge)/.test(lower)) return 'interest';
-    if (/(?:fee|charge|penalty|annual fee|late fee)/.test(lower)) return 'fee';
-    if (isCredit) return 'credit';
+    if (/(?:payment|thank you|autopay)/.test(lower)) {
+      return 'payment';
+    }
+    if (/(?:refund|return|reversal)/.test(lower)) {
+      return 'refund';
+    }
+    if (/(?:interest|finance charge)/.test(lower)) {
+      return 'interest';
+    }
+    if (/(?:fee|charge|penalty|annual fee|late fee)/.test(lower)) {
+      return 'fee';
+    }
+    if (isCredit) {
+      return 'credit';
+    }
     return 'debit';
   }
 
@@ -1239,15 +1420,19 @@ class StatementParserService {
 
       // Extract merchant name from VPA: "swiggy" from "swiggy@yespay"
       // or "tiasha.hore" from "tiasha.hore@okh"
-      let merchant = vpa
-        .replace(/@.*$/, '')           // Remove @bank suffix
-        .replace(/\.\w+$/, '')         // Remove trailing .razorpay etc.
-        .replace(/[._-]/g, ' ')        // Convert separators to spaces
-        .replace(/\d{5,}/g, '')        // Remove long number sequences (phone numbers, IDs)
+      const merchant = vpa
+        .replace(/@.*$/, '') // Remove @bank suffix
+        .replace(/\.\w+$/, '') // Remove trailing .razorpay etc.
+        .replace(/[._-]/g, ' ') // Convert separators to spaces
+        .replace(/\d{5,}/g, '') // Remove long number sequences (phone numbers, IDs)
         .trim();
 
       // If description adds useful info (not just "NA", "UPI", "Sent using Payt", generic text)
-      const isUsefulDesc = desc && !/^(NA|UPI|Sent using Payt|Pay\s*via|topup|payment|express|Mandate)/i.test(desc);
+      const isUsefulDesc =
+        desc &&
+        !/^(NA|UPI|Sent using Payt|Pay\s*via|topup|payment|express|Mandate)/i.test(
+          desc
+        );
 
       if (isUsefulDesc && desc.length > 2 && desc.length < 40) {
         // Use description if it's meaningful and short
@@ -1272,7 +1457,12 @@ class StatementParserService {
       const bilParts = cleaned.split('/');
       // Look for a recognizable name in the parts
       const billerName = bilParts.find(
-        (p) => p && p.length > 3 && !/^\d+$/.test(p) && !/^ONL$/i.test(p) && !/^BILL\s*DESK$/i.test(p)
+        (p) =>
+          p &&
+          p.length > 3 &&
+          !/^\d+$/.test(p) &&
+          !/^ONL$/i.test(p) &&
+          !/^BILL\s*DESK$/i.test(p)
       );
       cleaned = billerName?.trim() || 'Bill Payment';
     }
@@ -1330,7 +1520,10 @@ class StatementParserService {
       // Remove trailing asterisks and hashes
       .replace(/[\s*#]+$/, '')
       // Remove remaining POS/ECOM/IMPS transaction type prefixes (if not already handled above)
-      .replace(/^(?:POS|ECOM|IMPS|NEFT|RTGS|UPI|NACH|ECS|ACH|ATM)\s*[-/]?\s*/i, '')
+      .replace(
+        /^(?:POS|ECOM|IMPS|NEFT|RTGS|UPI|NACH|ECS|ACH|ATM)\s*[-/]?\s*/i,
+        ''
+      )
       // Remove UPI VPA patterns (e.g., "name@okaxis", "name@ybl")
       .replace(/\S+@\S+/gi, '')
       // Remove long alphanumeric reference strings (12+ chars of hex/mixed)
@@ -1338,7 +1531,10 @@ class StatementParserService {
       // Remove transaction IDs that look like numbers (9+ digits)
       .replace(/\b\d{9,}\b/g, '')
       // Remove bank names that are noise in vendor context
-      .replace(/\b(?:YES\s*BANK|HDFC\s*BANK|ICICI\s*Bank|AXIS\s*BANK|SBI|FEDERAL\s*BANK|CANARA\s*BANK|UNION\s*BANK|IDBI\s*BANK|RBL\s*BANK)\b\.?\s*(?:LTD|LIMITE?D?)?\.?/gi, '')
+      .replace(
+        /\b(?:YES\s*BANK|HDFC\s*BANK|ICICI\s*Bank|AXIS\s*BANK|SBI|FEDERAL\s*BANK|CANARA\s*BANK|UNION\s*BANK|IDBI\s*BANK|RBL\s*BANK)\b\.?\s*(?:LTD|LIMITE?D?)?\.?/gi,
+        ''
+      )
       // Remove standalone "LTD", "LIMITE", "BANK" fragments
       .replace(/\b(?:LTD|LIMITE|LIMITED|BANK)\b\.?\s*/gi, '')
       // Remove excessive whitespace
@@ -1363,19 +1559,29 @@ class StatementParserService {
    */
   private isValidVendor(vendor: string): boolean {
     // Must have at least one alphabetic character
-    if (!/[a-zA-Z]/.test(vendor)) return false;
+    if (!/[a-zA-Z]/.test(vendor)) {
+      return false;
+    }
 
     // Must not be too short (single char/digit combos)
-    if (vendor.length < 2) return false;
+    if (vendor.length < 2) {
+      return false;
+    }
 
     // Must not be purely a number with punctuation
-    if (/^[\d\s.,\-\/]+$/.test(vendor)) return false;
+    if (/^[\d\s.,\-\/]+$/.test(vendor)) {
+      return false;
+    }
 
     // Must not look like just a date
-    if (/^\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?$/.test(vendor)) return false;
+    if (/^\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?$/.test(vendor)) {
+      return false;
+    }
 
     // Must not look like just a reference number
-    if (/^(?:REF|AUTH|TXN|ARN|ID|NO|#)\s*:?\s*\w+$/i.test(vendor)) return false;
+    if (/^(?:REF|AUTH|TXN|ARN|ID|NO|#)\s*:?\s*\w+$/i.test(vendor)) {
+      return false;
+    }
 
     return true;
   }
@@ -1388,7 +1594,9 @@ class StatementParserService {
     const slashMatch = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
     if (slashMatch) {
       let year = parseInt(slashMatch[3] ?? '0', 10);
-      if (year < 100) year = year > 50 ? 1900 + year : 2000 + year;
+      if (year < 100) {
+        year = year > 50 ? 1900 + year : 2000 + year;
+      }
       return this.normalizeDate(
         year,
         parseInt(slashMatch[1] ?? '0', 10),
@@ -1415,13 +1623,25 @@ class StatementParserService {
   /**
    * Normalize date components to ISO string.
    */
-  private normalizeDate(year: number, month: number, day: number): string | null {
-    if (year < 1900 || year > 2100) return null;
-    if (month < 1 || month > 12) return null;
-    if (day < 1 || day > 31) return null;
+  private normalizeDate(
+    year: number,
+    month: number,
+    day: number
+  ): string | null {
+    if (year < 1900 || year > 2100) {
+      return null;
+    }
+    if (month < 1 || month > 12) {
+      return null;
+    }
+    if (day < 1 || day > 31) {
+      return null;
+    }
 
     const daysInMonth = new Date(year, month, 0).getDate();
-    if (day > daysInMonth) return null;
+    if (day > daysInMonth) {
+      return null;
+    }
 
     return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
   }

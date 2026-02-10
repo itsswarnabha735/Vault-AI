@@ -9,7 +9,11 @@ import { createBrowserClient } from '@supabase/ssr';
 import type { Database } from '@/types/supabase';
 
 // Environment variable validation
-function getSupabaseConfig(): { supabaseUrl: string; supabaseAnonKey: string; isConfigured: boolean } {
+function getSupabaseConfig(): {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  isConfigured: boolean;
+} {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

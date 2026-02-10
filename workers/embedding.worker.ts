@@ -474,7 +474,7 @@ class EmbeddingWorker {
     }
 
     return {
-      text: text.slice(0, maxChars - 3) + '...',
+      text: `${text.slice(0, maxChars - 3)}...`,
       wasTruncated: true,
     };
   }

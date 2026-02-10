@@ -50,7 +50,7 @@ export function SpendingThisMonthCard() {
         )}
       </CardHeader>
       <CardContent>
-        <div className="font-display text-2xl font-bold font-mono">
+        <div className="font-display font-mono text-2xl font-bold">
           {formatCurrency(thisMonth)}
         </div>
 
@@ -75,7 +75,9 @@ export function SpendingThisMonthCard() {
           ) : (
             <span className="text-xs text-vault-text-secondary">No change</span>
           )}
-          <span className="text-xs text-vault-text-secondary">vs last month</span>
+          <span className="text-xs text-vault-text-secondary">
+            vs last month
+          </span>
         </div>
 
         {/* Mini sparkline */}

@@ -103,34 +103,39 @@ function LoginForm() {
       }
 
       if (!data.session) {
-        throw new Error('No session returned. Please check your email for confirmation link.');
+        throw new Error(
+          'No session returned. Please check your email for confirmation link.'
+        );
       }
 
       console.log('Login successful, session:', data.session.user.email);
-      
+
       // Add small delay to ensure cookies are set before redirect
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Successful login - use window.location.replace for full page reload
-      const redirectUrl = redirectTo.startsWith('/') ? `${window.location.origin}${redirectTo}` : redirectTo;
+      const redirectUrl = redirectTo.startsWith('/')
+        ? `${window.location.origin}${redirectTo}`
+        : redirectTo;
       console.log('Redirecting to:', redirectUrl);
       window.location.replace(redirectUrl);
     } catch (error) {
       console.error('Login error:', error);
-      
+
       let errorMessage = 'Failed to sign in. Please check your credentials.';
-      
+
       if (error instanceof Error) {
         // Provide more helpful error messages
         if (error.message.includes('Invalid login credentials')) {
           errorMessage = 'Invalid email or password. Please try again.';
         } else if (error.message.includes('Email not confirmed')) {
-          errorMessage = 'Please verify your email address before signing in. Check your inbox for a confirmation link.';
+          errorMessage =
+            'Please verify your email address before signing in. Check your inbox for a confirmation link.';
         } else {
           errorMessage = error.message;
         }
       }
-      
+
       setMessage({
         type: 'error',
         text: errorMessage,
@@ -164,7 +169,7 @@ function LoginForm() {
               onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
               onBlur={(e) => setEmail(e.target.value)}
               disabled={isLoading}
-              className="mt-1 block w-full rounded-lg border border-[rgba(255,255,255,0.10)] bg-vault-bg-tertiary px-4 py-3 text-vault-text-primary placeholder:text-vault-text-tertiary transition-colors focus:border-vault-gold focus:outline-none focus:ring-2 focus:ring-vault-gold/20 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-1 block w-full rounded-lg border border-[rgba(255,255,255,0.10)] bg-vault-bg-tertiary px-4 py-3 text-vault-text-primary transition-colors placeholder:text-vault-text-tertiary focus:border-vault-gold focus:outline-none focus:ring-2 focus:ring-vault-gold/20 disabled:cursor-not-allowed disabled:opacity-50"
               placeholder="you@example.com"
             />
           </div>
@@ -195,7 +200,7 @@ function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
-                className="block w-full rounded-lg border border-[rgba(255,255,255,0.10)] bg-vault-bg-tertiary px-4 py-3 pr-10 text-vault-text-primary placeholder:text-vault-text-tertiary transition-colors focus:border-vault-gold focus:outline-none focus:ring-2 focus:ring-vault-gold/20 disabled:cursor-not-allowed disabled:opacity-50"
+                className="block w-full rounded-lg border border-[rgba(255,255,255,0.10)] bg-vault-bg-tertiary px-4 py-3 pr-10 text-vault-text-primary transition-colors placeholder:text-vault-text-tertiary focus:border-vault-gold focus:outline-none focus:ring-2 focus:ring-vault-gold/20 disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder="Enter your password"
               />
               <button
@@ -204,13 +209,38 @@ function LoginForm() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-vault-text-tertiary hover:text-vault-text-secondary"
               >
                 {showPassword ? (
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                    />
                   </svg>
                 ) : (
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
                   </svg>
                 )}
               </button>
@@ -332,14 +362,14 @@ function LoginFormSkeleton() {
     <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-vault-bg-elevated p-8 shadow-xl">
       <div className="space-y-5">
         <div>
-          <div className="h-4 w-24 rounded bg-vault-bg-surface animate-vault-pulse" />
-          <div className="mt-1 h-12 rounded-lg bg-vault-bg-tertiary animate-vault-pulse" />
+          <div className="h-4 w-24 animate-vault-pulse rounded bg-vault-bg-surface" />
+          <div className="mt-1 h-12 animate-vault-pulse rounded-lg bg-vault-bg-tertiary" />
         </div>
         <div>
-          <div className="h-4 w-20 rounded bg-vault-bg-surface animate-vault-pulse" />
-          <div className="mt-1 h-12 rounded-lg bg-vault-bg-tertiary animate-vault-pulse" />
+          <div className="h-4 w-20 animate-vault-pulse rounded bg-vault-bg-surface" />
+          <div className="mt-1 h-12 animate-vault-pulse rounded-lg bg-vault-bg-tertiary" />
         </div>
-        <div className="h-12 rounded-lg bg-vault-gold-muted animate-vault-pulse" />
+        <div className="h-12 animate-vault-pulse rounded-lg bg-vault-gold-muted" />
       </div>
     </div>
   );
@@ -357,7 +387,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         {/* Logo & Header */}
         <div className="flex flex-col items-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-xl gradient-vault shadow-glow">
+          <div className="gradient-vault flex h-16 w-16 items-center justify-center rounded-xl shadow-glow">
             <svg
               className="h-10 w-10 text-vault-bg-primary"
               fill="none"

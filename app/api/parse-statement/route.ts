@@ -119,8 +119,13 @@ function maskAccountNumbers(text: string): string {
  * If truncation is necessary, we keep the header (metadata), a large
  * middle section (transactions), and the footer (summaries/totals).
  */
-function truncateStatementText(text: string, maxChars: number = 200000): string {
-  if (text.length <= maxChars) return text;
+function truncateStatementText(
+  text: string,
+  maxChars: number = 200000
+): string {
+  if (text.length <= maxChars) {
+    return text;
+  }
 
   // Keep first 10% (header/metadata), middle 80% (transactions), last 10% (summary)
   const headerChars = Math.floor(maxChars * 0.1);
@@ -128,10 +133,7 @@ function truncateStatementText(text: string, maxChars: number = 200000): string 
   const footerChars = Math.floor(maxChars * 0.1);
 
   const header = text.slice(0, headerChars);
-  const middle = text.slice(
-    headerChars,
-    headerChars + bodyChars
-  );
+  const middle = text.slice(headerChars, headerChars + bodyChars);
   const footer = text.slice(-footerChars);
 
   return `${header}\n...[truncated: some transactions may be missing]...\n${middle}\n...[truncated]...\n${footer}`;
@@ -323,8 +325,14 @@ export async function POST(request: NextRequest) {
           safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
             { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            {
+              category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+              threshold: 'BLOCK_NONE',
+            },
+            {
+              category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+              threshold: 'BLOCK_NONE',
+            },
           ],
         }),
         signal: AbortSignal.timeout(modelConfig.timeoutMs),
@@ -333,11 +341,16 @@ export async function POST(request: NextRequest) {
 
     if (!geminiResponse.ok) {
       const errorData = await geminiResponse.json().catch(() => ({}));
-      console.error('[parse-statement] Gemini API error:', geminiResponse.status, errorData);
+      console.error(
+        '[parse-statement] Gemini API error:',
+        geminiResponse.status,
+        errorData
+      );
       return NextResponse.json(
         {
           error: `Gemini API error: ${geminiResponse.status}`,
-          details: (errorData as Record<string, unknown>)?.error || 'Unknown error',
+          details:
+            (errorData as Record<string, unknown>)?.error || 'Unknown error',
         },
         { status: 502 }
       );
@@ -392,14 +405,22 @@ export async function POST(request: NextRequest) {
 
     // 11. Sanitize and validate individual transactions
     const validTransactions = parsedResult.transactions
-      .filter((tx) => tx.date && tx.vendor && typeof tx.amount === 'number' && tx.amount > 0)
+      .filter(
+        (tx) =>
+          tx.date && tx.vendor && typeof tx.amount === 'number' && tx.amount > 0
+      )
       .map((tx) => ({
         date: normalizeDate(String(tx.date)),
         vendor: String(tx.vendor).trim(),
         amount: Math.abs(Number(tx.amount)),
-        type: (['debit', 'credit', 'payment', 'fee', 'interest', 'refund'].includes(
-          tx.type
-        )
+        type: ([
+          'debit',
+          'credit',
+          'payment',
+          'fee',
+          'interest',
+          'refund',
+        ].includes(tx.type)
           ? tx.type
           : 'debit') as LLMParsedTransaction['type'],
         category: tx.category ? String(tx.category) : undefined,
@@ -480,7 +501,9 @@ export async function POST(request: NextRequest) {
  */
 function normalizeDate(dateStr: string): string {
   // Already YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
 
   // DD/MM/YYYY or DD-MM-YYYY
   const ddmmyyyy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);

@@ -35,12 +35,12 @@ export function formatCurrency(
 
 /** Maps currency codes to their natural locale for proper formatting */
 const CURRENCY_LOCALE_MAP: Record<string, string> = {
-  INR: 'en-IN',  // ₹1,87,551.00 (lakh notation)
-  USD: 'en-US',  // $187,551.00
-  EUR: 'de-DE',  // 187.551,00 €
-  GBP: 'en-GB',  // £187,551.00
-  JPY: 'ja-JP',  // ¥187,551
-  CNY: 'zh-CN',  // ¥187,551.00
+  INR: 'en-IN', // ₹1,87,551.00 (lakh notation)
+  USD: 'en-US', // $187,551.00
+  EUR: 'de-DE', // 187.551,00 €
+  GBP: 'en-GB', // £187,551.00
+  JPY: 'ja-JP', // ¥187,551
+  CNY: 'zh-CN', // ¥187,551.00
   CAD: 'en-CA',
   AUD: 'en-AU',
   SGD: 'en-SG',

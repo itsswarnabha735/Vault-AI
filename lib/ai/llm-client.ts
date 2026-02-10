@@ -95,22 +95,36 @@ export interface GenerationOverrides {
  */
 export interface LLMClient {
   /** Generate a completion from a flat prompt string */
-  generate(prompt: string, overrides?: GenerationOverrides): Promise<LLMResponse>;
+  generate(
+    prompt: string,
+    overrides?: GenerationOverrides
+  ): Promise<LLMResponse>;
 
   /** Generate with streaming from a flat prompt string */
-  generateStream(prompt: string, onChunk: StreamCallback, overrides?: GenerationOverrides): Promise<LLMResponse>;
+  generateStream(
+    prompt: string,
+    onChunk: StreamCallback,
+    overrides?: GenerationOverrides
+  ): Promise<LLMResponse>;
 
   /**
    * Generate a completion from a structured prompt (system_instruction + multi-turn).
    * Falls back to flat text if the provider doesn't support structured prompts.
    */
-  generateStructured(structured: StructuredPrompt, overrides?: GenerationOverrides): Promise<LLMResponse>;
+  generateStructured(
+    structured: StructuredPrompt,
+    overrides?: GenerationOverrides
+  ): Promise<LLMResponse>;
 
   /**
    * Generate with streaming from a structured prompt (system_instruction + multi-turn).
    * Falls back to flat text if the provider doesn't support structured prompts.
    */
-  generateStreamStructured(structured: StructuredPrompt, onChunk: StreamCallback, overrides?: GenerationOverrides): Promise<LLMResponse>;
+  generateStreamStructured(
+    structured: StructuredPrompt,
+    onChunk: StreamCallback,
+    overrides?: GenerationOverrides
+  ): Promise<LLMResponse>;
 
   /** Check if client is configured and ready */
   isReady(): boolean;
@@ -211,7 +225,10 @@ export class ApiRouteProxyClient implements LLMClient {
   /**
    * Generate a completion via the server API route.
    */
-  async generate(prompt: string, overrides?: GenerationOverrides): Promise<LLMResponse> {
+  async generate(
+    prompt: string,
+    overrides?: GenerationOverrides
+  ): Promise<LLMResponse> {
     const startTime = performance.now();
     let lastError: Error | null = null;
 
@@ -244,7 +261,11 @@ export class ApiRouteProxyClient implements LLMClient {
             continue;
           }
 
-          throw new LLMError(errorMessage, response.status, response.status >= 500);
+          throw new LLMError(
+            errorMessage,
+            response.status,
+            response.status >= 500
+          );
         }
 
         const data = await response.json();
@@ -349,8 +370,7 @@ export class ApiRouteProxyClient implements LLMClient {
 
               if (data.usageMetadata) {
                 promptTokens = data.usageMetadata.promptTokenCount || 0;
-                completionTokens =
-                  data.usageMetadata.candidatesTokenCount || 0;
+                completionTokens = data.usageMetadata.candidatesTokenCount || 0;
               }
             } catch {
               // Skip malformed JSON
@@ -421,7 +441,11 @@ export class ApiRouteProxyClient implements LLMClient {
             continue;
           }
 
-          throw new LLMError(errorMessage, response.status, response.status >= 500);
+          throw new LLMError(
+            errorMessage,
+            response.status,
+            response.status >= 500
+          );
         }
 
         const data = await response.json();
@@ -589,7 +613,10 @@ export class GeminiClient implements LLMClient {
     return this.config.model;
   }
 
-  async generate(prompt: string, overrides?: GenerationOverrides): Promise<LLMResponse> {
+  async generate(
+    prompt: string,
+    overrides?: GenerationOverrides
+  ): Promise<LLMResponse> {
     if (!this.isReady()) {
       throw new LLMConfigError('Gemini API key not configured');
     }
@@ -656,10 +683,22 @@ export class GeminiClient implements LLMClient {
             maxOutputTokens: overrides?.maxTokens ?? this.config.maxTokens,
           },
           safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            {
+              category: 'HARM_CATEGORY_HARASSMENT',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+            {
+              category: 'HARM_CATEGORY_HATE_SPEECH',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+            {
+              category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+            {
+              category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
           ],
         }),
         signal: AbortSignal.timeout(this.config.timeoutMs),
@@ -755,7 +794,10 @@ export class GeminiClient implements LLMClient {
 
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       try {
-        const response = await this.makeStructuredRequest(structured, overrides);
+        const response = await this.makeStructuredRequest(
+          structured,
+          overrides
+        );
         return {
           ...response,
           generationTimeMs: performance.now() - startTime,
@@ -824,10 +866,22 @@ export class GeminiClient implements LLMClient {
             maxOutputTokens: overrides?.maxTokens ?? this.config.maxTokens,
           },
           safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            {
+              category: 'HARM_CATEGORY_HARASSMENT',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+            {
+              category: 'HARM_CATEGORY_HATE_SPEECH',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+            {
+              category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+            {
+              category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+              threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
           ],
         }),
         signal: AbortSignal.timeout(this.config.timeoutMs),
@@ -936,10 +990,22 @@ export class GeminiClient implements LLMClient {
           maxOutputTokens: overrides?.maxTokens ?? this.config.maxTokens,
         },
         safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
         ],
       }),
       signal: AbortSignal.timeout(this.config.timeoutMs),
@@ -952,7 +1018,11 @@ export class GeminiClient implements LLMClient {
     const data = await response.json();
 
     if (data.candidates?.[0]?.finishReason === 'SAFETY') {
-      throw new LLMError('Response blocked by safety filters', undefined, false);
+      throw new LLMError(
+        'Response blocked by safety filters',
+        undefined,
+        false
+      );
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -969,7 +1039,9 @@ export class GeminiClient implements LLMClient {
         }
       : undefined;
 
-    const finishReason = this.mapFinishReason(data.candidates?.[0]?.finishReason);
+    const finishReason = this.mapFinishReason(
+      data.candidates?.[0]?.finishReason
+    );
 
     return { text, model: this.config.model, finishReason, usage };
   }
@@ -991,10 +1063,22 @@ export class GeminiClient implements LLMClient {
           maxOutputTokens: overrides?.maxTokens ?? this.config.maxTokens,
         },
         safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
         ],
       }),
       signal: AbortSignal.timeout(this.config.timeoutMs),
@@ -1007,7 +1091,11 @@ export class GeminiClient implements LLMClient {
     const data = await response.json();
 
     if (data.candidates?.[0]?.finishReason === 'SAFETY') {
-      throw new LLMError('Response blocked by safety filters', undefined, false);
+      throw new LLMError(
+        'Response blocked by safety filters',
+        undefined,
+        false
+      );
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -1024,7 +1112,9 @@ export class GeminiClient implements LLMClient {
         }
       : undefined;
 
-    const finishReason = this.mapFinishReason(data.candidates?.[0]?.finishReason);
+    const finishReason = this.mapFinishReason(
+      data.candidates?.[0]?.finishReason
+    );
 
     return { text, model: this.config.model, finishReason, usage };
   }
@@ -1050,7 +1140,9 @@ export class GeminiClient implements LLMClient {
       case 401:
         return new LLMConfigError('Invalid API key');
       case 403:
-        return new LLMConfigError('API access forbidden. Check your API key permissions.');
+        return new LLMConfigError(
+          'API access forbidden. Check your API key permissions.'
+        );
       case 400:
         return new LLMError(errorMessage, 400, false);
       case 500:
@@ -1063,12 +1155,18 @@ export class GeminiClient implements LLMClient {
     }
   }
 
-  private mapFinishReason(reason?: string): 'stop' | 'length' | 'safety' | 'error' {
+  private mapFinishReason(
+    reason?: string
+  ): 'stop' | 'length' | 'safety' | 'error' {
     switch (reason) {
-      case 'STOP': return 'stop';
-      case 'MAX_TOKENS': return 'length';
-      case 'SAFETY': return 'safety';
-      default: return 'stop';
+      case 'STOP':
+        return 'stop';
+      case 'MAX_TOKENS':
+        return 'length';
+      case 'SAFETY':
+        return 'safety';
+      default:
+        return 'stop';
     }
   }
 
