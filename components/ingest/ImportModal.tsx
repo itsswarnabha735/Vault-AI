@@ -313,7 +313,7 @@ export function ImportModal({
             mimeType: mimeType || 'application/octet-stream',
             fileSize: fileSize || 0,
             confidence: original.confidence,
-            currency: original.currency || 'INR',
+            currency: original.entities.currency || 'INR',
             isManuallyEdited: false,
           };
 
