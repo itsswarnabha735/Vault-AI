@@ -160,6 +160,7 @@ class PDFExtractorService {
 
     // Native browser import — bypasses webpack bundling entirely.
     // The pdf.min.mjs file is served from /public.
+    // @ts-expect-error - runtime path served from public/, not a TS module
     this.pdfjs = await import(/* webpackIgnore: true */ '/pdf.min.mjs');
 
     // Set worker source
