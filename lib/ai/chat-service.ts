@@ -25,6 +25,7 @@ import { vectorSearchService } from '@/lib/storage/vector-search';
 import { embeddingService } from './embedding-service';
 import {
   classifyQueryAsync,
+  CATEGORY_KEYWORDS,
   type QueryClassification,
   type ExtractedQueryEntities,
 } from './query-router';
@@ -1584,10 +1585,31 @@ class ChatServiceImpl implements ChatService {
     if (entities.categories.length > 0) {
       const categoryName = this.categoryCache.get(transaction.category!);
       if (categoryName) {
+        // Transaction has an assigned category — check if it matches
         const matchesCategory = entities.categories.some((cat) =>
           categoryName.toLowerCase().includes(cat.toLowerCase())
         );
         if (!matchesCategory) {
+          return false;
+        }
+      } else {
+        // Transaction is UNCATEGORIZED — fall back to vendor-name matching.
+        // Check if the vendor name contains any keyword associated with
+        // the requested categories. This prevents "Anatolia Restaurant"
+        // from appearing in investment queries, while allowing
+        // "Groww Investments" to pass.
+        const vendorLower = transaction.vendor.toLowerCase();
+        const matchesVendor = entities.categories.some((requestedCat) => {
+          // Get the keywords for this category from the query-router map
+          const keywords = CATEGORY_KEYWORDS[requestedCat];
+          if (keywords) {
+            return keywords.some((kw) => vendorLower.includes(kw));
+          }
+          // Also do a simple substring check: does the vendor contain
+          // the category name itself? (e.g., "Groww Investments" contains "invest")
+          return vendorLower.includes(requestedCat.toLowerCase());
+        });
+        if (!matchesVendor) {
           return false;
         }
       }
@@ -1674,6 +1696,20 @@ class ChatServiceImpl implements ChatService {
         transactions = transactions.filter((tx) => tx.amount < 0);
       } else if (entities.transactionDirection === 'expense') {
         transactions = transactions.filter((tx) => tx.amount >= 0);
+      }
+
+      // Apply category filter — critical for queries like "investments in January"
+      // so the aggregate total only counts investment transactions, not everything.
+      if (entities.categories.length > 0) {
+        transactions = transactions.filter((tx) =>
+          this.matchesFilters(tx, {
+            ...entities,
+            // Only apply category filter here; date/direction already handled above
+            dateRange: null,
+            amountRange: null,
+            transactionDirection: 'all',
+          })
+        );
       }
 
       if (transactions.length === 0) {

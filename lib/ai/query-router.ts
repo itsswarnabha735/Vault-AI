@@ -199,7 +199,7 @@ const TIME_PERIOD_PATTERNS: Record<TimePeriod, RegExp[]> = {
 /**
  * Category keyword mappings.
  */
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
+export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   groceries: [
     'groceries',
     'grocery',
@@ -315,6 +315,19 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     'dividend',
     'dividends',
     'capital gains',
+    // Common investment platform names (for vendor matching)
+    'groww',
+    'zerodha',
+    'etmoney',
+    'et money',
+    'upstox',
+    'kuvera',
+    'smallcase',
+    'coin',
+    'angel one',
+    'paytm money',
+    '5paisa',
+    'vested',
   ],
   subscriptions: [
     'subscription',
