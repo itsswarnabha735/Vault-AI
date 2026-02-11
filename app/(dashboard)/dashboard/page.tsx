@@ -28,8 +28,6 @@ import {
   RecurringTransactionsCard,
 } from '@/components/dashboard';
 import { useEmbeddingBackfill } from '@/hooks/useEmbeddingBackfill';
-import { useAutoFixCategories } from '@/hooks/useAutoFixCategories';
-
 export default function DashboardPage() {
   // Month filter state — defaults to current month
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
@@ -37,10 +35,6 @@ export default function DashboardPage() {
   const handleMonthChange = useCallback((month: Date) => {
     setSelectedMonth(month);
   }, []);
-
-  // Retroactive auto-categorization: assigns categories to uncategorized
-  // transactions using auto-categorizer vendor patterns. Runs once per session.
-  const categorizationProgress = useAutoFixCategories();
 
   // Eager embedding backfill: generates real embeddings for transactions
   // that have zero-filled placeholders (from statement/CSV imports).
@@ -51,20 +45,6 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
       <div className="space-y-6">
-        {/* Background auto-categorization indicator */}
-        {categorizationProgress.isRunning &&
-          categorizationProgress.total > 0 && (
-            <div className="flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-50/50 px-3 py-1.5 text-xs text-amber-700 dark:bg-amber-950/10 dark:text-amber-300">
-              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
-              Auto-categorizing {categorizationProgress.total} transactions...
-              {categorizationProgress.fixed > 0 && (
-                <span className="text-amber-500">
-                  ({categorizationProgress.fixed} done)
-                </span>
-              )}
-            </div>
-          )}
-
         {/* Background embedding backfill indicator */}
         {isBackfilling && backfillProgress.total > 0 && (
           <div className="flex items-center gap-2 rounded-md border border-blue-500/20 bg-blue-50/50 px-3 py-1.5 text-xs text-blue-700 dark:bg-blue-950/10 dark:text-blue-300">
