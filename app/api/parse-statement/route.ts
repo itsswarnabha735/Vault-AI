@@ -18,6 +18,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { buildLLMCategoryBlock } from '@/lib/categories/category-registry';
 
 // ============================================
 // Types
@@ -196,23 +197,7 @@ CRITICAL RULES:
    - For UPI transactions like "UPI/merchant@bank/description/BANK NAME/txnid", extract just the merchant name
 7. Clean up vendor names: remove transaction codes, reference numbers, city/country suffixes, card numbers (XXXX1234), but keep the merchant name recognizable. Make vendor names human-readable (e.g., "VIACOM18ONLINE" → "Viacom18 Online", "cred.club" → "CRED", "groww.razorpay" → "Groww").
 8. You MUST assign a category for EVERY transaction. Use your best judgment based on the vendor name.
-   Allowed categories: Food & Dining, Shopping, Transportation, Groceries, Entertainment, Utilities, Healthcare, Travel, Education, Subscriptions, Insurance, Gas & Fuel, Personal Care, Rent & Housing, Fees & Charges, Transfers, Income, Investments.
-   Guidelines for category assignment:
-   - Duty-free shops, malls, retail stores → Shopping
-   - Convenience stores (7-Eleven, FamilyMart, Lawson) → Groceries
-   - Restaurants, cafes, food delivery (Swiggy, Zomato), bars, pubs → Food & Dining
-   - Airlines, hotels, booking platforms, airports → Travel
-   - Cab/taxi/metro/train/bus/toll/parking, Uber, Ola, Yulu → Transportation
-   - ATM withdrawal, personal fund transfers (to people), UPI to individuals → Transfers
-   - Groww, Zerodha, mutual fund SIPs, stock purchases → Investments
-   - Annual fee, late fee, interest charge, finance charge, service charge → Fees & Charges
-   - CRED, credit card bill payments → Fees & Charges
-   - Salary, income credits → Income
-   - Jio Fiber, electricity, water, broadband, mobile recharge → Utilities
-   - Apple Services, Spotify, Netflix, subscriptions → Subscriptions
-   - ACH/Indian Clearing Corp (SIPs, recurring debits) → Investments (if amount pattern suggests SIP) or Transfers
-   - Gas stations, petrol pumps, fuel → Gas & Fuel
-   - If truly uncertain, use "Shopping" as default for purchases.
+   ${buildLLMCategoryBlock()}
 
 EXAMPLE INPUT (Indian bank savings account with balance column):
   01-01-2025 UPI/swiggy@yespay/In App/YesBank/501086441240/YJPb1e9... 318.00 1,04,462.04

@@ -38,6 +38,7 @@ import { autoCategorizer } from '@/lib/processing/auto-categorizer';
 import { importDuplicateChecker } from '@/lib/anomaly/import-duplicate-checker';
 import type { ProcessedDocumentResult } from '@/lib/processing/processing-worker-client';
 import type { TransactionId, CategoryId } from '@/types/database';
+import type { RetroactiveSuggestionInfo } from './ImportComplete';
 import type { EditableDocument } from './ExtractionCard';
 import type {
   StatementParseResult,
@@ -116,6 +117,8 @@ export function ImportModal({
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [retroactiveSuggestion, setRetroactiveSuggestion] =
+    useState<RetroactiveSuggestionInfo | null>(null);
 
   // Initialize vendor-category learning when modal opens
   useEffect(() => {
@@ -301,6 +304,7 @@ export function ImportModal({
             !origEmb.every((v: number) => v === 0);
 
           // Create transaction with all required fields
+          // Receipts/invoices are always expenses (debits)
           const transaction = {
             date: edited.date,
             amount: edited.amount,
@@ -315,6 +319,7 @@ export function ImportModal({
             confidence: original.confidence,
             currency: original.entities.currency || 'INR',
             isManuallyEdited: false,
+            transactionType: 'debit' as const, // Receipts are always expenses
           };
 
           const id = await addTransaction(transaction);
@@ -495,6 +500,11 @@ export function ImportModal({
 
         // Save each transaction
         for (const tx of transactions) {
+          // Determine credit/debit type from parsed transaction type field
+          const CREDIT_TYPES_SET = new Set(['credit', 'payment', 'refund', 'interest']);
+          const transactionType: 'debit' | 'credit' =
+            CREDIT_TYPES_SET.has(tx.type) ? 'credit' : 'debit';
+
           const transaction = {
             date: tx.date,
             amount: tx.amount,
@@ -509,6 +519,7 @@ export function ImportModal({
             confidence: tx.confidence,
             currency,
             isManuallyEdited: false,
+            transactionType, // Persist type for income/expense classification
           };
 
           const id = await addTransaction(transaction);
@@ -548,6 +559,65 @@ export function ImportModal({
             console.log('[ImportModal] Statement fingerprint saved');
           } catch (e) {
             console.error('[ImportModal] Failed to save fingerprint:', e);
+          }
+        }
+
+        // Check for retroactive re-categorization opportunities.
+        // Finds existing transactions from the same vendors that could be
+        // re-categorized to match the user's confirmed selections.
+        if (categoryLearnings.length > 0) {
+          try {
+            const savedIdSet = new Set(savedIds);
+            // Collect all vendor-category pairs from this import
+            const vendorCategoryMap = new Map<string, CategoryId>();
+            for (const { vendor, categoryId } of categoryLearnings) {
+              vendorCategoryMap.set(vendor.toLowerCase(), categoryId);
+            }
+
+            // Find existing transactions that match these vendors but have different categories
+            let totalRetroCount = 0;
+            const retroVendors = new Set<string>();
+            const retroTxIds: TransactionId[] = [];
+            const retroCategoryMap = new Map<TransactionId, CategoryId>();
+
+            for (const [vendorLower, categoryId] of vendorCategoryMap) {
+              const matches = await db.findTransactionsByVendor(vendorLower);
+              for (const tx of matches) {
+                // Skip transactions from this import and those already in the correct category
+                if (savedIdSet.has(tx.id) || tx.category === categoryId) {
+                  continue;
+                }
+                totalRetroCount++;
+                retroVendors.add(tx.vendor);
+                retroTxIds.push(tx.id);
+                retroCategoryMap.set(tx.id, categoryId);
+              }
+            }
+
+            if (totalRetroCount > 0) {
+              setRetroactiveSuggestion({
+                totalCount: totalRetroCount,
+                vendorCount: retroVendors.size,
+                onApply: async () => {
+                  let updated = 0;
+                  // Group by category for batch updates
+                  const byCat = new Map<CategoryId, TransactionId[]>();
+                  for (const [txId, catId] of retroCategoryMap) {
+                    const arr = byCat.get(catId) || [];
+                    arr.push(txId);
+                    byCat.set(catId, arr);
+                  }
+                  for (const [catId, ids] of byCat) {
+                    updated += await db.batchUpdateCategory(ids, catId);
+                  }
+                  return updated;
+                },
+                onDismiss: () => setRetroactiveSuggestion(null),
+              });
+            }
+          } catch (e) {
+            // Retroactive check failure is non-critical
+            console.error('[ImportModal] Retroactive check failed:', e);
           }
         }
 
@@ -812,6 +882,7 @@ export function ImportModal({
               onClose={handleClose}
               onViewVault={handleViewVault}
               onImportMore={handleImportMore}
+              retroactiveSuggestion={retroactiveSuggestion}
             />
           )}
         </div>

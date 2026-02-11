@@ -993,22 +993,30 @@ class ChatServiceImpl implements ChatService {
 
       // 3. Compute aggregates — always provide accurate pre-computed totals
       // so the LLM doesn't have to do arithmetic.
+      //
+      // IMPORTANT: Always prefer local aggregates (computed over the FULL
+      // date-range dataset from IndexedDB) instead of cloud aggregates that
+      // only cover the context-selected subset of transactions. This prevents
+      // under-counting when there are more matching transactions than the
+      // context cap (e.g., 58 transactions but only 20 sent for LLM context).
       let verifiedData: VerifiedFinancialData | undefined;
 
-      // Try cloud first for verified totals
-      if (effectiveClassification.needsCloudData && searchResults.length > 0) {
+      // Compute local aggregates first — covers ALL matching transactions
+      if (effectiveEntities.dateRange) {
+        verifiedData = await this.computeLocalAggregates(effectiveEntities);
+      }
+
+      // Fall back to cloud aggregates only when local aggregates aren't available
+      if (!verifiedData && effectiveClassification.needsCloudData && searchResults.length > 0) {
         verifiedData = await this.fetchVerifiedData(
-          searchResults.map((r) => r.transactionId),
+          allSearchResults.map((r) => r.transactionId),
           effectiveEntities
         );
       }
 
-      // Fall back to local aggregates when cloud data isn't available,
-      // or when we have a date range (to get totals over the FULL dataset,
-      // not just the 20 transactions in context).
-      if (!verifiedData && effectiveEntities.dateRange) {
-        verifiedData = await this.computeLocalAggregates(effectiveEntities);
-      }
+      // #region agent log
+      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:processQuery:afterAggregates',message:'Final verifiedData in processQuery',data:{hasVerifiedData:!!verifiedData,verifiedDataSummary:verifiedData?{total:verifiedData.total,totalExpenses:verifiedData.totalExpenses,totalIncome:verifiedData.totalIncome,count:verifiedData.count}:null,searchResultsCount:searchResults.length,allSearchResultsCount:allSearchResults.length,intent:effectiveClassification.intent,direction:effectiveEntities.transactionDirection},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
 
       // 4. Build citations
       const citations = this.buildCitations(searchResults);
@@ -1167,6 +1175,10 @@ class ChatServiceImpl implements ChatService {
       // 1. Classify intent and extract entities (embedding-based with regex fallback)
       const classification = await classifyQueryAsync(effectiveQuery);
 
+      // #region agent log
+      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:classifyQueryAsync',message:'Intent classification result',data:{query:effectiveQuery,intent:classification.intent,confidence:classification.confidence,direction:classification.entities.transactionDirection,dateRange:classification.entities.dateRange,needsCloudData:classification.needsCloudData,needsLocalSearch:classification.needsLocalSearch},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
+
       // 1b. For follow-up queries, merge entities with previous context
       let effectiveEntities = classification.entities;
       if (wasReformulated) {
@@ -1190,6 +1202,10 @@ class ChatServiceImpl implements ChatService {
         effectiveClassification
       );
 
+      // #region agent log
+      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:afterSearch',message:'Search results before selection',data:{allSearchResultsCount:allSearchResults.length,sampleResults:allSearchResults.slice(0,5).map(r=>({id:r.transactionId,amount:r.transaction.amount,vendor:r.transaction.vendor,date:r.transaction.date,category:r.transaction.category,score:r.score}))},timestamp:Date.now(),hypothesisId:'A,D'})}).catch(()=>{});
+      // #endregion
+
       // 2b. Intent-aware transaction selection
       const searchResults = this.selectContextTransactions(
         allSearchResults,
@@ -1198,18 +1214,28 @@ class ChatServiceImpl implements ChatService {
       );
 
       // 3. Compute aggregates — always provide accurate pre-computed totals
+      //
+      // IMPORTANT: Always prefer local aggregates (computed over the FULL
+      // date-range dataset from IndexedDB) instead of cloud aggregates that
+      // only cover the context-selected subset of transactions.
       let verifiedData: VerifiedFinancialData | undefined;
 
-      if (effectiveClassification.needsCloudData && searchResults.length > 0) {
+      // Compute local aggregates first — covers ALL matching transactions
+      if (effectiveEntities.dateRange) {
+        verifiedData = await this.computeLocalAggregates(effectiveEntities);
+      }
+
+      // Fall back to cloud aggregates only when local aggregates aren't available
+      if (!verifiedData && effectiveClassification.needsCloudData && searchResults.length > 0) {
         verifiedData = await this.fetchVerifiedData(
-          searchResults.map((r) => r.transactionId),
+          allSearchResults.map((r) => r.transactionId),
           effectiveEntities
         );
       }
 
-      if (!verifiedData && effectiveEntities.dateRange) {
-        verifiedData = await this.computeLocalAggregates(effectiveEntities);
-      }
+      // #region agent log
+      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:processQueryStream:afterAggregates',message:'Final verifiedData in streaming path',data:{hasVerifiedData:!!verifiedData,verifiedDataSummary:verifiedData?{total:verifiedData.total,totalExpenses:verifiedData.totalExpenses,totalIncome:verifiedData.totalIncome,count:verifiedData.count,expenseCount:verifiedData.expenseCount,incomeCount:verifiedData.incomeCount}:null,searchResultsCount:searchResults.length,allSearchResultsCount:allSearchResults.length,intent:effectiveClassification.intent,direction:effectiveEntities.transactionDirection},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
 
       // 4. Build citations
       const citations = this.buildCitations(searchResults);
@@ -1546,10 +1572,21 @@ class ChatServiceImpl implements ChatService {
     entities: ExtractedQueryEntities
   ): boolean {
     // Transaction direction filter
-    if (entities.transactionDirection === 'income' && transaction.amount >= 0) {
+    // Use `transactionType` (explicit credit/debit tag) when available;
+    // fall back to the amount-sign convention for older transactions.
+    const isCredit =
+      transaction.transactionType === 'credit' || transaction.amount < 0;
+    const isDebit =
+      transaction.transactionType === 'debit' ||
+      (!transaction.transactionType && transaction.amount >= 0);
+
+    if (entities.transactionDirection === 'income' && !isCredit) {
+      // #region agent log
+      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:matchesFilters:incomeReject',message:'Rejecting tx: wants income but not credit',data:{txId:transaction.id,amount:transaction.amount,vendor:transaction.vendor,date:transaction.date,transactionType:transaction.transactionType},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       return false; // User wants income, this is an expense
     }
-    if (entities.transactionDirection === 'expense' && transaction.amount < 0) {
+    if (entities.transactionDirection === 'expense' && !isDebit) {
       return false; // User wants expenses, this is income
     }
 
@@ -1691,12 +1728,26 @@ class ChatServiceImpl implements ChatService {
         transactions = await db.transactions.toArray();
       }
 
-      // Apply direction filter
+      // #region agent log
+      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:computeLocalAggregates:beforeFilter',message:'All transactions in date range BEFORE direction filter',data:{totalCount:transactions.length,direction:entities.transactionDirection,dateRange:entities.dateRange,amountDistribution:{positiveCount:transactions.filter(t=>t.amount>=0).length,negativeCount:transactions.filter(t=>t.amount<0).length,zeroCount:transactions.filter(t=>t.amount===0).length},sampleWithRawText:transactions.slice(0,10).map(t=>({id:t.id,amount:t.amount,vendor:t.vendor,date:t.date,rawTextPrefix:t.rawText?.substring(0,120)||'(empty)'}))},timestamp:Date.now(),runId:'post-fix',hypothesisId:'A,C'})}).catch(()=>{});
+      // #endregion
+
+      // Apply direction filter — use transactionType when available, fallback to amount sign
       if (entities.transactionDirection === 'income') {
-        transactions = transactions.filter((tx) => tx.amount < 0);
+        transactions = transactions.filter(
+          (tx) => tx.transactionType === 'credit' || tx.amount < 0
+        );
       } else if (entities.transactionDirection === 'expense') {
-        transactions = transactions.filter((tx) => tx.amount >= 0);
+        transactions = transactions.filter(
+          (tx) =>
+            tx.transactionType === 'debit' ||
+            (!tx.transactionType && tx.amount >= 0)
+        );
       }
+
+      // #region agent log
+      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:computeLocalAggregates:afterFilter',message:'Transactions AFTER direction filter',data:{remainingCount:transactions.length,direction:entities.transactionDirection,sampleTypes:transactions.slice(0,5).map(t=>({id:t.id,amount:t.amount,type:t.transactionType}))},timestamp:Date.now(),hypothesisId:'A,C,D'})}).catch(()=>{});
+      // #endregion
 
       // Apply category filter — critical for queries like "investments in January"
       // so the aggregate total only counts investment transactions, not everything.
@@ -1722,6 +1773,7 @@ class ChatServiceImpl implements ChatService {
           categoryId: tx.category,
           date: tx.date,
           vendor: tx.vendor,
+          transactionType: tx.transactionType,
         }))
       );
     } catch (error) {
@@ -1742,6 +1794,7 @@ class ChatServiceImpl implements ChatService {
       categoryId: CategoryId | null;
       date: string;
       vendor?: string;
+      transactionType?: 'debit' | 'credit' | null;
     }>
   ): VerifiedFinancialData {
     let totalExpenses = 0;
@@ -1755,12 +1808,16 @@ class ChatServiceImpl implements ChatService {
 
     for (const tx of transactions) {
       const amount = tx.amount;
-      if (amount >= 0) {
-        totalExpenses += amount;
-        expenseCount++;
-      } else {
+      // Use transactionType when available; fall back to amount sign
+      const isCredit =
+        tx.transactionType === 'credit' || tx.amount < 0;
+
+      if (isCredit) {
         totalIncome += Math.abs(amount);
         incomeCount++;
+      } else {
+        totalExpenses += Math.abs(amount);
+        expenseCount++;
       }
 
       const categoryName =

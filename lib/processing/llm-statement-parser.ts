@@ -234,6 +234,13 @@ class LLMStatementParserService {
       }
 
       // Convert LLM response to StatementParseResult format
+      // IMPORTANT: The LLM returns all amounts as positive numbers and uses
+      // the `type` field to distinguish debit from credit. We must apply the
+      // sign convention here: credit/payment/refund/interest → negative amount.
+      // This matches the local regex parser (statement-parser.ts) which does
+      // `isCredit ? -amount : amount` at line 1354.
+      const CREDIT_TYPES = new Set(['credit', 'payment', 'refund', 'interest']);
+
       const transactions: ParsedStatementTransaction[] =
         result.data.transactions.map((tx, index) => {
           // Always try auto-categorize: checks learned mappings first, then rules.
@@ -246,11 +253,16 @@ class LLMStatementParserService {
               ? suggestion.learnedCategoryId
               : null;
 
+          // Apply sign: credits are negative, debits/fees are positive
+          const signedAmount = CREDIT_TYPES.has(tx.type)
+            ? -Math.abs(tx.amount)
+            : Math.abs(tx.amount);
+
           return {
             id: `llm-${Date.now()}-${index}`,
             date: tx.date,
             vendor: tx.vendor,
-            amount: tx.amount,
+            amount: signedAmount,
             type: tx.type,
             category: learnedCategoryId, // Direct from learned mapping, or null
             suggestedCategoryName: learnedCategoryId
@@ -265,15 +277,13 @@ class LLMStatementParserService {
 
       const parsingTimeMs = performance.now() - startTime;
 
-      // Calculate totals from parsed transactions
+      // Calculate totals from parsed transactions (amounts are now signed)
       const totalDebits = transactions
         .filter((t) => t.type === 'debit' || t.type === 'fee')
         .reduce((sum, t) => sum + t.amount, 0);
       const totalCredits = transactions
-        .filter((t) =>
-          ['credit', 'payment', 'refund', 'interest'].includes(t.type)
-        )
-        .reduce((sum, t) => sum + t.amount, 0);
+        .filter((t) => CREDIT_TYPES.has(t.type))
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
       const parseResult: StatementParseResult = {
         documentType: 'statement',
@@ -593,15 +603,14 @@ class LLMStatementParserService {
     // Deduplicate transactions (chunks might have slight overlap)
     const deduped = this.deduplicateTransactions(allTransactions);
 
-    // Calculate totals
+    // Calculate totals (amounts are signed: credits negative, debits positive)
+    const CREDIT_TYPES = new Set(['credit', 'payment', 'refund', 'interest']);
     const totalDebits = deduped
       .filter((t) => t.type === 'debit' || t.type === 'fee')
       .reduce((sum, t) => sum + t.amount, 0);
     const totalCredits = deduped
-      .filter((t) =>
-        ['credit', 'payment', 'refund', 'interest'].includes(t.type)
-      )
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter((t) => CREDIT_TYPES.has(t.type))
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     return {
       documentType: 'statement',
@@ -736,20 +745,15 @@ class LLMStatementParserService {
     }
 
     // Recalculate totals after filtering
+    // Amounts are signed: debits positive, credits negative
     // Debits: debit + fee (money out)
     // Credits: credit + payment + refund + interest (money in)
     const totalDebits = merged.transactions
-      .filter(
-        (t) =>
-          t.amount > 0 &&
-          !['payment', 'credit', 'refund', 'interest'].includes(t.type)
-      )
+      .filter((t) => t.amount > 0)
       .reduce((sum, t) => sum + t.amount, 0);
     const totalCredits = merged.transactions
-      .filter((t) =>
-        ['payment', 'credit', 'refund', 'interest'].includes(t.type)
-      )
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter((t) => t.amount < 0)
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     merged.totals.totalDebits = Math.round(totalDebits * 100) / 100;
     merged.totals.totalCredits = Math.round(totalCredits * 100) / 100;

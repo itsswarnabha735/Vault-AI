@@ -91,6 +91,7 @@ export class VaultDatabase extends Dexie {
   settings!: Table<UserSettings, string>;
   vendorCategories!: Table<VendorCategoryMapping, string>;
   statementFingerprints!: Table<StatementFingerprint, string>;
+  kvStore!: Table<{ key: string; value: unknown }, string>;
 
   constructor() {
     super('VaultAI');
@@ -195,6 +196,374 @@ export class VaultDatabase extends Dexie {
           });
       });
 
+    // Version 5: Unify category names with the Category Registry.
+    // Renames "Dining" → "Food & Dining", "Transport" → "Transportation",
+    // "Rent" → "Rent & Housing" and adds missing default categories
+    // (Gas & Fuel, Personal Care, Fees & Charges).
+    this.version(5)
+      .stores({
+        // No schema changes — same indexes as version 4
+        transactions: 'id, date, vendor, category, syncStatus, createdAt',
+        categories: 'id, parentId, isDefault',
+        budgets: 'id, categoryId, isActive',
+        searchHistory: 'id, timestamp',
+        anomalies: 'id, transactionId, isResolved',
+        settings: 'id',
+        vendorCategories: 'id, &vendorPattern, categoryId',
+        statementFingerprints: 'id, issuer, periodStart',
+      })
+      .upgrade(async (tx) => {
+        const { CATEGORY_RENAME_MAP, NEW_DEFAULT_CATEGORIES } = await import(
+          '@/lib/categories/category-registry'
+        );
+
+        // 1. Rename existing categories to match canonical names
+        const cats = tx.table('categories');
+        await cats.toCollection().modify(
+          (cat: Record<string, unknown>) => {
+            const newName =
+              CATEGORY_RENAME_MAP[cat.name as string];
+            if (newName) {
+              cat.name = newName;
+              cat.updatedAt = new Date();
+            }
+          }
+        );
+
+        // 2. Add missing default categories
+        // First check which categories already exist
+        const allCats = await cats.toArray();
+        const existingNames = new Set(
+          allCats.map((c: Record<string, unknown>) =>
+            (c.name as string).toLowerCase()
+          )
+        );
+
+        // Get the userId from any existing category
+        const sampleCat = allCats[0] as Record<string, unknown> | undefined;
+        const userId = sampleCat?.userId;
+
+        if (userId) {
+          const now = new Date();
+          const { v4: uuidv4 } = await import('uuid');
+
+          for (const newCat of NEW_DEFAULT_CATEGORIES) {
+            if (!existingNames.has(newCat.name.toLowerCase())) {
+              await cats.add({
+                id: uuidv4(),
+                userId,
+                name: newCat.name,
+                icon: newCat.icon,
+                color: newCat.color,
+                parentId: null,
+                sortOrder: newCat.sortOrder,
+                isDefault: true,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      });
+
+    // Version 6: Add sub-categories for two-level hierarchy (Phase B).
+    // Seeds sub-categories (e.g., "Restaurants" under "Food & Dining")
+    // for existing users. Sub-categories have parentId set to their parent.
+    this.version(6)
+      .stores({
+        // No schema changes — same indexes as version 5
+        transactions: 'id, date, vendor, category, syncStatus, createdAt',
+        categories: 'id, parentId, isDefault',
+        budgets: 'id, categoryId, isActive',
+        searchHistory: 'id, timestamp',
+        anomalies: 'id, transactionId, isResolved',
+        settings: 'id',
+        vendorCategories: 'id, &vendorPattern, categoryId',
+        statementFingerprints: 'id, issuer, periodStart',
+      })
+      .upgrade(async (tx) => {
+        const { getSubcategorySeeds } = await import(
+          '@/lib/categories/category-registry'
+        );
+
+        const cats = tx.table('categories');
+        const allCats = await cats.toArray();
+
+        // Build a name → id lookup for parent categories
+        const nameToId = new Map<string, string>();
+        for (const cat of allCats) {
+          nameToId.set(
+            (cat.name as string).toLowerCase(),
+            cat.id as string
+          );
+        }
+
+        // Get userId from existing categories
+        const sampleCat = allCats[0] as Record<string, unknown> | undefined;
+        const userId = sampleCat?.userId;
+
+        if (!userId) return; // No categories yet — initializeDefaults will handle it
+
+        // Check which sub-categories already exist
+        const existingNames = new Set(
+          allCats.map((c: Record<string, unknown>) =>
+            (c.name as string).toLowerCase()
+          )
+        );
+
+        const now = new Date();
+        const { v4: uuidv4 } = await import('uuid');
+        const seeds = getSubcategorySeeds();
+
+        for (const seed of seeds) {
+          // Skip if already exists
+          if (existingNames.has(seed.name.toLowerCase())) continue;
+
+          // Find parent ID
+          const parentId = nameToId.get(seed.parentName.toLowerCase());
+          if (!parentId) continue; // Parent doesn't exist yet
+
+          await cats.add({
+            id: uuidv4(),
+            userId,
+            name: seed.name,
+            icon: seed.icon,
+            color: seed.color,
+            parentId,
+            sortOrder: seed.sortOrder,
+            isDefault: true,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      });
+
+    // Version 7: Phase C changes:
+    // 1. Remove unique constraint on vendorCategories.vendorPattern
+    //    to allow amount-ranged duplicate vendor mappings (6D).
+    // 2. Add a kvStore table for persisting ML model weights (4C)
+    //    and other key-value data.
+    this.version(7).stores({
+      transactions: 'id, date, vendor, category, syncStatus, createdAt',
+      categories: 'id, parentId, isDefault',
+      budgets: 'id, categoryId, isActive',
+      searchHistory: 'id, timestamp',
+      anomalies: 'id, transactionId, isResolved',
+      settings: 'id',
+      // Changed: removed & (unique) from vendorPattern to allow amount-ranged dupes
+      vendorCategories: 'id, vendorPattern, categoryId',
+      statementFingerprints: 'id, issuer, periodStart',
+      // New: general key-value store for ML weights, etc.
+      kvStore: 'key',
+    });
+
+    // Version 8: Backward compatibility fixes:
+    // Re-normalize all vendorPattern keys in vendorCategories using
+    // the current (enhanced) normalizeVendor() logic.
+    // Phase A introduced aggressive normalization (UPI/NEFT parsing,
+    // Amazon/Uber abbreviation handling), but existing learned mappings
+    // stored with the old normalization may not match new lookups.
+    this.version(8)
+      .stores({
+        // No schema changes
+        transactions: 'id, date, vendor, category, syncStatus, createdAt',
+        categories: 'id, parentId, isDefault',
+        budgets: 'id, categoryId, isActive',
+        searchHistory: 'id, timestamp',
+        anomalies: 'id, transactionId, isResolved',
+        settings: 'id',
+        vendorCategories: 'id, vendorPattern, categoryId',
+        statementFingerprints: 'id, issuer, periodStart',
+        kvStore: 'key',
+      })
+      .upgrade(async (tx) => {
+        const { normalizeVendor } = await import(
+          '@/lib/processing/vendor-category-learning'
+        );
+
+        const vcTable = tx.table('vendorCategories');
+        const allMappings = await vcTable.toArray();
+
+        // Re-normalize each vendor pattern
+        // If the new normalization produces a different key, update the row.
+        // If two rows end up with the same key, keep the one with higher usageCount.
+        const seen = new Map<string, { id: string; usageCount: number; categoryId: unknown }>();
+
+        for (const mapping of allMappings) {
+          const oldPattern = mapping.vendorPattern as string;
+          const newPattern = normalizeVendor(oldPattern);
+
+          if (newPattern === oldPattern) {
+            // No change needed, but track for dedup
+            const existing = seen.get(newPattern);
+            if (!existing || (mapping.usageCount as number) > existing.usageCount) {
+              seen.set(newPattern, {
+                id: mapping.id as string,
+                usageCount: mapping.usageCount as number,
+                categoryId: mapping.categoryId,
+              });
+            }
+            continue;
+          }
+
+          // Pattern changed — check for conflicts
+          const existing = seen.get(newPattern);
+          if (existing) {
+            // Conflict: same normalized key. Keep higher usageCount.
+            if ((mapping.usageCount as number) > existing.usageCount) {
+              // This mapping wins: update it, delete the other
+              await vcTable.delete(existing.id);
+              await vcTable.update(mapping.id as string, {
+                vendorPattern: newPattern,
+                updatedAt: new Date(),
+              });
+              seen.set(newPattern, {
+                id: mapping.id as string,
+                usageCount: mapping.usageCount as number,
+                categoryId: mapping.categoryId,
+              });
+            } else {
+              // Existing wins: delete this mapping
+              await vcTable.delete(mapping.id as string);
+            }
+          } else {
+            // No conflict: just update the pattern
+            await vcTable.update(mapping.id as string, {
+              vendorPattern: newPattern,
+              updatedAt: new Date(),
+            });
+            seen.set(newPattern, {
+              id: mapping.id as string,
+              usageCount: mapping.usageCount as number,
+              categoryId: mapping.categoryId,
+            });
+          }
+        }
+      });
+
+    // Version 9: Fix sign convention for income/credit transactions
+    // ──────────────────────────────────────────────────────────────
+    // BUG: The LLM statement parser returned all amounts as positive
+    // numbers, using a `type` field to distinguish credits from debits.
+    // But ImportModal saved `amount` directly, so credit transactions
+    // (income, refunds, payments) were stored with POSITIVE amounts.
+    // The chat service's income filter (`amount < 0`) then failed to
+    // find any income. This migration retroactively negates amounts for
+    // transactions that are clearly income (category = "income") but
+    // were stored with positive amounts.
+    this.version(9)
+      .stores({
+        // No schema changes
+        transactions: 'id, date, vendor, category, syncStatus, createdAt',
+        categories: 'id, parentId, isDefault',
+        budgets: 'id, categoryId, isActive',
+        searchHistory: 'id, timestamp',
+        anomalies: 'id, transactionId, isResolved',
+        settings: 'id',
+        vendorCategories: 'id, vendorPattern, categoryId',
+        statementFingerprints: 'id, issuer, periodStart',
+        kvStore: 'key',
+      })
+      .upgrade(async (tx) => {
+        const txTable = tx.table('transactions');
+        const catTable = tx.table('categories');
+
+        // Find income-related category IDs
+        const allCategories = await catTable.toArray();
+        const incomeCategoryIds = new Set<string>();
+
+        for (const cat of allCategories) {
+          const name = (cat.name as string || '').toLowerCase();
+          // "Income" is the primary income category.
+          // Also include any sub-categories of Income (parentId matches).
+          if (name === 'income' || name === 'salary') {
+            incomeCategoryIds.add(cat.id as string);
+          }
+        }
+
+        // Also find children of income categories
+        for (const cat of allCategories) {
+          if (cat.parentId && incomeCategoryIds.has(cat.parentId as string)) {
+            incomeCategoryIds.add(cat.id as string);
+          }
+        }
+
+        if (incomeCategoryIds.size === 0) {
+          console.log('[DB v9] No income categories found — skipping migration');
+          return;
+        }
+
+        console.log('[DB v9] Income category IDs:', [...incomeCategoryIds]);
+
+        // Find all transactions with income categories AND positive amounts
+        // These were incorrectly stored without the negative sign.
+        const allTransactions = await txTable.toArray();
+        let fixedCount = 0;
+
+        for (const transaction of allTransactions) {
+          const category = transaction.category as string;
+          const amount = transaction.amount as number;
+
+          if (incomeCategoryIds.has(category) && amount > 0) {
+            // This is an income transaction stored with a positive amount — negate it
+            await txTable.update(transaction.id as string, {
+              amount: -amount,
+            });
+            fixedCount++;
+          }
+        }
+
+        console.log(
+          `[DB v9] Fixed sign convention for ${fixedCount} income transaction(s)`
+        );
+      });
+
+    // Version 10: Add transactionType field and infer type from amount sign
+    // ──────────────────────────────────────────────────────────────────────
+    // Previous imports lost the credit/debit type information because
+    // ParsedStatementTransaction.type was never persisted into LocalTransaction.
+    // This migration:
+    // 1. Adds `transactionType` field to all existing transactions
+    // 2. Infers type from the amount sign (positive → debit, negative → credit)
+    // 3. For future imports, the type is explicitly set from the parser output
+    this.version(10)
+      .stores({
+        // No schema index changes — transactionType is not indexed
+        transactions: 'id, date, vendor, category, syncStatus, createdAt',
+        categories: 'id, parentId, isDefault',
+        budgets: 'id, categoryId, isActive',
+        searchHistory: 'id, timestamp',
+        anomalies: 'id, transactionId, isResolved',
+        settings: 'id',
+        vendorCategories: 'id, vendorPattern, categoryId',
+        statementFingerprints: 'id, issuer, periodStart',
+        kvStore: 'key',
+      })
+      .upgrade(async (tx) => {
+        const txTable = tx.table('transactions');
+        const allTransactions = await txTable.toArray();
+        let setCount = 0;
+
+        for (const transaction of allTransactions) {
+          const amount = transaction.amount as number;
+          // For transactions with negative amounts, we KNOW they are credits
+          // (the sign was correctly applied at import time).
+          // For positive amounts, we can't be sure — they could be debits
+          // OR credits with a broken sign (the old LLM parser bug).
+          // Set null for ambiguous cases; new imports will always have an
+          // explicit type from the parser.
+          const inferredType = amount < 0 ? 'credit' : null;
+          await txTable.update(transaction.id as string, {
+            transactionType: inferredType,
+          });
+          if (inferredType) setCount++;
+        }
+
+        console.log(
+          `[DB v10] Added transactionType field. Identified ${setCount} definite credit(s) out of ${allTransactions.length} transactions.`
+        );
+      });
+
     // Middleware to handle Date serialization
     this.transactions.hook('reading', (obj) => {
       if (obj) {
@@ -293,6 +662,62 @@ export class VaultDatabase extends Dexie {
     categoryId: CategoryId
   ): Promise<LocalTransaction[]> {
     return this.transactions.where('category').equals(categoryId).toArray();
+  }
+
+  /**
+   * Find transactions whose vendor name matches a pattern (case-insensitive).
+   * Used for retroactive re-categorization when a user corrects a category.
+   *
+   * @param vendorPattern - Vendor name or substring to match
+   * @param excludeIds - Optional transaction IDs to exclude from results
+   * @returns Promise<LocalTransaction[]>
+   */
+  async findTransactionsByVendor(
+    vendorPattern: string,
+    excludeIds?: Set<TransactionId>
+  ): Promise<LocalTransaction[]> {
+    const pattern = vendorPattern.toLowerCase().trim();
+    if (!pattern) {
+      return [];
+    }
+
+    return this.transactions
+      .filter((tx) => {
+        if (excludeIds?.has(tx.id)) {
+          return false;
+        }
+        return tx.vendor.toLowerCase().includes(pattern);
+      })
+      .toArray();
+  }
+
+  /**
+   * Batch-update the category of multiple transactions.
+   * Marks them as modified for sync.
+   *
+   * @param transactionIds - IDs of transactions to update
+   * @param categoryId - New category ID to assign
+   * @returns Number of transactions updated
+   */
+  async batchUpdateCategory(
+    transactionIds: TransactionId[],
+    categoryId: CategoryId
+  ): Promise<number> {
+    const now = new Date();
+    let updated = 0;
+
+    await this.transaction('rw', this.transactions, async () => {
+      for (const id of transactionIds) {
+        const count = await this.transactions.where('id').equals(id).modify({
+          category: categoryId,
+          updatedAt: now,
+          syncStatus: 'pending',
+        });
+        updated += count;
+      }
+    });
+
+    return updated;
   }
 
   /**
@@ -579,226 +1004,58 @@ export class VaultDatabase extends Dexie {
 
     if (existingCategories === 0) {
       const now = new Date();
-      const defaultCategories: Category[] = [
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Groceries',
-          icon: '🛒',
-          color: '#22c55e',
-          parentId: null,
-          sortOrder: 1,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Dining',
-          icon: '🍽️',
-          color: '#f59e0b',
-          parentId: null,
-          sortOrder: 2,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Transport',
-          icon: '🚗',
-          color: '#3b82f6',
-          parentId: null,
-          sortOrder: 3,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Entertainment',
-          icon: '🎬',
-          color: '#8b5cf6',
-          parentId: null,
-          sortOrder: 4,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Shopping',
-          icon: '🛍️',
-          color: '#ec4899',
-          parentId: null,
-          sortOrder: 5,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Healthcare',
-          icon: '🏥',
-          color: '#ef4444',
-          parentId: null,
-          sortOrder: 6,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Utilities',
-          icon: '💡',
-          color: '#06b6d4',
-          parentId: null,
-          sortOrder: 7,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Travel',
-          icon: '✈️',
-          color: '#14b8a6',
-          parentId: null,
-          sortOrder: 8,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Income',
-          icon: '💰',
-          color: '#10b981',
-          parentId: null,
-          sortOrder: 9,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Investments',
-          icon: '📈',
-          color: '#059669',
-          parentId: null,
-          sortOrder: 10,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Subscriptions',
-          icon: '🔄',
-          color: '#7c3aed',
-          parentId: null,
-          sortOrder: 11,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Insurance',
-          icon: '🛡️',
-          color: '#0891b2',
-          parentId: null,
-          sortOrder: 12,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Education',
-          icon: '📚',
-          color: '#ca8a04',
-          parentId: null,
-          sortOrder: 13,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Rent',
-          icon: '🏠',
-          color: '#b45309',
-          parentId: null,
-          sortOrder: 14,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Transfers',
-          icon: '🔀',
-          color: '#6366f1',
-          parentId: null,
-          sortOrder: 15,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'EMI & Loans',
-          icon: '🏦',
-          color: '#dc2626',
-          parentId: null,
-          sortOrder: 16,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Taxes',
-          icon: '🏛️',
-          color: '#475569',
-          parentId: null,
-          sortOrder: 17,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: uuidv4() as CategoryId,
-          userId,
-          name: 'Other',
-          icon: '📦',
-          color: '#6b7280',
-          parentId: null,
-          sortOrder: 99,
-          isDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ];
+
+      // Derive default categories from the Category Registry (single source of truth)
+      const { getDefaultCategorySeeds, getSubcategorySeeds } = await import(
+        '@/lib/categories/category-registry'
+      );
+      const seeds = getDefaultCategorySeeds();
+
+      const defaultCategories: Category[] = seeds.map((seed) => ({
+        id: uuidv4() as CategoryId,
+        userId,
+        name: seed.name,
+        icon: seed.icon,
+        color: seed.color,
+        parentId: seed.parentId as CategoryId | null,
+        sortOrder: seed.sortOrder,
+        isDefault: seed.isDefault,
+        createdAt: now,
+        updatedAt: now,
+      }));
 
       await this.categories.bulkAdd(defaultCategories);
+
+      // Seed sub-categories with parentId references
+      const parentNameToId = new Map<string, CategoryId>();
+      for (const cat of defaultCategories) {
+        parentNameToId.set(cat.name.toLowerCase(), cat.id);
+      }
+
+      const subSeeds = getSubcategorySeeds();
+      const subCategories: Category[] = [];
+
+      for (const sub of subSeeds) {
+        const parentId = parentNameToId.get(sub.parentName.toLowerCase());
+        if (!parentId) continue;
+
+        subCategories.push({
+          id: uuidv4() as CategoryId,
+          userId,
+          name: sub.name,
+          icon: sub.icon,
+          color: sub.color,
+          parentId,
+          sortOrder: sub.sortOrder,
+          isDefault: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      if (subCategories.length > 0) {
+        await this.categories.bulkAdd(subCategories);
+      }
     }
 
     // Initialize default settings if not present

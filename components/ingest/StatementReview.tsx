@@ -23,6 +23,13 @@ import {
   importDuplicateChecker,
   type ImportDuplicateResult,
 } from '@/lib/anomaly/import-duplicate-checker';
+import { autoCategorizer } from '@/lib/processing/auto-categorizer';
+import { useHierarchicalCategories, type CategoryGroup } from '@/hooks/useHierarchicalCategories';
+import {
+  useBatchLLMCategorize,
+  type UseBatchLLMCategorizeReturn,
+} from '@/hooks/useLLMCategorize';
+import { LLM_CATEGORIZE_THRESHOLD } from '@/lib/ai/llm-categorizer';
 import type {
   StatementParseResult,
   ParsedStatementTransaction,
@@ -75,6 +82,7 @@ export function StatementReview({
   className,
 }: StatementReviewProps) {
   const { data: categories } = useCategories();
+  const { groups: categoryGroups } = useHierarchicalCategories();
 
   // Local state for editable transactions
   const [transactions, setTransactions] = useState<
@@ -174,6 +182,112 @@ export function StatementReview({
     }
     return map;
   }, [categories]);
+
+  // LLM fallback for low-confidence categorization
+  const {
+    suggestions: llmSuggestions,
+    isLoading: isLLMLoading,
+    requestBatch: requestLLMBatch,
+  } = useBatchLLMCategorize();
+
+  // Count low-confidence transactions eligible for LLM assist
+  const llmEligibleCount = useMemo(() => {
+    let count = 0;
+    for (const tx of transactions) {
+      if (llmSuggestions.has(tx.id)) continue; // Already have LLM suggestion
+      const suggestion = tx.vendor
+        ? autoCategorizer.suggestCategory(tx.vendor, {
+            amount: tx.amount ? Math.abs(tx.amount) : undefined,
+            type: (tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest') || undefined,
+          })
+        : null;
+      const conf = suggestion?.confidence || 0;
+      if (conf < LLM_CATEGORIZE_THRESHOLD) count++;
+    }
+    return count;
+  }, [transactions, llmSuggestions]);
+
+  // Handle "Get AI Suggestions" button
+  const handleRequestLLM = useCallback(() => {
+    const eligible = transactions.filter((tx) => {
+      if (llmSuggestions.has(tx.id)) return false;
+      const suggestion = tx.vendor
+        ? autoCategorizer.suggestCategory(tx.vendor, {
+            amount: tx.amount ? Math.abs(tx.amount) : undefined,
+            type: (tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest') || undefined,
+          })
+        : null;
+      return (suggestion?.confidence || 0) < LLM_CATEGORIZE_THRESHOLD;
+    });
+
+    if (eligible.length === 0) return;
+
+    void requestLLMBatch(
+      eligible.map((tx) => ({
+        id: tx.id,
+        vendor: tx.vendor,
+        amount: Math.abs(tx.amount),
+        date: tx.date,
+        type: (tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest') || 'debit',
+      }))
+    );
+  }, [transactions, llmSuggestions, requestLLMBatch]);
+
+  // Apply LLM suggestions to transactions that don't have a category yet
+  useEffect(() => {
+    if (llmSuggestions.size === 0) return;
+
+    let hasUpdates = false;
+    const updated = transactions.map((tx) => {
+      if (tx.category) return tx; // Already has a category set
+      const llmResult = llmSuggestions.get(tx.id);
+      if (llmResult) {
+        const catId = categoryMap.get(llmResult.categoryName.toLowerCase());
+        if (catId) {
+          hasUpdates = true;
+          return {
+            ...tx,
+            category: catId,
+            suggestedCategoryName: llmResult.categoryName,
+          };
+        }
+      }
+      return tx;
+    });
+
+    if (hasUpdates) {
+      setTransactions(updated);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [llmSuggestions]);
+
+  // Category confidence tiers for summary
+  const categoryConfidenceStats = useMemo(() => {
+    let high = 0;
+    let medium = 0;
+    let low = 0;
+    let uncategorized = 0;
+
+    for (const tx of transactions) {
+      if (tx.category || tx.suggestedCategoryName) {
+        // Get confidence from auto-categorizer for vendor (with amount context)
+        const suggestion = tx.vendor
+          ? autoCategorizer.suggestCategory(tx.vendor, {
+              amount: tx.amount ? Math.abs(tx.amount) : undefined,
+              type: (tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest') || undefined,
+            })
+          : null;
+        const conf = suggestion?.confidence || 0;
+        if (conf >= 0.85) high++;
+        else if (conf >= 0.6) medium++;
+        else low++;
+      } else {
+        uncategorized++;
+      }
+    }
+
+    return { high, medium, low, uncategorized, total: transactions.length };
+  }, [transactions]);
 
   // ============================================
   // Handlers
@@ -382,6 +496,66 @@ export function StatementReview({
         </div>
       </div>
 
+      {/* Category Confidence Summary */}
+      {categoryConfidenceStats.total > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs">
+          <span className="font-medium text-muted-foreground">Categories:</span>
+          {categoryConfidenceStats.high > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-600 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              {categoryConfidenceStats.high} auto-categorized
+            </span>
+          )}
+          {categoryConfidenceStats.medium > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-600 dark:text-amber-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              {categoryConfidenceStats.medium} suggested
+            </span>
+          )}
+          {categoryConfidenceStats.low > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-600 dark:text-orange-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+              {categoryConfidenceStats.low} low confidence
+            </span>
+          )}
+          {categoryConfidenceStats.uncategorized > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-red-600 dark:text-red-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              {categoryConfidenceStats.uncategorized} uncategorized
+            </span>
+          )}
+
+          {/* LLM Assist button */}
+          {llmEligibleCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRequestLLM}
+              disabled={isLLMLoading}
+              className="ml-auto h-6 gap-1 px-2 text-[11px]"
+            >
+              {isLLMLoading ? (
+                <>
+                  <LoadingSpinner className="h-3 w-3" />
+                  Categorizing...
+                </>
+              ) : (
+                <>
+                  <SparklesIcon className="h-3 w-3" />
+                  AI-categorize {llmEligibleCount} transaction{llmEligibleCount !== 1 ? 's' : ''}
+                </>
+              )}
+            </Button>
+          )}
+          {llmSuggestions.size > 0 && llmEligibleCount === 0 && (
+            <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+              <SparklesIcon className="h-3 w-3" />
+              {llmSuggestions.size} AI-categorized
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Transaction Table */}
       <div className="max-h-[400px] overflow-auto rounded-lg border border-border">
         <table className="w-full text-sm">
@@ -414,8 +588,10 @@ export function StatementReview({
                 transaction={tx}
                 currency={statementResult.currency}
                 categories={categories}
+                categoryGroups={categoryGroups}
                 isEditing={editingId === tx.id}
                 duplicateResult={duplicateResults.get(tx.id)}
+                llmSuggestion={llmSuggestions.get(tx.id)}
                 onToggleSelect={() => toggleSelect(tx.id)}
                 onStartEdit={() => setEditingId(tx.id)}
                 onStopEdit={() => setEditingId(null)}
@@ -471,8 +647,10 @@ interface TransactionRowProps {
     icon: string;
     color: string;
   }>;
+  categoryGroups: CategoryGroup[];
   isEditing: boolean;
   duplicateResult?: ImportDuplicateResult;
+  llmSuggestion?: { categoryName: string; confidence: number; reason?: string };
   onToggleSelect: () => void;
   onStartEdit: () => void;
   onStopEdit: () => void;
@@ -483,8 +661,10 @@ function TransactionRow({
   transaction: tx,
   currency,
   categories,
+  categoryGroups,
   isEditing,
   duplicateResult,
+  llmSuggestion,
   onToggleSelect,
   onStartEdit,
   onStopEdit,
@@ -500,6 +680,23 @@ function TransactionRow({
       cat.id === tx.category ||
       cat.name.toLowerCase() === tx.suggestedCategoryName?.toLowerCase()
   );
+
+  // Get category confidence for this vendor (with amount + type context)
+  const catSuggestion = tx.vendor
+    ? autoCategorizer.suggestCategory(tx.vendor, {
+        amount: tx.amount ? Math.abs(tx.amount) : undefined,
+        type: (tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest') || undefined,
+      })
+    : null;
+  const catConfidence = catSuggestion?.confidence || 0;
+  type CatTier = 'high' | 'medium' | 'low' | 'none';
+  const catTier: CatTier = !matchedCategory && !tx.suggestedCategoryName
+    ? 'none'
+    : catConfidence >= 0.85
+      ? 'high'
+      : catConfidence >= 0.6
+        ? 'medium'
+        : 'low';
 
   if (isEditing) {
     return (
@@ -549,10 +746,23 @@ function TransactionRow({
             className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
           >
             <option value="">Uncategorized</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.icon} {cat.name}
-              </option>
+            {categoryGroups.map((group) => (
+              group.children.length > 0 ? (
+                <optgroup key={group.parent.id} label={`${group.parent.icon} ${group.parent.name}`}>
+                  <option value={group.parent.id}>
+                    {group.parent.icon} {group.parent.name} (General)
+                  </option>
+                  {group.children.map((child) => (
+                    <option key={child.id} value={child.id}>
+                      {child.icon} {child.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : (
+                <option key={group.parent.id} value={group.parent.id}>
+                  {group.parent.icon} {group.parent.name}
+                </option>
+              )
             ))}
           </select>
         </td>
@@ -628,20 +838,44 @@ function TransactionRow({
         )}
       </td>
       <td className="px-3 py-2">
-        {matchedCategory ? (
-          <span className="inline-flex items-center gap-1 text-xs">
-            <span>{matchedCategory.icon}</span>
-            <span className="text-muted-foreground">
-              {matchedCategory.name}
+        <div className="flex items-center gap-1.5">
+          {matchedCategory ? (
+            <span className="inline-flex items-center gap-1 text-xs">
+              <span>{matchedCategory.icon}</span>
+              <span className="text-muted-foreground">
+                {matchedCategory.name}
+              </span>
             </span>
-          </span>
-        ) : tx.suggestedCategoryName ? (
-          <span className="text-xs italic text-muted-foreground/60">
-            {tx.suggestedCategoryName}
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground/40">-</span>
-        )}
+          ) : tx.suggestedCategoryName ? (
+            <span className="text-xs italic text-muted-foreground/60">
+              {tx.suggestedCategoryName}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground/40">-</span>
+          )}
+          {/* Confidence tier / LLM indicator */}
+          {llmSuggestion ? (
+            <span
+              className="inline-flex items-center gap-0.5 rounded bg-purple-100 px-1 py-0.5 text-[9px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+              title={llmSuggestion.reason || 'AI-categorized'}
+            >
+              <SparklesIcon className="h-2 w-2" />
+              AI
+            </span>
+          ) : (
+            <>
+              {catTier === 'high' && (
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" title="Auto-categorized (high confidence)" />
+              )}
+              {catTier === 'medium' && (
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Suggested (medium confidence)" />
+              )}
+              {catTier === 'low' && (
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" title="Low confidence" />
+              )}
+            </>
+          )}
+        </div>
       </td>
       <td
         className={cn(
@@ -769,6 +1003,24 @@ function DuplicateIcon({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"
+      />
+    </svg>
+  );
+}
+
+function SparklesIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
       />
     </svg>
   );

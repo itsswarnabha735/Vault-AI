@@ -124,6 +124,17 @@ export interface LocalTransaction {
   // Metadata Fields
   // ============================================
 
+  /**
+   * Transaction type: debit (outgoing) or credit (incoming).
+   *
+   * This field is persisted so that income/expense classification
+   * does not rely solely on the sign of `amount`. Older transactions
+   * imported before this field existed may have `null`; in that case
+   * the chat service falls back to the amount-sign convention
+   * (positive = expense, negative = income).
+   */
+  transactionType: 'debit' | 'credit' | null;
+
   /** Extraction confidence score (0-1) */
   confidence: number;
 
@@ -222,75 +233,15 @@ export interface Category {
 
 /**
  * Default categories provided to new users.
+ * Derived from the Category Registry (single source of truth).
+ *
+ * @see lib/categories/category-registry.ts
  */
+import { getDefaultCategorySeeds } from '@/lib/categories/category-registry';
+
 export const DEFAULT_CATEGORIES: ReadonlyArray<
   Omit<Category, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
-> = [
-  {
-    name: 'Food & Dining',
-    icon: '🍽️',
-    color: '#f59e0b',
-    parentId: null,
-    sortOrder: 1,
-    isDefault: true,
-  },
-  {
-    name: 'Transportation',
-    icon: '🚗',
-    color: '#3b82f6',
-    parentId: null,
-    sortOrder: 2,
-    isDefault: true,
-  },
-  {
-    name: 'Shopping',
-    icon: '🛍️',
-    color: '#ec4899',
-    parentId: null,
-    sortOrder: 3,
-    isDefault: true,
-  },
-  {
-    name: 'Entertainment',
-    icon: '🎬',
-    color: '#8b5cf6',
-    parentId: null,
-    sortOrder: 4,
-    isDefault: true,
-  },
-  {
-    name: 'Healthcare',
-    icon: '🏥',
-    color: '#ef4444',
-    parentId: null,
-    sortOrder: 5,
-    isDefault: true,
-  },
-  {
-    name: 'Utilities',
-    icon: '💡',
-    color: '#22c55e',
-    parentId: null,
-    sortOrder: 6,
-    isDefault: true,
-  },
-  {
-    name: 'Travel',
-    icon: '✈️',
-    color: '#06b6d4',
-    parentId: null,
-    sortOrder: 7,
-    isDefault: true,
-  },
-  {
-    name: 'Other',
-    icon: '📦',
-    color: '#6b7280',
-    parentId: null,
-    sortOrder: 99,
-    isDefault: true,
-  },
-] as const;
+> = getDefaultCategorySeeds();
 
 // ============================================
 // Budget

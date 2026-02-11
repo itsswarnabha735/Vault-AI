@@ -2,18 +2,22 @@
  * Auto-Categorizer for Vault-AI
  *
  * Maps vendor/merchant names to spending categories using
- * a rule-based approach with keyword matching.
+ * the Category Registry as the single source of truth.
  *
- * ENHANCED with vendor-category learning:
- * When a user manually corrects a category, the mapping is persisted
- * in IndexedDB. On future imports, learned mappings take priority
- * over the default keyword rules.
+ * Matching strategy (in priority order):
+ * 1. User-learned mappings (highest confidence, from IndexedDB)
+ * 2. Registry-based rules with advanced matching:
+ *    - Plain keyword: case-insensitive `.includes()` (most keywords)
+ *    - Word-boundary: only matches whole words (e.g., "shell" won't match "seashell")
+ *    - Exclusions: rejects match if exclude patterns are found (e.g., "shell" + "hotel")
  *
  * PRIVACY: All categorization happens locally in the browser.
  * No vendor data is transmitted to external servers.
  */
 
 import { vendorCategoryLearning } from './vendor-category-learning';
+import { getVendorRulesMap, getAmountHintMap, getPreferredTypeMap } from '@/lib/categories/category-registry';
+import type { VendorKeyword, VendorPattern, AmountHint } from '@/lib/categories/category-registry';
 import type { CategoryId } from '@/types/database';
 
 // ============================================
@@ -24,7 +28,7 @@ import type { CategoryId } from '@/types/database';
  * Category suggestion result.
  */
 export interface CategorySuggestion {
-  /** Suggested category name */
+  /** Suggested category name (matches registry canonical name) */
   categoryName: string;
 
   /** Confidence in the suggestion (0-1) */
@@ -38,771 +42,103 @@ export interface CategorySuggestion {
 
   /** Whether this suggestion was from user learning vs default rules */
   isLearned?: boolean;
+
+  /** Signals that contributed to the score (for debugging/UI) */
+  signals?: {
+    vendorMatch: boolean;
+    amountInRange: boolean | null; // null = no hint available
+    typeMatch: boolean | null;     // null = no hint available
+  };
+}
+
+/**
+ * Optional transaction context for multi-signal scoring.
+ * When provided, the auto-categorizer uses amount and type as
+ * secondary signals to boost or penalise confidence.
+ */
+export interface TransactionContext {
+  /** Transaction amount (absolute value, in the transaction's currency) */
+  amount?: number;
+  /** Transaction type */
+  type?: 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest';
+  /** Transaction embedding (384-dim) for k-NN fallback */
+  embedding?: Float32Array | number[];
 }
 
 // ============================================
-// Vendor-to-Category Mapping Rules
+// Vendor Pattern Matching
 // ============================================
 
 /**
- * Map of category names to arrays of vendor keyword patterns.
- * Keywords are matched case-insensitively against vendor names.
- * More specific patterns should come before generic ones.
+ * Test whether a vendor name matches a single VendorKeyword.
+ *
+ * @param vendorLower - Lowercased, trimmed vendor name
+ * @param keyword - The keyword to test (string or VendorPattern)
+ * @returns true if the vendor matches the keyword (and no exclusion triggers)
  */
-const CATEGORY_RULES: Record<string, string[]> = {
-  'Food & Dining': [
-    // Restaurants & Fast Food
-    'mcdonald',
-    'burger king',
-    'wendy',
-    'subway',
-    'starbucks',
-    'dunkin',
-    'chipotle',
-    'taco bell',
-    'pizza hut',
-    'domino',
-    'papa john',
-    'chick-fil-a',
-    'popeye',
-    'kfc',
-    'panera',
-    'five guys',
-    'panda express',
-    'olive garden',
-    'applebee',
-    'ihop',
-    'denny',
-    'waffle house',
-    'chili',
-    'outback',
-    'red lobster',
-    'buffalo wild',
-    'sushi',
-    'thai',
-    'chinese restaurant',
-    'indian restaurant',
-    'doordash',
-    'uber eats',
-    'grubhub',
-    'postmates',
-    'instacart',
-    'zomato',
-    'swiggy',
-    'food delivery',
-    'eatsure',
-    'box8',
-    // Indian Restaurant Chains & QSRs
-    'haldiram',
-    'barbeque nation',
-    'mainland china',
-    'sagar ratna',
-    'saravana bhavan',
-    'paradise biryani',
-    'behrouz',
-    'faasos',
-    'mojo pizza',
-    'burger singh',
-    'wow momo',
-    'chai point',
-    'chaayos',
-    'third wave coffee',
-    'blue tokai',
-    'starbucks india',
-    // Coffee & Bakeries
-    'coffee',
-    'cafe',
-    'bakery',
-    'tim horton',
-    'peet',
-    // General / International
-    'restaurant',
-    'dining',
-    'eatery',
-    'bistro',
-    'grill',
-    'diner',
-    'pizzeria',
-    'deli',
-    'catering',
-    'dhaba',
-    'bhojanalaya',
-    'food court',
-    'hawker',
-    'noodle',
-    'ramen',
-    'pho',
-    'patisserie',
-    'boulangerie',
-    'trattoria',
-    'tavern',
-    'pub',
-    'bar & grill',
-    'tapas',
-    'kebab',
-    'shawarma',
-    'falafel',
-    'canteen',
-    'mess',
-    'tiffin',
-    'food stall',
-  ],
+function matchesKeyword(vendorLower: string, keyword: VendorKeyword): boolean {
+  if (typeof keyword === 'string') {
+    // Simple case-insensitive substring match
+    return vendorLower.includes(keyword.toLowerCase());
+  }
 
-  Groceries: [
-    'walmart',
-    'target',
-    'costco',
-    'kroger',
-    'safeway',
-    'whole foods',
-    'trader joe',
-    'aldi',
-    'publix',
-    'h-e-b',
-    'heb',
-    'meijer',
-    'stop & shop',
-    'giant',
-    'food lion',
-    'wegman',
-    'sprout',
-    'fresh market',
-    'piggly wiggly',
-    'winn dixie',
-    'grocery',
-    'supermarket',
-    'market',
-    'farm stand',
-    'big bazaar',
-    'reliance fresh',
-    'dmart',
-    'more supermarket',
-    'nature basket',
-    'bigbasket',
-    'jiomart',
-    'blinkit',
-    'zepto',
-    // International convenience stores / groceries
-    '7-eleven',
-    '7 eleven',
-    'seven eleven',
-    'lawson',
-    'familymart',
-    'family mart',
-    'ministop',
-    'circle k',
-    'wawa',
-    'cold storage',
-    'fairprice',
-    'don don donki',
-    'hypermarket',
-    'provision',
-    'kirana',
-  ],
+  // Advanced VendorPattern matching
+  const pattern: VendorPattern = keyword;
+  const kw = pattern.keyword.toLowerCase();
 
-  Shopping: [
-    'amazon',
-    'ebay',
-    'etsy',
-    'shopify',
-    'best buy',
-    'apple store',
-    'apple.com',
-    'nike',
-    'adidas',
-    'zara',
-    'h&m',
-    'uniqlo',
-    'gap',
-    'old navy',
-    'nordstrom',
-    'macy',
-    'marshalls',
-    'tj maxx',
-    'ross',
-    'ikea',
-    'home depot',
-    'lowe',
-    'bed bath',
-    'pottery barn',
-    'wayfair',
-    'overstock',
-    'wish.com',
-    'aliexpress',
-    'flipkart',
-    'myntra',
-    'ajio',
-    'meesho',
-    'snapdeal',
-    'nykaa',
-    'tata cliq',
-    'croma',
-    'reliance digital',
-    'vijay sales',
-    'pepperfry',
-    'urban ladder',
-    'lenskart',
-    'firstcry',
-    'purplle',
-    'mamaearth',
-    'bewakoof',
-    'boat',
-    'amazon pay',
-    'amazon india',
-    // International / generic shopping keywords
-    'duty free',
-    'lotte',
-    'don quijote',
-    'daiso',
-    'miniso',
-    'muji',
-    'decathlon',
-    'cotton on',
-    'charles & keith',
-    'mall',
-    'department store',
-    'retail',
-    'outlet',
-    'emporium',
-    'gift shop',
-    'souvenir',
-    'boutique',
-    'store',
-  ],
+  if (pattern.wordBoundary) {
+    // Match only at word boundaries
+    // Build a regex: \bkeyword\b (escape special regex chars in keyword)
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(?:^|[\\s\\-/,.()])${escaped}(?:$|[\\s\\-/,.()])`, 'i');
+    // Also match if the keyword IS the entire string
+    if (vendorLower === kw) {
+      // exact match, proceed to exclusion check
+    } else if (!regex.test(vendorLower)) {
+      return false;
+    }
+  } else {
+    // Standard substring match
+    if (!vendorLower.includes(kw)) {
+      return false;
+    }
+  }
 
-  Transportation: [
-    'uber',
-    'lyft',
-    'taxi',
-    'cab',
-    'ola',
-    'grab',
-    'rapido',
-    'namma yatri',
-    'metro',
-    'subway',
-    'mta',
-    'bart',
-    'transit',
-    'bus',
-    'amtrak',
-    'train',
-    'railway',
-    'irctc',
-    'redbus',
-    'abhibus',
-    'parking',
-    'toll',
-    'e-z pass',
-    'fastag',
-    'netc',
-    'hertz',
-    'enterprise',
-    'avis',
-    'budget rent',
-    'turo',
-    'zipcar',
-    'zoomcar',
-    'drivezy',
-    'revv',
-  ],
+  // Check exclusions
+  if (pattern.exclude && pattern.exclude.length > 0) {
+    for (const excludeStr of pattern.exclude) {
+      if (vendorLower.includes(excludeStr.toLowerCase())) {
+        return false;
+      }
+    }
+  }
 
-  'Gas & Fuel': [
-    'shell',
-    'exxon',
-    'mobil',
-    'chevron',
-    'bp',
-    'citgo',
-    'sunoco',
-    'marathon',
-    'valero',
-    'phillips 66',
-    'speedway',
-    'circle k',
-    'wawa',
-    'racetrac',
-    'gas station',
-    'fuel',
-    'petrol',
-    'diesel',
-    'indian oil',
-    'bharat petroleum',
-    'hindustan petroleum',
-    'hp petrol',
-    'ev charging',
-    'chargepoint',
-    'tesla supercharger',
-  ],
+  return true;
+}
 
-  Entertainment: [
-    'netflix',
-    'hulu',
-    'disney+',
-    'disney plus',
-    'hbo',
-    'max',
-    'paramount',
-    'peacock',
-    'apple tv',
-    'amazon prime',
-    'prime video',
-    'spotify',
-    'apple music',
-    'youtube',
-    'audible',
-    'kindle',
-    'xbox',
-    'playstation',
-    'nintendo',
-    'steam',
-    'epic games',
-    'amc theatre',
-    'regal cinema',
-    'cinemark',
-    'fandango',
-    'ticketmaster',
-    'stubhub',
-    'live nation',
-    'eventbrite',
-    'movie',
-    'theater',
-    'concert',
-    'show',
-    'game',
-    'hotstar',
-    'jiocinema',
-    'zee5',
-    'sonyliv',
-  ],
-
-  Healthcare: [
-    'cvs',
-    'walgreens',
-    'rite aid',
-    'pharmacy',
-    'drug store',
-    'hospital',
-    'clinic',
-    'doctor',
-    'dentist',
-    'optometrist',
-    'urgent care',
-    'emergency',
-    'medical',
-    'health',
-    'labcorp',
-    'quest diagnostics',
-    'lab',
-    'insurance premium',
-    'health insurance',
-    'apollo',
-    'fortis',
-    'max healthcare',
-    'medplus',
-    'practo',
-    'pharmeasy',
-    '1mg',
-    'netmeds',
-  ],
-
-  Utilities: [
-    'electric',
-    'power',
-    'energy',
-    'water',
-    'sewer',
-    'gas bill',
-    'natural gas',
-    'heating',
-    'internet',
-    'comcast',
-    'xfinity',
-    'at&t',
-    'verizon',
-    'spectrum',
-    'cox',
-    't-mobile',
-    'sprint',
-    'cricket',
-    'phone bill',
-    'mobile bill',
-    'broadband',
-    'wifi',
-    'jio',
-    'airtel',
-    'vodafone',
-    'bsnl',
-    'vi ',
-    'tata power',
-    'adani electricity',
-    'bescom',
-    'trash',
-    'waste',
-    'sanitation',
-  ],
-
-  Travel: [
-    'airline',
-    'flight',
-    'airfare',
-    'american airlines',
-    'delta',
-    'united',
-    'southwest',
-    'jetblue',
-    'spirit',
-    'frontier',
-    'alaska air',
-    'air india',
-    'indigo',
-    'vistara',
-    'spicejet',
-    'air asia',
-    'akasa air',
-    'go first',
-    'hotel',
-    'motel',
-    'marriott',
-    'hilton',
-    'hyatt',
-    'ihg',
-    'airbnb',
-    'vrbo',
-    'booking.com',
-    'expedia',
-    'hotels.com',
-    'makemytrip',
-    'goibibo',
-    'oyo',
-    'cleartrip',
-    'ixigo',
-    'yatra',
-    'easemytrip',
-    'happyeasygo',
-    'trivago',
-    'kayak',
-    'priceline',
-    'resort',
-    'lodge',
-    'inn',
-    'hostel',
-    'cruise',
-    'carnival',
-    'royal caribbean',
-    'luggage',
-    'baggage',
-    'travel insurance',
-    'thomas cook',
-    'cox & kings',
-    'sotc',
-    'club mahindra',
-  ],
-
-  Insurance: [
-    'insurance',
-    'geico',
-    'state farm',
-    'allstate',
-    'progressive',
-    'liberty mutual',
-    'farmers',
-    'usaa',
-    'nationwide',
-    'lic',
-    'hdfc life',
-    'hdfc ergo',
-    'icici prudential',
-    'icici lombard',
-    'sbi life',
-    'max life',
-    'max bupa',
-    'bajaj allianz',
-    'tata aia',
-    'kotak life',
-    'star health',
-    'niva bupa',
-    'care health',
-    'digit insurance',
-    'acko',
-    'policybazaar',
-    'coverfox',
-    'premium',
-    'policy',
-    'coverage',
-    'life insurance',
-    'health insurance',
-    'term insurance',
-    'term plan',
-    'motor insurance',
-    'car insurance',
-    'bike insurance',
-    'vehicle insurance',
-    'mediclaim',
-    'policy premium',
-    'insurance premium',
-    'policy renewal',
-  ],
-
-  Education: [
-    'tuition',
-    'school',
-    'school fee',
-    'college',
-    'college fee',
-    'university',
-    'academy',
-    'coursera',
-    'udemy',
-    'edx',
-    'skillshare',
-    'masterclass',
-    'brilliant',
-    'khan academy',
-    'linkedin learning',
-    'textbook',
-    'book store',
-    'books',
-    'stationery',
-    'barnes & noble',
-    'byjus',
-    'byju',
-    'unacademy',
-    'upgrad',
-    'vedantu',
-    'student loan',
-    'education',
-    'course fee',
-    'coaching',
-    'exam fee',
-    'training',
-    'certification',
-  ],
-
-  Subscriptions: [
-    'subscription',
-    'membership',
-    'premium',
-    'github',
-    'gitlab',
-    'notion',
-    'slack',
-    'zoom',
-    'adobe',
-    'creative cloud',
-    'microsoft 365',
-    'office 365',
-    'google one',
-    'dropbox',
-    'icloud',
-    'evernote',
-    'canva',
-    'figma',
-    'chatgpt',
-    'openai',
-    'grammarly',
-    'nordvpn',
-    'expressvpn',
-    'gym',
-    'fitness',
-    'planet fitness',
-    'la fitness',
-    'ymca',
-    'cult.fit',
-    'curefit',
-    'gold gym',
-    'anytime fitness',
-    'newspaper',
-    'magazine',
-    'wall street journal',
-    'nyt',
-    'patreon',
-    'substack',
-    'cred',
-    'gpay rewards',
-  ],
-
-  Income: [
-    'payroll',
-    'salary',
-    'direct deposit',
-    'wage',
-    'dividend',
-    'interest income',
-    'interest payment',
-    'tax refund',
-    'irs',
-    'income tax refund',
-    'venmo payment',
-    'zelle payment',
-    'paypal payment',
-    'freelance',
-    'invoice payment',
-  ],
-
-  Transfers: [
-    'transfer',
-    'wire transfer',
-    'ach',
-    'venmo',
-    'zelle',
-    'paypal',
-    'cash app',
-    'cashapp',
-    'google pay',
-    'gpay',
-    'phonepe',
-    'paytm',
-    'upi',
-    'bank transfer',
-    'internal transfer',
-    'online transfer',
-    'neft',
-    'rtgs',
-    'imps',
-    'nach',
-    'ecs',
-    'bhim',
-    'mobikwik',
-    'freecharge',
-    'amazon pay',
-  ],
-
-  'Rent & Housing': [
-    'rent',
-    'mortgage',
-    'lease',
-    'landlord',
-    'property',
-    'hoa',
-    'homeowner',
-    'condo fee',
-    'maintenance',
-    'repair',
-    'plumbing',
-    'electrician',
-    'pest control',
-    'cleaning service',
-    'maid',
-  ],
-
-  'Personal Care': [
-    'salon',
-    'barber',
-    'spa',
-    'massage',
-    'nail',
-    'beauty',
-    'cosmetic',
-    'skincare',
-    'sephora',
-    'ulta',
-    'dry cleaner',
-    'laundry',
-    'tailor',
-  ],
-
-  'Fees & Charges': [
-    'annual fee',
-    'monthly fee',
-    'service fee',
-    'late fee',
-    'overdraft',
-    'nsf fee',
-    'atm fee',
-    'foreign transaction fee',
-    'finance charge',
-    'interest charge',
-    'minimum interest',
-    'membership fee',
-    'convenience fee',
-  ],
-
-  Investments: [
-    // Brokerages & Trading Platforms
-    'zerodha',
-    'groww',
-    'upstox',
-    'angel',
-    'angel one',
-    'kite',
-    'coin',
-    'motilal oswal',
-    'icici direct',
-    'hdfc securities',
-    'kotak securities',
-    'sharekhan',
-    '5paisa',
-    'paytm money',
-    'et money',
-    'smallcase',
-    'kuvera',
-    'vested',
-    'robinhood',
-    'fidelity',
-    'schwab',
-    'vanguard',
-    'e*trade',
-    'td ameritrade',
-    'webull',
-    // Investment keywords
-    'mutual fund',
-    'sip',
-    'nps',
-    'ppf',
-    'epf',
-    'fixed deposit',
-    'recurring deposit',
-    'fd renewal',
-    'rd instalment',
-    'demat',
-    'nsdl',
-    'cdsl',
-    'stock purchase',
-    'share purchase',
-    'investment',
-    'bond purchase',
-    'sovereign gold bond',
-    'sgb',
-  ],
-
-  'EMI & Loans': [
-    'emi',
-    'home loan',
-    'car loan',
-    'personal loan',
-    'education loan',
-    'loan repayment',
-    'instalment',
-    'installment',
-    'equated monthly',
-    'loan emi',
-    'credit card emi',
-  ],
-
-  Taxes: [
-    'income tax',
-    'advance tax',
-    'self assessment tax',
-    'tds',
-    'gst',
-    'property tax',
-    'road tax',
-    'professional tax',
-    'tax payment',
-    'challan',
-  ],
-};
+/**
+ * Get the effective keyword string (for confidence calculation and reporting).
+ */
+function getKeywordString(keyword: VendorKeyword): string {
+  return typeof keyword === 'string' ? keyword : keyword.keyword;
+}
 
 // ============================================
 // Auto-Categorizer Service
 // ============================================
 
 /**
- * Auto-categorization service using rule-based vendor matching,
+ * Auto-categorization service using registry-based vendor matching,
  * enhanced with user-learned corrections.
  */
 class AutoCategorizerService {
+  /** Cached vendor rules from the category registry */
+  private vendorRules: Record<string, VendorKeyword[]> | null = null;
+  /** Cached amount hints from the category registry */
+  private amountHints: Record<string, AmountHint> | null = null;
+  /** Cached preferred types from the category registry */
+  private preferredTypes: Record<string, string[]> | null = null;
+
   /**
    * Initialize the learning subsystem.
    * Should be called once on app startup.
@@ -812,22 +148,81 @@ class AutoCategorizerService {
   }
 
   /**
-   * Suggest a category for a vendor name.
+   * Get vendor rules (lazy-loaded from registry).
+   */
+  private getRules(): Record<string, VendorKeyword[]> {
+    if (!this.vendorRules) {
+      this.vendorRules = getVendorRulesMap();
+    }
+    return this.vendorRules;
+  }
+
+  /**
+   * Get amount hints (lazy-loaded from registry).
+   */
+  private getAmountHints(): Record<string, AmountHint> {
+    if (!this.amountHints) {
+      this.amountHints = getAmountHintMap();
+    }
+    return this.amountHints;
+  }
+
+  /**
+   * Get preferred types (lazy-loaded from registry).
+   */
+  private getPreferredTypes(): Record<string, string[]> {
+    if (!this.preferredTypes) {
+      this.preferredTypes = getPreferredTypeMap();
+    }
+    return this.preferredTypes;
+  }
+
+  /**
+   * Check whether an amount falls within a category's typical range.
+   * Returns: true = in range (boost), false = out of range (penalise), null = no hint.
+   */
+  private checkAmountRange(categoryName: string, amount: number): boolean | null {
+    const hints = this.getAmountHints();
+    const hint = hints[categoryName];
+    if (!hint) return null;
+
+    const absAmount = Math.abs(amount);
+    const inRange =
+      (hint.typicalMin === undefined || absAmount >= hint.typicalMin) &&
+      (hint.typicalMax === undefined || absAmount <= hint.typicalMax);
+    return inRange;
+  }
+
+  /**
+   * Check whether a transaction type matches a category's preferred types.
+   * Returns: true = match (boost), false = mismatch (no change), null = no hint.
+   */
+  private checkTypeMatch(categoryName: string, txType: string): boolean | null {
+    const types = this.getPreferredTypes();
+    const preferred = types[categoryName];
+    if (!preferred || preferred.length === 0) return null;
+    return preferred.includes(txType);
+  }
+
+  /**
+   * Suggest a category for a vendor name, optionally using multi-signal scoring.
    *
    * Priority order:
    * 1. User-learned mappings (highest confidence)
-   * 2. Default keyword rules (fallback)
+   * 2. Registry keyword rules with multi-signal scoring (fallback)
    *
    * @param vendor - The vendor/merchant name to categorize
+   * @param context - Optional transaction context (amount, type) for multi-signal scoring
    * @returns CategorySuggestion or null if no match
    */
-  suggestCategory(vendor: string): CategorySuggestion | null {
+  suggestCategory(vendor: string, context?: TransactionContext): CategorySuggestion | null {
     if (!vendor || vendor.trim().length === 0) {
       return null;
     }
 
     // 1. Check learned mappings first (highest priority)
-    const learned = vendorCategoryLearning.lookup(vendor);
+    // Pass amount for amount-aware disambiguation (6D)
+    const learned = vendorCategoryLearning.lookup(vendor, context?.amount);
     if (learned) {
       return {
         categoryName: `__learned__`, // Placeholder - resolved by caller via categoryId
@@ -838,38 +233,68 @@ class AutoCategorizerService {
       };
     }
 
-    // 2. Fall back to rule-based matching
-    return this.suggestCategoryFromRules(vendor);
+    // 2. Fall back to rule-based matching with multi-signal scoring
+    return this.suggestCategoryFromRules(vendor, context);
   }
 
   /**
-   * Suggest a category using only the default keyword rules (no learning).
-   * Useful when you want a baseline suggestion.
+   * Suggest a category using only the registry keyword rules (no learning).
+   * Optionally applies multi-signal scoring when context is provided.
    */
-  suggestCategoryFromRules(vendor: string): CategorySuggestion | null {
+  suggestCategoryFromRules(vendor: string, context?: TransactionContext): CategorySuggestion | null {
     if (!vendor || vendor.trim().length === 0) {
       return null;
     }
 
     const vendorLower = vendor.toLowerCase().trim();
     let bestMatch: CategorySuggestion | null = null;
+    const rules = this.getRules();
 
-    for (const [categoryName, keywords] of Object.entries(CATEGORY_RULES)) {
+    for (const [categoryName, keywords] of Object.entries(rules)) {
       for (const keyword of keywords) {
-        const keywordLower = keyword.toLowerCase();
+        if (matchesKeyword(vendorLower, keyword)) {
+          // Calculate base confidence based on keyword specificity
+          const kwStr = getKeywordString(keyword).toLowerCase();
+          const specificity = kwStr.length / vendorLower.length;
+          let confidence = Math.min(0.95, 0.6 + specificity * 0.35);
 
-        if (vendorLower.includes(keywordLower)) {
-          // Calculate confidence based on how specific the match is
-          // Longer keyword matches = higher confidence
-          const specificity = keywordLower.length / vendorLower.length;
-          const confidence = Math.min(0.95, 0.6 + specificity * 0.35);
+          // === Multi-signal scoring ===
+          let amountInRange: boolean | null = null;
+          let typeMatch: boolean | null = null;
+
+          // Amount-range signal
+          if (context?.amount !== undefined) {
+            amountInRange = this.checkAmountRange(categoryName, context.amount);
+            if (amountInRange === true) {
+              // Amount is in typical range → boost confidence
+              confidence = Math.min(0.98, confidence + 0.08);
+            } else if (amountInRange === false) {
+              // Amount is outside typical range → penalise
+              confidence = Math.max(0.3, confidence - 0.12);
+            }
+          }
+
+          // Transaction-type signal
+          if (context?.type) {
+            typeMatch = this.checkTypeMatch(categoryName, context.type);
+            if (typeMatch === true) {
+              // Type matches → small boost
+              confidence = Math.min(0.98, confidence + 0.04);
+            }
+            // No penalty for type mismatch — many categories handle both
+          }
 
           if (!bestMatch || confidence > bestMatch.confidence) {
             bestMatch = {
               categoryName,
               confidence,
-              matchedKeyword: keyword,
+              matchedKeyword: getKeywordString(keyword),
               isLearned: false,
+              signals: {
+                vendorMatch: true,
+                amountInRange,
+                typeMatch,
+              },
             };
           }
         }
@@ -877,6 +302,92 @@ class AutoCategorizerService {
     }
 
     return bestMatch;
+  }
+
+  /**
+   * Suggest a category with full pipeline including async ML fallbacks.
+   *
+   * Priority:
+   * 1. Learned mappings (sync, highest confidence)
+   * 2. Registry keyword rules with multi-signal scoring (sync)
+   * 3. Local linear classifier (async, when above are low-confidence)
+   * 4. Embedding k-NN classification (async fallback)
+   *
+   * Use this method when you have an embedding available and can afford
+   * the async call. Falls back to `suggestCategory` for the sync portion.
+   */
+  async suggestCategoryAsync(
+    vendor: string,
+    context?: TransactionContext
+  ): Promise<CategorySuggestion | null> {
+    // 1+2: Try sync methods first
+    const syncResult = this.suggestCategory(vendor, context);
+
+    // If high confidence or no embedding, return sync result
+    if (syncResult && syncResult.confidence >= 0.7) {
+      return syncResult;
+    }
+    if (!context?.embedding) {
+      return syncResult;
+    }
+
+    // 3: Local linear classifier (fast, trained on user's data)
+    try {
+      const { localClassifier } = await import('@/lib/ai/local-classifier');
+      const classifierResult = await localClassifier.predict(context.embedding);
+
+      if (classifierResult && classifierResult.confidence >= 0.6) {
+        // If we had a low-confidence sync result, pick the higher confidence one
+        if (syncResult && syncResult.confidence >= classifierResult.confidence) {
+          return syncResult;
+        }
+
+        return {
+          categoryName: '__local-classifier__',
+          confidence: classifierResult.confidence,
+          matchedKeyword: `local-classifier (top: ${classifierResult.confidence.toFixed(2)})`,
+          learnedCategoryId: classifierResult.categoryId,
+          isLearned: false,
+          signals: {
+            vendorMatch: false,
+            amountInRange: null,
+            typeMatch: null,
+          },
+        };
+      }
+    } catch (error) {
+      console.warn('[AutoCategorizer] Local classifier fallback failed:', error);
+    }
+
+    // 4: k-NN fallback (broader, slower)
+    try {
+      const { embeddingClassifier } = await import('@/lib/ai/embedding-classifier');
+      const knnResult = await embeddingClassifier.classify(context.embedding);
+
+      if (knnResult) {
+        // If we had a low-confidence sync result, pick the higher confidence one
+        if (syncResult && syncResult.confidence >= knnResult.confidence) {
+          return syncResult;
+        }
+
+        return {
+          categoryName: '__knn__', // Resolved by caller via categoryId
+          confidence: knnResult.confidence,
+          matchedKeyword: `k-NN (${knnResult.voteCount}/${knnResult.k} votes, sim=${knnResult.averageSimilarity})`,
+          learnedCategoryId: knnResult.categoryId,
+          isLearned: false,
+          signals: {
+            vendorMatch: false,
+            amountInRange: null,
+            typeMatch: null,
+          },
+        };
+      }
+    } catch (error) {
+      console.warn('[AutoCategorizer] k-NN fallback failed:', error);
+    }
+
+    return syncResult;
   }
 
   /**
@@ -904,26 +415,31 @@ class AutoCategorizerService {
   }
 
   /**
-   * Suggest categories for multiple vendors at once.
+   * Suggest categories for multiple vendors at once, optionally with per-vendor context.
    *
    * @param vendors - Array of vendor names
+   * @param contexts - Optional map of vendor name to transaction context
    * @returns Map of vendor name to category suggestion
    */
-  suggestCategories(vendors: string[]): Map<string, CategorySuggestion | null> {
+  suggestCategories(
+    vendors: string[],
+    contexts?: Map<string, TransactionContext>
+  ): Map<string, CategorySuggestion | null> {
     const results = new Map<string, CategorySuggestion | null>();
 
     for (const vendor of vendors) {
-      results.set(vendor, this.suggestCategory(vendor));
+      const ctx = contexts?.get(vendor);
+      results.set(vendor, this.suggestCategory(vendor, ctx));
     }
 
     return results;
   }
 
   /**
-   * Get all available category names from the rules.
+   * Get all available category names from the registry rules.
    */
   getAvailableCategories(): string[] {
-    return Object.keys(CATEGORY_RULES);
+    return Object.keys(this.getRules());
   }
 }
 

@@ -15,6 +15,23 @@ import { Button } from '@/components/ui/button';
 // Types
 // ============================================
 
+/**
+ * Retroactive re-categorization suggestion from the import flow.
+ */
+export interface RetroactiveSuggestionInfo {
+  /** Total number of existing transactions that could be re-categorized */
+  totalCount: number;
+
+  /** Number of unique vendors involved */
+  vendorCount: number;
+
+  /** Apply the re-categorization */
+  onApply: () => Promise<number>;
+
+  /** Dismiss the suggestion */
+  onDismiss: () => void;
+}
+
 export interface ImportCompleteProps {
   /** Number of documents imported */
   count: number;
@@ -30,6 +47,9 @@ export interface ImportCompleteProps {
 
   /** Import more handler */
   onImportMore?: () => void;
+
+  /** Optional retroactive re-categorization suggestion */
+  retroactiveSuggestion?: RetroactiveSuggestionInfo | null;
 
   /** Custom class name */
   className?: string;
@@ -58,9 +78,13 @@ export function ImportComplete({
   onClose,
   onViewVault,
   onImportMore,
+  retroactiveSuggestion,
   className,
 }: ImportCompleteProps) {
   const [showConfetti, setShowConfetti] = useState(false);
+  const [retroApplied, setRetroApplied] = useState(false);
+  const [retroAppliedCount, setRetroAppliedCount] = useState(0);
+  const [retroApplying, setRetroApplying] = useState(false);
 
   // Trigger confetti animation
   useEffect(() => {
@@ -68,6 +92,19 @@ export function ImportComplete({
     const timer = setTimeout(() => setShowConfetti(false), 2000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Handle retroactive re-categorization
+  const handleRetroApply = async () => {
+    if (!retroactiveSuggestion) return;
+    setRetroApplying(true);
+    try {
+      const updated = await retroactiveSuggestion.onApply();
+      setRetroAppliedCount(updated);
+      setRetroApplied(true);
+    } finally {
+      setRetroApplying(false);
+    }
+  };
 
   return (
     <div
@@ -133,6 +170,66 @@ export function ImportComplete({
         <ShieldIcon className="h-4 w-4" />
         <span>All documents stored securely on your device</span>
       </div>
+
+      {/* Retroactive re-categorization suggestion */}
+      {retroactiveSuggestion &&
+        retroactiveSuggestion.totalCount > 0 &&
+        !retroApplied && (
+          <div className="mt-6 w-full max-w-sm rounded-lg border border-blue-200 bg-blue-50 p-4 text-left dark:border-blue-800 dark:bg-blue-950/30">
+            <div className="flex items-start gap-3">
+              <TagIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                  Update existing transactions?
+                </p>
+                <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
+                  Found{' '}
+                  <span className="font-semibold">
+                    {retroactiveSuggestion.totalCount}
+                  </span>{' '}
+                  older transaction
+                  {retroactiveSuggestion.totalCount !== 1 ? 's' : ''} from{' '}
+                  <span className="font-semibold">
+                    {retroactiveSuggestion.vendorCount}
+                  </span>{' '}
+                  vendor{retroactiveSuggestion.vendorCount !== 1 ? 's' : ''} that
+                  can be re-categorized to match your corrections.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={handleRetroApply}
+                    disabled={retroApplying}
+                    className="h-7 text-xs"
+                  >
+                    {retroApplying ? 'Updating...' : 'Update All'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={retroactiveSuggestion.onDismiss}
+                    disabled={retroApplying}
+                    className="h-7 text-xs"
+                  >
+                    Skip
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* Retroactive applied confirmation */}
+      {retroApplied && retroAppliedCount > 0 && (
+        <div className="mt-6 flex items-center gap-2 rounded-full bg-blue-100 px-4 py-2 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+          <CheckIcon className="h-4 w-4" />
+          <span>
+            Updated {retroAppliedCount} existing transaction
+            {retroAppliedCount !== 1 ? 's' : ''}
+          </span>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -332,6 +429,29 @@ function PlusIcon({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M12 4.5v15m7.5-7.5h-15"
+      />
+    </svg>
+  );
+}
+
+function TagIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6 6h.008v.008H6V6z"
       />
     </svg>
   );

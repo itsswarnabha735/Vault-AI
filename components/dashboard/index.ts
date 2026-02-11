@@ -11,3 +11,5 @@ export { SavingsRateCard } from './SavingsRateCard';
 export { SpendingTrendChart } from './SpendingTrendChart';
 export { CategoryBreakdownChart } from './CategoryBreakdownChart';
 export { RecentTransactionsList } from './RecentTransactionsList';
+export { SmartCategorySuggestions } from './SmartCategorySuggestions';
+export { RecurringTransactionsCard } from './RecurringTransactionsCard';

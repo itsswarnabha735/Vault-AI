@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useCategories } from '@/hooks/useLocalDB';
+import { useHierarchicalCategories } from '@/hooks/useHierarchicalCategories';
 import { autoCategorizer } from '@/lib/processing/auto-categorizer';
 import type { ProcessedDocumentResult } from '@/lib/processing/processing-worker-client';
 import type { CategoryId } from '@/types/database';
@@ -106,6 +107,7 @@ export function ExtractionCard({
   className,
 }: ExtractionCardProps) {
   const { data: categories } = useCategories();
+  const { groups: categoryGroups } = useHierarchicalCategories();
 
   // Extract initial values from document entities
   const initialVendor = getVendor(document);
@@ -121,12 +123,14 @@ export function ExtractionCard({
     return map;
   }, [categories]);
 
-  // Auto-categorize based on initial vendor (checks learned mappings first)
+  // Auto-categorize based on initial vendor + amount context (checks learned mappings first)
   const initialAutoCategory = useMemo(() => {
     if (!initialVendor) {
       return null;
     }
-    const suggestion = autoCategorizer.suggestCategory(initialVendor);
+    const suggestion = autoCategorizer.suggestCategory(initialVendor, {
+      amount: initialAmount || undefined,
+    });
     if (suggestion) {
       // If learned mapping, use the direct categoryId
       if (suggestion.isLearned && suggestion.learnedCategoryId) {
@@ -138,7 +142,7 @@ export function ExtractionCard({
       );
     }
     return null;
-  }, [initialVendor, categoryNameToId]);
+  }, [initialVendor, initialAmount, categoryNameToId]);
 
   // Local editing state - pre-populate category with auto-suggestion
   const [editedValues, setEditedValues] = useState({
@@ -149,8 +153,26 @@ export function ExtractionCard({
     note: '',
   });
 
-  // Track whether category was auto-set (for showing hint badge)
+  // Track whether category was auto-set and its confidence level
   const [categoryAutoSet, setCategoryAutoSet] = useState(!!initialAutoCategory);
+  const [categoryConfidence, setCategoryConfidence] = useState<number>(() => {
+    if (!initialVendor) return 0;
+    const s = autoCategorizer.suggestCategory(initialVendor, {
+      amount: initialAmount || undefined,
+    });
+    return s?.confidence || 0;
+  });
+
+  // Confidence tier for visual indicators
+  type ConfidenceTier = 'high' | 'medium' | 'low' | 'none';
+  const categoryConfidenceTier: ConfidenceTier =
+    !categoryAutoSet || !editedValues.category
+      ? 'none'
+      : categoryConfidence >= 0.85
+        ? 'high'
+        : categoryConfidence >= 0.6
+          ? 'medium'
+          : 'low';
 
   // Update auto-category when initialAutoCategory resolves (categories may load async)
   useEffect(() => {
@@ -205,8 +227,11 @@ export function ExtractionCard({
       return;
     }
 
-    const suggestion = autoCategorizer.suggestCategory(editedValues.vendor);
+    const suggestion = autoCategorizer.suggestCategory(editedValues.vendor, {
+      amount: editedValues.amount || undefined,
+    });
     if (suggestion) {
+      setCategoryConfidence(suggestion.confidence);
       // If learned mapping, use the direct categoryId
       if (suggestion.isLearned && suggestion.learnedCategoryId) {
         setEditedValues((prev) => ({
@@ -222,6 +247,8 @@ export function ExtractionCard({
         setEditedValues((prev) => ({ ...prev, category: catId }));
         setCategoryAutoSet(true);
       }
+    } else {
+      setCategoryConfidence(0);
     }
   }, [
     editedValues.vendor,
@@ -289,12 +316,23 @@ export function ExtractionCard({
                 Edited
               </Badge>
             )}
+            {categoryConfidenceTier === 'none' && !isEdited && (
+              <Badge
+                variant="outline"
+                className="shrink-0 border-orange-500/50 bg-orange-500/10 text-orange-600"
+              >
+                Needs Category
+              </Badge>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">
             {formattedAmount} • {formattedDate}
             {selectedCategory && (
               <span className="ml-1.5">
                 • {selectedCategory.icon} {selectedCategory.name}
+                {categoryAutoSet && (
+                  <CategoryConfidenceBadge tier={categoryConfidenceTier} className="ml-1" />
+                )}
               </span>
             )}
           </p>
@@ -373,9 +411,7 @@ export function ExtractionCard({
                   Category
                 </Label>
                 {categoryAutoSet && editedValues.category && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                    Auto-suggested
-                  </span>
+                  <CategoryConfidenceBadge tier={categoryConfidenceTier} />
                 )}
               </div>
               <select
@@ -389,16 +425,33 @@ export function ExtractionCard({
                 }
                 className={cn(
                   'mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-                  categoryAutoSet &&
-                    editedValues.category &&
-                    'border-emerald-500/50'
+                  categoryAutoSet && editedValues.category && (
+                    categoryConfidenceTier === 'high'
+                      ? 'border-emerald-500/50'
+                      : categoryConfidenceTier === 'medium'
+                        ? 'border-amber-500/50'
+                        : 'border-orange-500/50'
+                  )
                 )}
               >
                 <option value="">Select category</option>
-                {categories?.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.icon} {cat.name}
-                  </option>
+                {categoryGroups.map((group) => (
+                  group.children.length > 0 ? (
+                    <optgroup key={group.parent.id} label={`${group.parent.icon} ${group.parent.name}`}>
+                      <option value={group.parent.id}>
+                        {group.parent.icon} {group.parent.name} (General)
+                      </option>
+                      {group.children.map((child) => (
+                        <option key={child.id} value={child.id}>
+                          {child.icon} {child.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : (
+                    <option key={group.parent.id} value={group.parent.id}>
+                      {group.parent.icon} {group.parent.name}
+                    </option>
+                  )
                 ))}
               </select>
             </div>
@@ -433,6 +486,46 @@ export function ExtractionCard({
         </div>
       )}
     </div>
+  );
+}
+
+// ============================================
+// Category Confidence Badge
+// ============================================
+
+interface CategoryConfidenceBadgeProps {
+  tier: 'high' | 'medium' | 'low' | 'none';
+  className?: string;
+}
+
+function CategoryConfidenceBadge({ tier, className }: CategoryConfidenceBadgeProps) {
+  if (tier === 'none') return null;
+
+  const config = {
+    high: {
+      label: 'Auto-categorized',
+      classes: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    },
+    medium: {
+      label: 'Suggested',
+      classes: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    },
+    low: {
+      label: 'Low confidence',
+      classes: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+    },
+  }[tier];
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+        config.classes,
+        className
+      )}
+    >
+      {config.label}
+    </span>
   );
 }
 

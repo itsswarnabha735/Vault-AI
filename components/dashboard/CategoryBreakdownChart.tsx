@@ -6,30 +6,109 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCategorySpending } from '@/hooks/useDashboardData';
+import { useCategories } from '@/hooks/useLocalDB';
 import { formatCurrency, cn } from '@/lib/utils';
 
 /**
  * Category Breakdown Chart with donut chart and interactive legend.
+ * Aggregates sub-categories under their parent for a cleaner view.
  */
 export function CategoryBreakdownChart() {
   const { data, isLoading } = useCategorySpending();
+  const { data: categories } = useCategories();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [drillDownParent, setDrillDownParent] = useState<string | null>(null);
+
+  // Build parent lookup: childId → parentId
+  const parentLookup = useMemo(() => {
+    const lookup = new Map<string, string>(); // childId → parentId
+    for (const cat of categories) {
+      if (cat.parentId) {
+        lookup.set(cat.id as string, cat.parentId as string);
+      }
+    }
+    return lookup;
+  }, [categories]);
+
+  // Aggregate sub-categories under parents
+  const aggregatedData = useMemo(() => {
+    if (drillDownParent) {
+      // Show only children of the drilled-down parent + the parent itself
+      return data.filter((item) => {
+        const catId = item.categoryId as string | null;
+        if (!catId) return false;
+        return catId === drillDownParent || parentLookup.get(catId) === drillDownParent;
+      });
+    }
+
+    // Aggregate: merge children into parent totals
+    const parentTotals = new Map<
+      string | null,
+      { amount: number; count: number; name: string; icon: string; color: string }
+    >();
+
+    for (const item of data) {
+      const catId = item.categoryId as string | null;
+      const parentId = catId ? parentLookup.get(catId) : null;
+      const effectiveId = parentId || catId; // Use parent if sub-category
+
+      const existing = parentTotals.get(effectiveId);
+      if (existing) {
+        existing.amount += item.amount;
+        existing.count += item.transactionCount;
+      } else {
+        // Use parent category info if aggregating
+        if (parentId) {
+          const parentCat = categories.find((c) => (c.id as string) === parentId);
+          parentTotals.set(effectiveId, {
+            amount: item.amount,
+            count: item.transactionCount,
+            name: parentCat?.name ?? item.categoryName,
+            icon: parentCat?.icon ?? item.categoryIcon,
+            color: parentCat?.color ?? item.categoryColor,
+          });
+        } else {
+          parentTotals.set(effectiveId, {
+            amount: item.amount,
+            count: item.transactionCount,
+            name: item.categoryName,
+            icon: item.categoryIcon,
+            color: item.categoryColor,
+          });
+        }
+      }
+    }
+
+    const total = Array.from(parentTotals.values()).reduce((s, v) => s + v.amount, 0);
+
+    return Array.from(parentTotals.entries())
+      .map(([categoryId, info]) => ({
+        categoryId,
+        categoryName: info.name,
+        categoryIcon: info.icon,
+        categoryColor: info.color,
+        amount: info.amount,
+        percentage: total > 0 ? (info.amount / total) * 100 : 0,
+        transactionCount: info.count,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [data, categories, parentLookup, drillDownParent]);
 
   if (isLoading) {
     return <CategoryBreakdownChartSkeleton />;
   }
 
-  const hasData = data.length > 0;
+  const hasData = aggregatedData.length > 0;
 
   // Prepare chart data
-  const chartData = data.map((item) => ({
+  const chartData = aggregatedData.map((item) => ({
     name: item.categoryName,
     value: item.amount,
     color: item.categoryColor,
@@ -39,7 +118,13 @@ export function CategoryBreakdownChart() {
     transactionCount: item.transactionCount,
   }));
 
-  const totalSpending = data.reduce((sum, d) => sum + d.amount, 0);
+  const totalSpending = aggregatedData.reduce((sum, d) => sum + d.amount, 0);
+
+  // Check if any category has children (for drill-down)
+  const hasChildren = (categoryId: string | null) => {
+    if (!categoryId) return false;
+    return categories.some((c) => (c.parentId as string) === categoryId);
+  };
 
   const onPieEnter = (_: unknown, index: number) => {
     setActiveIndex(index);
@@ -51,10 +136,21 @@ export function CategoryBreakdownChart() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base font-semibold">
-          Spending by Category
+          {drillDownParent
+            ? `${categories.find((c) => (c.id as string) === drillDownParent)?.icon || ''} ${categories.find((c) => (c.id as string) === drillDownParent)?.name || 'Category'} Breakdown`
+            : 'Spending by Category'}
         </CardTitle>
+        {drillDownParent && (
+          <button
+            type="button"
+            onClick={() => { setDrillDownParent(null); setActiveIndex(null); }}
+            className="text-xs text-vault-text-secondary hover:text-vault-text-primary"
+          >
+            &larr; Back to all
+          </button>
+        )}
       </CardHeader>
       <CardContent>
         {hasData ? (
@@ -109,35 +205,61 @@ export function CategoryBreakdownChart() {
 
             {/* Legend */}
             <div className="flex-1 space-y-2">
-              {chartData.slice(0, 6).map((item, index) => (
-                <Link
-                  key={item.categoryId ?? 'uncategorized'}
-                  href={`/vault?category=${item.categoryId ?? ''}`}
-                  className={cn(
-                    'flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-vault-bg-hover',
-                    activeIndex === index && 'bg-vault-bg-surface'
-                  )}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onMouseLeave={() => setActiveIndex(null)}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="text-sm">{item.icon}</span>
-                    <span className="text-sm font-medium">{item.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-mono text-sm font-medium">
-                      {formatCurrency(item.value)}
+              {chartData.slice(0, 6).map((item, index) => {
+                const canDrill = !drillDownParent && hasChildren(item.categoryId as string);
+
+                const innerContent = (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-sm">{item.icon}</span>
+                      <span className="text-sm font-medium">{item.name}</span>
+                      {canDrill && (
+                        <span className="text-[10px] text-vault-text-secondary">&rsaquo;</span>
+                      )}
                     </div>
-                    <div className="text-xs text-vault-text-secondary">
-                      {item.percentage.toFixed(1)}%
+                    <div className="text-right">
+                      <div className="font-mono text-sm font-medium">
+                        {formatCurrency(item.value)}
+                      </div>
+                      <div className="text-xs text-vault-text-secondary">
+                        {item.percentage.toFixed(1)}%
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </>
+                );
+
+                const sharedClassName = cn(
+                  'flex w-full items-center justify-between rounded-lg p-2 text-left transition-colors hover:bg-vault-bg-hover',
+                  activeIndex === index && 'bg-vault-bg-surface'
+                );
+
+                return canDrill ? (
+                  <button
+                    key={item.categoryId ?? 'uncategorized'}
+                    type="button"
+                    onClick={() => { setDrillDownParent(item.categoryId as string); setActiveIndex(null); }}
+                    className={sharedClassName}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onMouseLeave={() => setActiveIndex(null)}
+                  >
+                    {innerContent}
+                  </button>
+                ) : (
+                  <Link
+                    key={item.categoryId ?? 'uncategorized'}
+                    href={`/vault?category=${item.categoryId ?? ''}`}
+                    className={sharedClassName}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onMouseLeave={() => setActiveIndex(null)}
+                  >
+                    {innerContent}
+                  </Link>
+                );
+              })}
               {chartData.length > 6 && (
                 <Link
                   href="/vault"

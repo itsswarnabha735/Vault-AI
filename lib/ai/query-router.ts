@@ -7,6 +7,7 @@
 
 import type { QueryIntent, SearchFilter } from '@/types/ai';
 import { embeddingService } from './embedding-service';
+import { getQueryAliasMap } from '@/lib/categories/category-registry';
 
 // ============================================
 // Types
@@ -197,221 +198,16 @@ const TIME_PERIOD_PATTERNS: Record<TimePeriod, RegExp[]> = {
 };
 
 /**
- * Category keyword mappings.
+ * Category keyword mappings for query routing.
+ *
+ * Derived from the Category Registry (single source of truth).
+ * Keys are canonical category names (e.g., "Food & Dining") that match
+ * the DB category names exactly, enabling direct name-based lookups.
+ *
+ * @see lib/categories/category-registry.ts
  */
-export const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  groceries: [
-    'groceries',
-    'grocery',
-    'supermarket',
-    'food shopping',
-    'provisions',
-  ],
-  dining: [
-    'dining',
-    'restaurant',
-    'food',
-    'meal',
-    'lunch',
-    'dinner',
-    'breakfast',
-    'eating out',
-    'takeout',
-    'delivery',
-  ],
-  transport: [
-    'transport',
-    'transportation',
-    'uber',
-    'lyft',
-    'taxi',
-    'cab',
-    'gas',
-    'fuel',
-    'petrol',
-    'parking',
-    'car',
-    'commute',
-  ],
-  entertainment: [
-    'entertainment',
-    'movie',
-    'movies',
-    'cinema',
-    'concert',
-    'show',
-    'streaming',
-    'netflix',
-    'spotify',
-    'gaming',
-  ],
-  shopping: [
-    'shopping',
-    'clothes',
-    'clothing',
-    'amazon',
-    'online shopping',
-    'retail',
-    'store',
-  ],
-  healthcare: [
-    'healthcare',
-    'health',
-    'medical',
-    'doctor',
-    'hospital',
-    'pharmacy',
-    'medicine',
-    'dentist',
-    'dental',
-  ],
-  utilities: [
-    'utilities',
-    'electricity',
-    'water',
-    'gas',
-    'internet',
-    'phone',
-    'bill',
-    'bills',
-  ],
-  travel: [
-    'travel',
-    'trip',
-    'vacation',
-    'holiday',
-    'flight',
-    'hotel',
-    'airbnb',
-    'booking',
-  ],
-  income: ['income', 'salary', 'paycheck', 'payment received', 'deposit'],
-  investments: [
-    'investment',
-    'investments',
-    'invest',
-    'invested',
-    'mutual fund',
-    'mutual funds',
-    'mf',
-    'sip',
-    'stocks',
-    'stock',
-    'shares',
-    'equity',
-    'bonds',
-    'bond',
-    'fixed deposit',
-    'fd',
-    'rd',
-    'recurring deposit',
-    'nps',
-    'ppf',
-    'epf',
-    'provident fund',
-    'demat',
-    'trading',
-    'portfolio',
-    'dividend',
-    'dividends',
-    'capital gains',
-    // Common investment platform names (for vendor matching)
-    'groww',
-    'zerodha',
-    'etmoney',
-    'et money',
-    'upstox',
-    'kuvera',
-    'smallcase',
-    'coin',
-    'angel one',
-    'paytm money',
-    '5paisa',
-    'vested',
-  ],
-  subscriptions: [
-    'subscription',
-    'subscriptions',
-    'recurring',
-    'membership',
-    'plan',
-    'premium',
-    'renewal',
-    'auto-pay',
-    'autopay',
-    'monthly charge',
-  ],
-  insurance: [
-    'insurance',
-    'premium',
-    'life insurance',
-    'health insurance',
-    'car insurance',
-    'motor insurance',
-    'term plan',
-    'policy',
-    'lic',
-    'mediclaim',
-  ],
-  education: [
-    'education',
-    'school',
-    'college',
-    'university',
-    'tuition',
-    'course',
-    'training',
-    'books',
-    'textbook',
-    'fees',
-    'coaching',
-    'exam',
-  ],
-  rent: [
-    'rent',
-    'lease',
-    'rental',
-    'landlord',
-    'tenant',
-    'housing',
-    'accommodation',
-  ],
-  transfers: [
-    'transfer',
-    'transfers',
-    'upi',
-    'neft',
-    'rtgs',
-    'imps',
-    'wire',
-    'remittance',
-    'sent to',
-    'received from',
-    'p2p',
-    'peer to peer',
-  ],
-  emi: [
-    'emi',
-    'loan',
-    'instalment',
-    'installment',
-    'mortgage',
-    'home loan',
-    'car loan',
-    'personal loan',
-    'repayment',
-  ],
-  taxes: [
-    'tax',
-    'taxes',
-    'income tax',
-    'gst',
-    'tds',
-    'advance tax',
-    'self-assessment',
-    'tax payment',
-  ],
-};
+export const CATEGORY_KEYWORDS: Record<string, string[]> =
+  getQueryAliasMap();
 
 // Note: Amount and date extraction patterns are used inline in the extraction functions
 // via regex literals for better readability and maintenance.
@@ -708,6 +504,10 @@ export async function classifyQueryAsync(
   }
 
   const entities = extractEntities(query, intent);
+
+  // #region agent log
+  fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'query-router.ts:classifyQueryAsync',message:'Full classification details',data:{query,embeddingIntent:embeddingResult?.intent||null,embeddingConfidence:embeddingResult?.confidence||null,finalIntent:intent,finalConfidence:confidence,direction:entities.transactionDirection,dateRange:entities.dateRange,categories:entities.categories,keywords:entities.keywords},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
 
   const isQuestion =
     /^(what|how|where|when|why|which|who|can|could|would|is|are|did|do|does|have|has)\b/i.test(
