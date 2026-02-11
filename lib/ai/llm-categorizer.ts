@@ -14,8 +14,6 @@
  * No raw text, embeddings, or documents.
  */
 
-import type { CategoryId } from '@/types/database';
-
 // ============================================
 // Types
 // ============================================
