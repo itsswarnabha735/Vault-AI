@@ -303,6 +303,13 @@ Assistant: "I couldn't find any transactions for Target in your records. This co
 
 Would you like me to search for similar vendor names?"
 
+OUTPUT FORMAT RULES:
+- NEVER output code, pseudocode, SQL, Python, JavaScript, or any programming language in your responses
+- NEVER use code blocks or code formatting for calculations
+- Always present information as natural language text with proper formatting (bold, bullet points, numbered lists)
+- For calculations, show the result directly — do NOT show the formula or code used to derive it
+- If the user asks for data you cannot find, explain what's missing in plain English
+
 PRIVACY NOTE:
 You only have access to structured financial data (dates, amounts, vendors, categories).
 You do NOT have access to raw receipt images or full document text.
@@ -430,7 +437,23 @@ export function buildSafePrompt(context: PromptContext): string {
       for (const [category, amount] of Object.entries(
         context.verifiedData.byCategory
       )) {
-        parts.push(`- ${category}: ${formatCurrency(amount, currency)}`);
+        const txCount = context.verifiedData.countByCategory?.[category];
+        const countStr = txCount ? ` (${txCount} transactions)` : '';
+        parts.push(
+          `- ${category}: ${formatCurrency(amount, currency)}${countStr}`
+        );
+      }
+    }
+
+    if (
+      context.verifiedData.byVendor &&
+      context.verifiedData.byVendor.length > 0
+    ) {
+      parts.push('\nTop Vendors/Merchants:');
+      for (const v of context.verifiedData.byVendor.slice(0, 10)) {
+        parts.push(
+          `- ${v.vendor}: ${formatCurrency(v.total, currency)} (${v.count} transactions)`
+        );
       }
     }
 
@@ -564,9 +587,26 @@ export function buildStructuredPrompt(
       for (const [category, amount] of Object.entries(
         context.verifiedData.byCategory
       )) {
-        userParts.push(`- ${category}: ${formatCurrency(amount, currency)}`);
+        const txCount = context.verifiedData.countByCategory?.[category];
+        const countStr = txCount ? ` (${txCount} transactions)` : '';
+        userParts.push(
+          `- ${category}: ${formatCurrency(amount, currency)}${countStr}`
+        );
       }
     }
+
+    if (
+      context.verifiedData.byVendor &&
+      context.verifiedData.byVendor.length > 0
+    ) {
+      userParts.push('\nTop Vendors/Merchants:');
+      for (const v of context.verifiedData.byVendor.slice(0, 10)) {
+        userParts.push(
+          `- ${v.vendor}: ${formatCurrency(v.total, currency)} (${v.count} transactions)`
+        );
+      }
+    }
+
     if (context.verifiedData.period) {
       userParts.push(
         `\nPeriod: ${context.verifiedData.period.start} to ${context.verifiedData.period.end}`

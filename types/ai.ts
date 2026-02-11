@@ -527,8 +527,17 @@ export interface VerifiedFinancialData {
   /** Number of income transactions */
   incomeCount: number;
 
-  /** Category breakdown */
+  /** Category breakdown (amounts) */
   byCategory?: Record<string, number>;
+
+  /** Category breakdown (transaction counts) */
+  countByCategory?: Record<string, number>;
+
+  /** Top vendors by total amount (sorted descending) */
+  byVendor?: Array<{ vendor: string; total: number; count: number }>;
+
+  /** Total number of distinct transactions (useful when context is a sample) */
+  totalTransactionCount?: number;
 
   /** Time period covered */
   period?: {

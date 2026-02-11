@@ -56,6 +56,9 @@ export interface ExtractedQueryEntities {
 
   /** Transaction direction (income, expense, or all) */
   transactionDirection: TransactionDirection;
+
+  /** Superlative intent (e.g., "biggest", "smallest") */
+  superlative?: SuperlativeType;
 }
 
 /**
@@ -283,6 +286,118 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     'booking',
   ],
   income: ['income', 'salary', 'paycheck', 'payment received', 'deposit'],
+  investments: [
+    'investment',
+    'investments',
+    'invest',
+    'invested',
+    'mutual fund',
+    'mutual funds',
+    'mf',
+    'sip',
+    'stocks',
+    'stock',
+    'shares',
+    'equity',
+    'bonds',
+    'bond',
+    'fixed deposit',
+    'fd',
+    'rd',
+    'recurring deposit',
+    'nps',
+    'ppf',
+    'epf',
+    'provident fund',
+    'demat',
+    'trading',
+    'portfolio',
+    'dividend',
+    'dividends',
+    'capital gains',
+  ],
+  subscriptions: [
+    'subscription',
+    'subscriptions',
+    'recurring',
+    'membership',
+    'plan',
+    'premium',
+    'renewal',
+    'auto-pay',
+    'autopay',
+    'monthly charge',
+  ],
+  insurance: [
+    'insurance',
+    'premium',
+    'life insurance',
+    'health insurance',
+    'car insurance',
+    'motor insurance',
+    'term plan',
+    'policy',
+    'lic',
+    'mediclaim',
+  ],
+  education: [
+    'education',
+    'school',
+    'college',
+    'university',
+    'tuition',
+    'course',
+    'training',
+    'books',
+    'textbook',
+    'fees',
+    'coaching',
+    'exam',
+  ],
+  rent: [
+    'rent',
+    'lease',
+    'rental',
+    'landlord',
+    'tenant',
+    'housing',
+    'accommodation',
+  ],
+  transfers: [
+    'transfer',
+    'transfers',
+    'upi',
+    'neft',
+    'rtgs',
+    'imps',
+    'wire',
+    'remittance',
+    'sent to',
+    'received from',
+    'p2p',
+    'peer to peer',
+  ],
+  emi: [
+    'emi',
+    'loan',
+    'instalment',
+    'installment',
+    'mortgage',
+    'home loan',
+    'car loan',
+    'personal loan',
+    'repayment',
+  ],
+  taxes: [
+    'tax',
+    'taxes',
+    'income tax',
+    'gst',
+    'tds',
+    'advance tax',
+    'self-assessment',
+    'tax payment',
+  ],
 };
 
 // Note: Amount and date extraction patterns are used inline in the extraction functions
@@ -641,21 +756,32 @@ export function extractEntities(
     intent
   );
 
-  // Try to extract a specific month name first (e.g., "in January", "January 2026").
-  // This is the most specific pattern and must run before general time-period matching
-  // to prevent patterns like "this year" from swallowing "January 2026".
-  entities.dateRange = extractMonthNameDateRange(normalizedQuery);
-  if (entities.dateRange) {
-    entities.timePeriod = 'specific_month';
+  // Try to extract a "between X and Y" date range first (most specific)
+  entities.dateRange = extractBetweenDateRange(normalizedQuery);
+
+  // Then try a specific month name (e.g., "in January", "January 2026")
+  if (!entities.dateRange) {
+    entities.dateRange = extractMonthNameDateRange(normalizedQuery);
+    if (entities.dateRange) {
+      entities.timePeriod = 'specific_month';
+    }
   }
 
-  // If no specific month matched, try general time period patterns
+  // Then try relative date ranges ("last 3 months", "past 90 days")
+  if (!entities.dateRange) {
+    entities.dateRange = extractRelativeDateRange(normalizedQuery);
+  }
+
+  // If still no date matched, try general time period patterns
   if (!entities.dateRange) {
     entities.timePeriod = extractTimePeriod(normalizedQuery);
     if (entities.timePeriod) {
       entities.dateRange = getDateRangeFromPeriod(entities.timePeriod);
     }
   }
+
+  // Extract superlative intent
+  entities.superlative = extractSuperlative(normalizedQuery);
 
   // Extract categories
   entities.categories = extractCategories(normalizedQuery);
@@ -749,9 +875,9 @@ function extractTransactionDirection(
 
   // For other intents, check for explicit direction keywords
   const incomeKeywords =
-    /\b(income|earn|earned|earning|salary|paycheck|credit|credited|deposit|deposited|received|inflow|inflows|money in|cash in|payment received)\b/i;
+    /\b(income|earn|earned|earning|salary|paycheck|credit|credited|deposit|deposited|received|inflow|inflows|money in|cash in|payment received|refund|refunded|cashback|cash back|dividend|dividends)\b/i;
   const expenseKeywords =
-    /\b(spend|spent|spending|expense|expenses|paid|pay|payment|debit|debited|outflow|outflows|money out|cash out|cost|costs|purchase|bought)\b/i;
+    /\b(spend|spent|spending|expense|expenses|paid|pay|payment|debit|debited|outflow|outflows|money out|cash out|cost|costs|purchase|bought|invest|invested|investing|investment|subscribe|subscribed|subscription|transfer|transferred|emi|loan|premium|rent|tax|taxes)\b/i;
 
   const hasIncomeSignal = incomeKeywords.test(query);
   const hasExpenseSignal = expenseKeywords.test(query);
@@ -943,6 +1069,115 @@ function getDateRangeFromPeriod(period: TimePeriod): {
     start: toLocalDateString(start),
     end: toLocalDateString(end),
   };
+}
+
+/**
+ * Extract a relative date range like "last 3 months", "past 90 days",
+ * "last 2 weeks", "past 6 months", "last 1 year", etc.
+ */
+function extractRelativeDateRange(
+  query: string
+): { start: string; end: string } | null {
+  const relativePattern =
+    /\b(?:last|past|previous|recent)\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)\b/i;
+  const match = query.match(relativePattern);
+  if (!match?.[1] || !match[2]) {
+    return null;
+  }
+
+  const count = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase().replace(/s$/, ''); // normalize plural
+
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start = new Date(end);
+
+  switch (unit) {
+    case 'day':
+      start.setDate(start.getDate() - count);
+      break;
+    case 'week':
+      start.setDate(start.getDate() - count * 7);
+      break;
+    case 'month':
+      start.setMonth(start.getMonth() - count);
+      break;
+    case 'year':
+      start.setFullYear(start.getFullYear() - count);
+      break;
+  }
+
+  return {
+    start: toLocalDateString(start),
+    end: toLocalDateString(end),
+  };
+}
+
+/**
+ * Extract a "between X and Y" date range.
+ * Handles patterns like:
+ *   "between January and March"
+ *   "between Jan 2025 and Mar 2026"
+ *   "from February to April"
+ */
+function extractBetweenDateRange(
+  query: string
+): { start: string; end: string } | null {
+  const monthList = Object.keys(MONTH_NAMES).join('|');
+  const betweenPattern = new RegExp(
+    `(?:between|from)\\s+(${monthList})(?:\\s+(\\d{4}))?\\s+(?:and|to|through|thru|-)\\s+(${monthList})(?:\\s+(\\d{4}))?`,
+    'i'
+  );
+  const match = query.match(betweenPattern);
+  if (!match?.[1] || !match[3]) {
+    return null;
+  }
+
+  const startMonth = MONTH_NAMES[match[1].toLowerCase()];
+  const endMonth = MONTH_NAMES[match[3].toLowerCase()];
+  if (startMonth === undefined || endMonth === undefined) {
+    return null;
+  }
+
+  const now = new Date();
+  const startYear = match[2] ? parseInt(match[2], 10) : now.getFullYear();
+  const endYear = match[4] ? parseInt(match[4], 10) : now.getFullYear();
+
+  const start = new Date(startYear, startMonth, 1);
+  const end = new Date(endYear, endMonth + 1, 0); // Last day of end month
+
+  return {
+    start: toLocalDateString(start),
+    end: toLocalDateString(end),
+  };
+}
+
+/**
+ * Superlative types for queries like "biggest", "smallest", "most expensive".
+ */
+export type SuperlativeType = 'largest' | 'smallest' | null;
+
+/**
+ * Extract superlative intent from the query.
+ * Returns 'largest' for biggest/highest/most expensive/top,
+ * 'smallest' for smallest/lowest/cheapest/least, or null.
+ */
+function extractSuperlative(query: string): SuperlativeType {
+  if (
+    /\b(biggest|largest|highest|most expensive|top|maximum|max|major|highest value)\b/i.test(
+      query
+    )
+  ) {
+    return 'largest';
+  }
+  if (
+    /\b(smallest|lowest|cheapest|least|minimum|min|minor|lowest value)\b/i.test(
+      query
+    )
+  ) {
+    return 'smallest';
+  }
+  return null;
 }
 
 /**

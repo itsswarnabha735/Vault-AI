@@ -229,10 +229,24 @@ const DEFAULT_CONFIG = {
 function isFollowUpQuery(query: string): boolean {
   const lower = query.toLowerCase().trim();
 
+  // Affirmative / confirmatory responses — user is saying "yes, tell me more"
+  // about whatever was discussed in the previous turn
+  const affirmativePatterns = [
+    /^(yes|yeah|yep|yup|sure|ok|okay|please|go ahead|tell me|show me|do it|absolutely|definitely|of course|right|correct)\s*[.!?]*$/i,
+    /^(yes|yeah|yep|yup|sure|ok|okay)[\s,]*(please|do|go|tell|show)/i,
+    /^(can you|could you|would you)\s*(please\s*)?(show|tell|give|list|break)/i,
+  ];
+  for (const pattern of affirmativePatterns) {
+    if (pattern.test(lower)) {
+      return true;
+    }
+  }
+
   // Explicit follow-up starters
   const followUpStarters = [
     /^(and|but|also|what about|how about|same for|same but|show me|now for|now show|ok |okay )/i,
     /^(compare|versus|vs\.?)\s/i,
+    /^(more|details|elaborate|explain|break\s*down|breakdown)/i,
   ];
   for (const pattern of followUpStarters) {
     if (pattern.test(lower)) {
@@ -280,8 +294,11 @@ function reformulateQuery(
     return { reformulated: query, wasReformulated: false };
   }
 
-  // Find the most recent user message
+  // Find the most recent user and assistant messages
   const lastUserMessage = [...history].reverse().find((m) => m.role === 'user');
+  const lastAssistantMessage = [...history]
+    .reverse()
+    .find((m) => m.role === 'assistant');
 
   if (!lastUserMessage) {
     return { reformulated: query, wasReformulated: false };
@@ -289,6 +306,35 @@ function reformulateQuery(
 
   const prevQuery = lastUserMessage.content;
   const currentLower = query.toLowerCase().trim();
+
+  // Strategy 0: Affirmative/confirmatory response ("yes", "sure", "ok", etc.)
+  // The user is confirming or requesting elaboration on what the assistant
+  // just suggested. Re-use the previous user query so the system retrieves
+  // the same context and can provide a more detailed answer.
+  const affirmative =
+    /^(yes|yeah|yep|yup|sure|ok|okay|please|go ahead|tell me|show me|do it|absolutely|definitely|of course|right|correct)\s*[.!?]*$/i;
+  if (affirmative.test(currentLower)) {
+    // If the assistant's last message contained a suggested follow-up question,
+    // try to extract and use it. Otherwise, repeat the previous user query
+    // with a "tell me more" wrapper.
+    if (lastAssistantMessage) {
+      // Look for lines starting with "- " that look like suggested follow-ups
+      const followUpLines =
+        lastAssistantMessage.content.match(/[-•]\s*(.*\?)/g);
+      if (followUpLines && followUpLines.length > 0) {
+        // Use the first suggested follow-up
+        const suggested = (followUpLines[0] ?? '')
+          .replace(/^[-•]\s*/, '')
+          .trim();
+        if (suggested.length > 5) {
+          return { reformulated: suggested, wasReformulated: true };
+        }
+      }
+    }
+    // Fallback: repeat previous query asking for more details
+    const reformulated = `${prevQuery} — please provide more details and a complete breakdown`;
+    return { reformulated, wasReformulated: true };
+  }
 
   // Strategy 1: Month substitution
   // "What about February?" + "How much did I spend in January?" => "How much did I spend in February?"
@@ -1564,6 +1610,7 @@ class ChatServiceImpl implements ChatService {
           amount: tx.amount,
           categoryId: tx.category,
           date: tx.date,
+          vendor: tx.vendor,
         }))
       );
     } catch (error) {
@@ -1574,12 +1621,16 @@ class ChatServiceImpl implements ChatService {
 
   /**
    * Shared aggregate computation logic for both cloud and local data.
+   * Produces comprehensive aggregates including category counts, vendor
+   * breakdown, and total transaction count — so the LLM has rich context
+   * without needing to do any arithmetic.
    */
   private computeAggregates(
     transactions: Array<{
       amount: number;
       categoryId: CategoryId | null;
       date: string;
+      vendor?: string;
     }>
   ): VerifiedFinancialData {
     let totalExpenses = 0;
@@ -1588,6 +1639,8 @@ class ChatServiceImpl implements ChatService {
     let incomeCount = 0;
 
     const byCategory: Record<string, number> = {};
+    const countByCategory: Record<string, number> = {};
+    const vendorMap: Map<string, { total: number; count: number }> = new Map();
 
     for (const tx of transactions) {
       const amount = tx.amount;
@@ -1603,10 +1656,31 @@ class ChatServiceImpl implements ChatService {
         (tx.categoryId ? this.categoryCache.get(tx.categoryId) : null) ||
         'Uncategorized';
       byCategory[categoryName] = (byCategory[categoryName] || 0) + amount;
+      countByCategory[categoryName] = (countByCategory[categoryName] || 0) + 1;
+
+      // Vendor aggregation
+      const vendor = tx.vendor || 'Unknown';
+      const existing = vendorMap.get(vendor);
+      if (existing) {
+        existing.total += amount;
+        existing.count += 1;
+      } else {
+        vendorMap.set(vendor, { total: amount, count: 1 });
+      }
     }
 
     const total = totalExpenses - totalIncome; // Net outflow
     const count = transactions.length;
+
+    // Sort vendors by absolute total amount, descending; keep top 15
+    const byVendor = Array.from(vendorMap.entries())
+      .map(([vendor, data]) => ({
+        vendor,
+        total: data.total,
+        count: data.count,
+      }))
+      .sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
+      .slice(0, 15);
 
     // Determine period
     let period: { start: string; end: string } | undefined;
@@ -1626,6 +1700,9 @@ class ChatServiceImpl implements ChatService {
       expenseCount,
       incomeCount,
       byCategory,
+      countByCategory,
+      byVendor,
+      totalTransactionCount: count,
       period,
     };
   }
