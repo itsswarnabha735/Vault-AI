@@ -57,7 +57,7 @@ let isSupabaseConfigured = false;
  * @example
  * ```typescript
  * const supabase = createClient();
- * const { data, error } = await supabase.from('vault_transactions').select('*');
+ * const { data, error } = await supabase.from('transactions').select('*');
  * ```
  */
 export function createClient() {

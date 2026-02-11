@@ -79,7 +79,7 @@ export type {
   TransactionInsert,
   TransactionUpdate,
   // Categories (aliased to avoid conflicts with database types)
-  Category as SupabaseCategory,
+  CategoryRow as SupabaseCategory,
   CategoryInsert,
   CategoryUpdate,
   // Budgets (aliased to avoid conflicts with database types)

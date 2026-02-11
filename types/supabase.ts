@@ -767,50 +767,53 @@ export type Functions<T extends keyof Database['public']['Functions']> =
 // ============================================
 // Convenience Aliases
 // ============================================
+// NOTE: Production tables use NON-PREFIXED names (categories, transactions, etc.)
+// matching complete-setup.sql. The vault_* prefixed tables above are legacy entries
+// kept for reference only. Always use the non-prefixed aliases below.
 
-export type VaultTransaction = Tables<'vault_transactions'>;
-export type VaultTransactionInsert = InsertTables<'vault_transactions'>;
-export type VaultTransactionUpdate = UpdateTables<'vault_transactions'>;
+export type Transaction = Tables<'transactions'>;
+export type TransactionInsert = InsertTables<'transactions'>;
+export type TransactionUpdate = UpdateTables<'transactions'>;
 
-export type VaultCategory = Tables<'vault_categories'>;
-export type VaultCategoryInsert = InsertTables<'vault_categories'>;
-export type VaultCategoryUpdate = UpdateTables<'vault_categories'>;
+export type CategoryRow = Tables<'categories'>;
+export type CategoryInsert = InsertTables<'categories'>;
+export type CategoryUpdate = UpdateTables<'categories'>;
 
-export type VaultBudget = Tables<'vault_budgets'>;
-export type VaultBudgetInsert = InsertTables<'vault_budgets'>;
-export type VaultBudgetUpdate = UpdateTables<'vault_budgets'>;
+export type Budget = Tables<'budgets'>;
+export type BudgetInsert = InsertTables<'budgets'>;
+export type BudgetUpdate = UpdateTables<'budgets'>;
 
-export type VaultUserPreferences = Tables<'vault_user_preferences'>;
-export type VaultUserPreferencesInsert = InsertTables<'vault_user_preferences'>;
-export type VaultUserPreferencesUpdate = UpdateTables<'vault_user_preferences'>;
+export type UserPreferences = Tables<'user_preferences'>;
+export type UserPreferencesInsert = InsertTables<'user_preferences'>;
+export type UserPreferencesUpdate = UpdateTables<'user_preferences'>;
 
-export type VaultSyncMetadata = Tables<'vault_sync_metadata'>;
-export type VaultSyncMetadataInsert = InsertTables<'vault_sync_metadata'>;
-export type VaultSyncMetadataUpdate = UpdateTables<'vault_sync_metadata'>;
-
-// Legacy aliases (for backwards compatibility)
-export type Transaction = VaultTransaction;
-export type TransactionInsert = VaultTransactionInsert;
-export type TransactionUpdate = VaultTransactionUpdate;
-
-export type Category = VaultCategory;
-export type CategoryInsert = VaultCategoryInsert;
-export type CategoryUpdate = VaultCategoryUpdate;
-
-export type Budget = VaultBudget;
-export type BudgetInsert = VaultBudgetInsert;
-export type BudgetUpdate = VaultBudgetUpdate;
-
-export type UserPreferences = VaultUserPreferences;
-export type UserPreferencesInsert = VaultUserPreferencesInsert;
-export type UserPreferencesUpdate = VaultUserPreferencesUpdate;
-
-export type SyncMetadata = VaultSyncMetadata;
-export type SyncMetadataInsert = VaultSyncMetadataInsert;
-export type SyncMetadataUpdate = VaultSyncMetadataUpdate;
+export type SyncMetadata = Tables<'sync_metadata'>;
+export type SyncMetadataInsert = InsertTables<'sync_metadata'>;
+export type SyncMetadataUpdate = UpdateTables<'sync_metadata'>;
 
 export type AuditLog = Tables<'audit_log'>;
 export type AuditLogInsert = InsertTables<'audit_log'>;
+
+// Legacy vault_* aliases (point to same schema as non-prefixed)
+export type VaultTransaction = Transaction;
+export type VaultTransactionInsert = TransactionInsert;
+export type VaultTransactionUpdate = TransactionUpdate;
+
+export type VaultCategory = CategoryRow;
+export type VaultCategoryInsert = CategoryInsert;
+export type VaultCategoryUpdate = CategoryUpdate;
+
+export type VaultBudget = Budget;
+export type VaultBudgetInsert = BudgetInsert;
+export type VaultBudgetUpdate = BudgetUpdate;
+
+export type VaultUserPreferences = UserPreferences;
+export type VaultUserPreferencesInsert = UserPreferencesInsert;
+export type VaultUserPreferencesUpdate = UserPreferencesUpdate;
+
+export type VaultSyncMetadata = SyncMetadata;
+export type VaultSyncMetadataInsert = SyncMetadataInsert;
+export type VaultSyncMetadataUpdate = SyncMetadataUpdate;
 
 // ============================================
 // Function Return Types

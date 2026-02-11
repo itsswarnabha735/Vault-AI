@@ -28,9 +28,9 @@ import type {
   SyncConfig,
 } from '@/types/sync';
 import type {
-  VaultTransactionInsert,
-  VaultTransaction as TransactionRow,
-  VaultCategoryInsert,
+  TransactionInsert,
+  Transaction as TransactionRow,
+  CategoryInsert,
 } from '@/types/supabase';
 
 // ============================================
@@ -448,7 +448,7 @@ class SyncEngineImpl implements SyncEngine {
       await this.retryErroredTransactions();
 
       // Phase 0b: Sync categories to Supabase (must happen before transactions
-      // to satisfy FK constraint: vault_transactions.category_id → vault_categories.id)
+      // to satisfy FK constraint: transactions.category_id → categories.id)
       this.status.currentOperation = 'Syncing categories...';
       this.status.syncProgress = 5;
       const categoryResult = await this.syncCategories(user.id);
@@ -557,7 +557,7 @@ class SyncEngineImpl implements SyncEngine {
    * Categories are NOT privacy-sensitive (just names, icons, colors),
    * so they can safely be synced to the cloud. This MUST run before
    * transaction sync to satisfy the foreign key constraint:
-   *   vault_transactions.category_id → vault_categories.id
+   *   transactions.category_id → categories.id
    */
   private async syncCategories(
     userId: string
@@ -572,8 +572,8 @@ class SyncEngineImpl implements SyncEngine {
         return { synced: 0, errors: [] };
       }
 
-      // Map local Category → VaultCategoryInsert for Supabase
-      const categoryRows: VaultCategoryInsert[] = localCategories.map(
+      // Map local Category → CategoryInsert for Supabase
+      const categoryRows: CategoryInsert[] = localCategories.map(
         (cat) => ({
           id: cat.id as string,
           user_id: userId,
@@ -596,7 +596,7 @@ class SyncEngineImpl implements SyncEngine {
 
       if (parents.length > 0) {
         const { error: parentError } = await this.supabase
-          .from('vault_categories')
+          .from('categories')
           .upsert(parents, { onConflict: 'id' });
 
         if (parentError) {
@@ -616,7 +616,7 @@ class SyncEngineImpl implements SyncEngine {
 
       if (children.length > 0) {
         const { error: childError } = await this.supabase
-          .from('vault_categories')
+          .from('categories')
           .upsert(children, { onConflict: 'id' });
 
         if (childError) {
@@ -709,8 +709,8 @@ class SyncEngineImpl implements SyncEngine {
 
     // Upsert to Supabase
     const { error: upsertError } = await this.supabase
-      .from('vault_transactions')
-      .upsert(sanitized as VaultTransactionInsert[], { onConflict: 'id' });
+      .from('transactions')
+      .upsert(sanitized as TransactionInsert[], { onConflict: 'id' });
 
     if (upsertError) {
       console.error('[SyncEngine] Upsert error:', upsertError);
@@ -758,7 +758,7 @@ class SyncEngineImpl implements SyncEngine {
 
     // Fetch remote changes since last sync
     const { data, error } = await this.supabase
-      .from('vault_transactions')
+      .from('transactions')
       .select('*')
       .eq('user_id', userId)
       .gt('server_updated_at', lastSync.toISOString())

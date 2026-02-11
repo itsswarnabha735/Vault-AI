@@ -117,7 +117,7 @@ export async function checkDatabaseHealth(): Promise<{
 
   try {
     const { error } = await client
-      .from('vault_categories')
+      .from('categories')
       .select('count')
       .limit(1);
 
@@ -192,7 +192,7 @@ export async function initializeNewUser(userId: string): Promise<void> {
 
   // Create default preferences
   const { error: prefError } = await client
-    .from('vault_user_preferences')
+    .from('user_preferences')
     .upsert({
       user_id: userId,
       theme: 'system',
@@ -231,7 +231,7 @@ export async function initializeNewUser(userId: string): Promise<void> {
   }));
 
   const { error: catError } = await client
-    .from('vault_categories')
+    .from('categories')
     .insert(categoriesWithUser);
 
   if (catError) {
@@ -260,9 +260,9 @@ export async function getGlobalStats(): Promise<{
 
   const [usersResult, transactionsResult, categoriesResult] = await Promise.all(
     [
-      client.from('vault_user_preferences').select('count'),
-      client.from('vault_transactions').select('count').eq('is_deleted', false),
-      client.from('vault_categories').select('count').eq('is_deleted', false),
+      client.from('user_preferences').select('count'),
+      client.from('transactions').select('count').eq('is_deleted', false),
+      client.from('categories').select('count').eq('is_deleted', false),
     ]
   );
 

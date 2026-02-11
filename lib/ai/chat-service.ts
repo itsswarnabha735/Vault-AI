@@ -1786,7 +1786,7 @@ class ChatServiceImpl implements ChatService {
 
       // Build query for verified totals
       let query = supabase
-        .from('vault_transactions')
+        .from('transactions')
         .select('amount, category_id, date')
         .in('id', transactionIds);
 
