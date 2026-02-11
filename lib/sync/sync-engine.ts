@@ -18,6 +18,7 @@ import type {
   LocalTransaction,
   TransactionId,
   CategoryId,
+  Category,
 } from '@/types/database';
 import type {
   SyncEngineStatus,
@@ -27,8 +28,9 @@ import type {
   SyncConfig,
 } from '@/types/sync';
 import type {
-  TransactionInsert,
-  Transaction as TransactionRow,
+  VaultTransactionInsert,
+  VaultTransaction as TransactionRow,
+  VaultCategoryInsert,
 } from '@/types/supabase';
 
 // ============================================
@@ -442,6 +444,16 @@ class SyncEngineImpl implements SyncEngine {
     let autoResolved = 0;
 
     try {
+      // Phase 0a: Reset errored transactions back to 'pending' so they are retried
+      await this.retryErroredTransactions();
+
+      // Phase 0b: Sync categories to Supabase (must happen before transactions
+      // to satisfy FK constraint: vault_transactions.category_id → vault_categories.id)
+      this.status.currentOperation = 'Syncing categories...';
+      this.status.syncProgress = 5;
+      const categoryResult = await this.syncCategories(user.id);
+      errors.push(...categoryResult.errors);
+
       // Phase 1: Upload pending local changes
       this.status.currentOperation = 'Uploading local changes...';
       this.status.syncProgress = 10;
@@ -514,6 +526,132 @@ class SyncEngineImpl implements SyncEngine {
   }
 
   // ============================================
+  // Retry Methods
+  // ============================================
+
+  /**
+   * Reset previously errored transactions back to 'pending' so they
+   * are retried on the next upload pass.
+   */
+  private async retryErroredTransactions(): Promise<void> {
+    const erroredIds = await db.transactions
+      .where('syncStatus')
+      .equals('error')
+      .primaryKeys();
+
+    if (erroredIds.length > 0) {
+      console.log(
+        `[SyncEngine] Resetting ${erroredIds.length} errored transactions to pending`
+      );
+      await db.updateSyncStatus(erroredIds as TransactionId[], 'pending');
+    }
+  }
+
+  // ============================================
+  // Category Sync Methods
+  // ============================================
+
+  /**
+   * Sync local categories to Supabase.
+   *
+   * Categories are NOT privacy-sensitive (just names, icons, colors),
+   * so they can safely be synced to the cloud. This MUST run before
+   * transaction sync to satisfy the foreign key constraint:
+   *   vault_transactions.category_id → vault_categories.id
+   */
+  private async syncCategories(
+    userId: string
+  ): Promise<{ synced: number; errors: SyncErrorType[] }> {
+    const errors: SyncErrorType[] = [];
+
+    try {
+      // Read all local categories from IndexedDB
+      const localCategories: Category[] = await db.categories.toArray();
+
+      if (localCategories.length === 0) {
+        return { synced: 0, errors: [] };
+      }
+
+      // Map local Category → VaultCategoryInsert for Supabase
+      const categoryRows: VaultCategoryInsert[] = localCategories.map(
+        (cat) => ({
+          id: cat.id as string,
+          user_id: userId,
+          name: cat.name,
+          icon: cat.icon,
+          color: cat.color,
+          parent_id: (cat.parentId as string) || null,
+          sort_order: cat.sortOrder,
+          is_default: cat.isDefault,
+          is_deleted: false,
+          created_at: cat.createdAt.toISOString(),
+          updated_at: cat.updatedAt.toISOString(),
+        })
+      );
+
+      // Upsert categories — parent rows first, then children, to avoid
+      // FK violations on parent_id self-reference.
+      const parents = categoryRows.filter((c) => !c.parent_id);
+      const children = categoryRows.filter((c) => !!c.parent_id);
+
+      if (parents.length > 0) {
+        const { error: parentError } = await this.supabase
+          .from('vault_categories')
+          .upsert(parents, { onConflict: 'id' });
+
+        if (parentError) {
+          console.error(
+            '[SyncEngine] Category parent upsert error:',
+            parentError
+          );
+          errors.push({
+            code: 'SERVER_ERROR',
+            message: `Category sync failed: ${parentError.message}`,
+            recoverable: true,
+            retryCount: 0,
+          });
+          return { synced: 0, errors };
+        }
+      }
+
+      if (children.length > 0) {
+        const { error: childError } = await this.supabase
+          .from('vault_categories')
+          .upsert(children, { onConflict: 'id' });
+
+        if (childError) {
+          console.error(
+            '[SyncEngine] Category child upsert error:',
+            childError
+          );
+          errors.push({
+            code: 'SERVER_ERROR',
+            message: `Subcategory sync failed: ${childError.message}`,
+            recoverable: true,
+            retryCount: 0,
+          });
+          // Parents were synced, so return partial success
+          return { synced: parents.length, errors };
+        }
+      }
+
+      const total = parents.length + children.length;
+      console.log(`[SyncEngine] Successfully synced ${total} categories`);
+      return { synced: total, errors: [] };
+    } catch (error) {
+      console.error('[SyncEngine] Category sync error:', error);
+      errors.push({
+        code: 'UNKNOWN',
+        message:
+          error instanceof Error ? error.message : 'Category sync failed',
+        recoverable: true,
+        retryCount: 0,
+      });
+      return { synced: 0, errors };
+    }
+  }
+
+  // ============================================
   // Upload Methods
   // ============================================
 
@@ -571,8 +709,8 @@ class SyncEngineImpl implements SyncEngine {
 
     // Upsert to Supabase
     const { error: upsertError } = await this.supabase
-      .from('transactions')
-      .upsert(sanitized as TransactionInsert[], { onConflict: 'id' });
+      .from('vault_transactions')
+      .upsert(sanitized as VaultTransactionInsert[], { onConflict: 'id' });
 
     if (upsertError) {
       console.error('[SyncEngine] Upsert error:', upsertError);
@@ -620,7 +758,7 @@ class SyncEngineImpl implements SyncEngine {
 
     // Fetch remote changes since last sync
     const { data, error } = await this.supabase
-      .from('transactions')
+      .from('vault_transactions')
       .select('*')
       .eq('user_id', userId)
       .gt('server_updated_at', lastSync.toISOString())
@@ -686,7 +824,6 @@ class SyncEngineImpl implements SyncEngine {
         category: remote.category_id as CategoryId | null,
         note: remote.note || '',
         currency: remote.currency || 'INR',
-        transactionType: null,
         confidence: 0,
         isManuallyEdited: false,
         createdAt: new Date(remote.client_created_at),

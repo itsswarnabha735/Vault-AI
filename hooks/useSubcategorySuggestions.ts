@@ -15,7 +15,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '@/lib/storage/db';
 import { useCategories } from '@/hooks/useLocalDB';
-import type { CategoryId, TransactionId } from '@/types/database';
+import { getSubcategoryMap } from '@/lib/categories/category-registry';
+import type {
+  LocalTransaction,
+  CategoryId,
+  TransactionId,
+} from '@/types/database';
 
 // ============================================
 // Types

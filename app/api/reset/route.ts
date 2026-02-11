@@ -30,7 +30,7 @@ export async function DELETE() {
 
     // Delete transactions
     const { count: txCount, error: txError } = await admin
-      .from('transactions')
+      .from('vault_transactions')
       .delete({ count: 'exact' })
       .eq('user_id', userId);
 

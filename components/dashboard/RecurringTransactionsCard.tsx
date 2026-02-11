@@ -9,7 +9,7 @@
 
 'use client';
 
-import { RefreshCw, CalendarClock, TrendingUp } from 'lucide-react';
+import { RefreshCw, CalendarClock, TrendingUp, ArrowRight } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

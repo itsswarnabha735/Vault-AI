@@ -495,7 +495,6 @@ class RealtimeManagerImpl implements RealtimeManager {
       category: record.category_id as CategoryId | null,
       note: record.note || '',
       currency: record.currency || 'INR',
-      transactionType: null,
       // Metadata
       confidence: 0,
       isManuallyEdited: false,

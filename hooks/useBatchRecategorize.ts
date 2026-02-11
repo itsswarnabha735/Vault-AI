@@ -15,7 +15,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '@/lib/storage/db';
-import { llmCategorizer } from '@/lib/ai/llm-categorizer';
+import {
+  llmCategorizer,
+  type LLMCategorySuggestion,
+} from '@/lib/ai/llm-categorizer';
 import {
   embeddingClassifier,
   isRealEmbedding,
