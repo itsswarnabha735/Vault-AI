@@ -14,6 +14,7 @@ import { useCallback, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 import { db, type UserSettings } from '@/lib/storage/db';
+import { getClient } from '@/lib/supabase/client';
 import type {
   LocalTransaction,
   Category,
@@ -24,6 +25,7 @@ import type {
   BudgetId,
   UserId,
 } from '@/types/database';
+import type { CategoryRow } from '@/types/supabase';
 
 // ============================================
 // Types
@@ -618,8 +620,65 @@ export function useDbInitialization() {
       const categoryCount = await db.categories.count();
 
       if (categoryCount === 0) {
-        await db.initializeDefaults(userId);
+        // On a new device the local DB is empty. Before generating fresh
+        // categories (with random UUIDs), try to pull the user's existing
+        // categories from Supabase so that transaction.category references
+        // stay consistent across devices.
+        let seededFromCloud = false;
+
+        try {
+          const supabase = getClient();
+          const { data } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('user_id', userId as string)
+            .eq('is_deleted', false);
+
+          if (data && data.length > 0) {
+            const remoteCategories = data as CategoryRow[];
+
+            // Insert parent categories first, then children, to respect
+            // the self-referencing FK on parent_id.
+            const parents = remoteCategories.filter((c) => !c.parent_id);
+            const children = remoteCategories.filter((c) => !!c.parent_id);
+
+            for (const remote of [...parents, ...children]) {
+              await db.categories.put({
+                id: remote.id as CategoryId,
+                userId: remote.user_id as UserId,
+                name: remote.name,
+                icon: remote.icon,
+                color: remote.color,
+                parentId: (remote.parent_id as CategoryId) || null,
+                sortOrder: remote.sort_order,
+                isDefault: remote.is_default,
+                createdAt: new Date(remote.created_at),
+                updatedAt: new Date(remote.updated_at),
+              });
+            }
+
+            seededFromCloud = true;
+            console.log(
+              `[useLocalDB] Seeded ${remoteCategories.length} categories from cloud`
+            );
+          }
+        } catch {
+          // Supabase fetch failed (offline, not configured, etc.)
+          // Fall through to local defaults below.
+          console.warn(
+            '[useLocalDB] Could not fetch categories from cloud, using local defaults'
+          );
+        }
+
+        if (!seededFromCloud) {
+          // Truly new user or offline — create fresh local categories
+          await db.initializeDefaults(userId);
+        }
       }
+
+      // Always ensure default settings exist (initializeDefaults is
+      // idempotent for settings and will skip if they already exist)
+      await db.initializeDefaults(userId);
 
       setStatus({ isInitialized: true, isLoading: false, error: null });
     } catch (error) {

@@ -19,6 +19,7 @@ import type {
   TransactionId,
   CategoryId,
   Category,
+  UserId,
 } from '@/types/database';
 import type {
   SyncEngineStatus,
@@ -31,6 +32,7 @@ import type {
   TransactionInsert,
   Transaction as TransactionRow,
   CategoryInsert,
+  CategoryRow,
 } from '@/types/supabase';
 
 // ============================================
@@ -454,9 +456,16 @@ class SyncEngineImpl implements SyncEngine {
       const categoryResult = await this.syncCategories(user.id);
       errors.push(...categoryResult.errors);
 
+      // Phase 0c: Download remote categories into local IndexedDB so that
+      // category IDs from synced transactions resolve correctly on new devices
+      this.status.currentOperation = 'Downloading categories...';
+      this.status.syncProgress = 8;
+      const catDownloadResult = await this.downloadRemoteCategories(user.id);
+      errors.push(...catDownloadResult.errors);
+
       // Phase 1: Upload pending local changes
       this.status.currentOperation = 'Uploading local changes...';
-      this.status.syncProgress = 10;
+      this.status.syncProgress = 15;
       const uploadResult = await this.uploadPendingChanges(user.id);
       uploaded = uploadResult.uploaded;
       errors.push(...uploadResult.errors);
@@ -648,6 +657,103 @@ class SyncEngineImpl implements SyncEngine {
         retryCount: 0,
       });
       return { synced: 0, errors };
+    }
+  }
+
+  /**
+   * Download categories from Supabase and merge into local IndexedDB.
+   *
+   * This ensures that when a user opens the app on a NEW device, the
+   * categories (and their UUIDs) from the original device are available
+   * locally so that transaction.category references resolve correctly.
+   */
+  private async downloadRemoteCategories(
+    userId: string
+  ): Promise<{ downloaded: number; errors: SyncErrorType[] }> {
+    const errors: SyncErrorType[] = [];
+
+    try {
+      const { data, error } = await this.supabase
+        .from('categories')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_deleted', false);
+
+      if (error) {
+        console.error('[SyncEngine] Category download error:', error);
+        errors.push({
+          code: 'SERVER_ERROR',
+          message: `Category download failed: ${error.message}`,
+          recoverable: true,
+          retryCount: 0,
+        });
+        return { downloaded: 0, errors };
+      }
+
+      if (!data || data.length === 0) {
+        return { downloaded: 0, errors: [] };
+      }
+
+      const remoteCategories = data as CategoryRow[];
+      let merged = 0;
+
+      for (const remote of remoteCategories) {
+        const localCat = await db.categories.get(
+          remote.id as CategoryId
+        );
+
+        if (!localCat) {
+          // Category exists in cloud but not locally — add it
+          await db.categories.add({
+            id: remote.id as CategoryId,
+            userId: remote.user_id as UserId,
+            name: remote.name,
+            icon: remote.icon,
+            color: remote.color,
+            parentId: (remote.parent_id as CategoryId) || null,
+            sortOrder: remote.sort_order,
+            isDefault: remote.is_default,
+            createdAt: new Date(remote.created_at),
+            updatedAt: new Date(remote.updated_at),
+          });
+          merged++;
+        } else {
+          // Category exists locally — update if remote is newer
+          const remoteUpdated = new Date(remote.updated_at);
+          if (remoteUpdated > localCat.updatedAt) {
+            await db.categories.update(remote.id as CategoryId, {
+              name: remote.name,
+              icon: remote.icon,
+              color: remote.color,
+              parentId: (remote.parent_id as CategoryId) || null,
+              sortOrder: remote.sort_order,
+              isDefault: remote.is_default,
+              updatedAt: remoteUpdated,
+            });
+            merged++;
+          }
+        }
+      }
+
+      if (merged > 0) {
+        console.log(
+          `[SyncEngine] Merged ${merged} categories from cloud into local DB`
+        );
+      }
+
+      return { downloaded: merged, errors: [] };
+    } catch (error) {
+      console.error('[SyncEngine] Category download error:', error);
+      errors.push({
+        code: 'UNKNOWN',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Category download failed',
+        recoverable: true,
+        retryCount: 0,
+      });
+      return { downloaded: 0, errors };
     }
   }
 
