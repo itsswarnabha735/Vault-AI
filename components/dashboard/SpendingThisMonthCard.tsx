@@ -7,6 +7,7 @@
 'use client';
 
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { format, isSameMonth } from 'date-fns';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,13 +17,18 @@ import {
 } from '@/hooks/useDashboardData';
 import { formatCurrency, cn } from '@/lib/utils';
 
+interface SpendingThisMonthCardProps {
+  /** Selected month to display spending for */
+  selectedMonth?: Date;
+}
+
 /**
- * Spending This Month Card with comparison to last month.
+ * Spending This Month Card with comparison to previous month.
  */
-export function SpendingThisMonthCard() {
+export function SpendingThisMonthCard({ selectedMonth }: SpendingThisMonthCardProps = {}) {
   const { data: comparison, isLoading: comparisonLoading } =
-    useMonthlyComparison();
-  const { data: trend, isLoading: trendLoading } = useSpendingTrend(4);
+    useMonthlyComparison(selectedMonth);
+  const { data: trend, isLoading: trendLoading } = useSpendingTrend(4, selectedMonth);
 
   const isLoading = comparisonLoading || trendLoading;
 
@@ -30,14 +36,24 @@ export function SpendingThisMonthCard() {
     return <SpendingThisMonthCardSkeleton />;
   }
 
-  const { thisMonth, changePercent, isIncrease } = comparison;
+  const { thisMonth, lastMonth, changePercent, isIncrease, previousMonthLabel } = comparison;
   const hasChange = Math.abs(changePercent) > 0.1;
+  const isCurrentMonth = !selectedMonth || isSameMonth(selectedMonth, new Date());
+  const cardTitle = isCurrentMonth
+    ? 'Spending This Month'
+    : `Spending in ${format(selectedMonth!, 'MMM yyyy')}`;
+
+  // Determine the comparison label
+  const comparisonLabel = `vs ${previousMonthLabel}`;
+
+  // Special case: previous month had no spending but current month does
+  const isNewSpending = lastMonth === 0 && thisMonth > 0;
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-vault-text-secondary">
-          Spending This Month
+          {cardTitle}
         </CardTitle>
         {hasChange ? (
           isIncrease ? (
@@ -54,9 +70,14 @@ export function SpendingThisMonthCard() {
           {formatCurrency(thisMonth)}
         </div>
 
-        {/* Comparison to last month */}
+        {/* Comparison to previous month */}
         <div className="mt-2 flex items-center gap-2">
-          {hasChange ? (
+          {isNewSpending ? (
+            <span className="flex items-center gap-1 text-xs font-medium text-vault-info-text">
+              <TrendingUp className="h-3 w-3" />
+              New
+            </span>
+          ) : hasChange ? (
             <span
               className={cn(
                 'flex items-center gap-1 text-xs font-medium',
@@ -76,7 +97,7 @@ export function SpendingThisMonthCard() {
             <span className="text-xs text-vault-text-secondary">No change</span>
           )}
           <span className="text-xs text-vault-text-secondary">
-            vs last month
+            {comparisonLabel}
           </span>
         </div>
 

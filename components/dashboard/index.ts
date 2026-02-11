@@ -5,6 +5,7 @@
  */
 
 export { DashboardHeader } from './DashboardHeader';
+export { MonthPicker } from './MonthPicker';
 export { BudgetStatusCard } from './BudgetStatusCard';
 export { SpendingThisMonthCard } from './SpendingThisMonthCard';
 export { SavingsRateCard } from './SavingsRateCard';

@@ -1,9 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthContext } from '@/components/providers/AuthProvider';
 import { useSyncStatus } from '@/hooks/useSync';
+import { useDbInitialization } from '@/hooks/useLocalDB';
+import type { UserId } from '@/types/database';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,6 +24,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const { user, signOut, isLoading } = useAuthContext();
   const syncStatus = useSyncStatus();
+
+  // Ensure IndexedDB has default categories (and settings) seeded.
+  // This must run once after the user authenticates so that category
+  // resolution during imports can map names → CategoryIds.
+  const { isInitialized, initialize } = useDbInitialization();
+  useEffect(() => {
+    if (user?.id && !isInitialized) {
+      initialize(user.id as UserId);
+    }
+  }, [user?.id, isInitialized, initialize]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -96,6 +109,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               }`}
             >
               Settings
+            </Link>
+            <Link
+              href="/reset"
+              className="rounded-md px-4 py-2 text-sm font-medium text-vault-danger-text transition-all duration-150 hover:bg-vault-danger-muted"
+            >
+              Reset
             </Link>
           </nav>
 

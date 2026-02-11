@@ -30,6 +30,7 @@ import {
 } from '@/hooks/useHierarchicalCategories';
 import { useBatchLLMCategorize } from '@/hooks/useLLMCategorize';
 import { LLM_CATEGORIZE_THRESHOLD } from '@/lib/ai/llm-categorizer';
+import { resolveCategoryName } from '@/lib/categories/category-registry';
 import type {
   StatementParseResult,
   ParsedStatementTransaction,
@@ -359,17 +360,63 @@ export function StatementReview({
   );
 
   const handleConfirm = useCallback(() => {
-    // Map category names to CategoryIds before confirming
+    // Map category names to CategoryIds before confirming.
+    // Uses a robust resolver that handles LLM name variations via aliases.
     const finalTransactions = transactions
       .filter((tx) => tx.selected)
       .map((tx) => {
-        const categoryId =
-          tx.category ||
-          (tx.suggestedCategoryName
-            ? categoryMap.get(tx.suggestedCategoryName.toLowerCase()) || null
-            : null);
+        // 1. Already has a resolved CategoryId → keep it
+        if (tx.category) {
+          return tx;
+        }
+
+        // 2. Try to resolve suggestedCategoryName → canonical name → CategoryId
+        let categoryId: CategoryId | null = null;
+        if (tx.suggestedCategoryName) {
+          // First try exact match in DB
+          categoryId =
+            categoryMap.get(tx.suggestedCategoryName.toLowerCase()) || null;
+
+          // If exact match fails, use the registry resolver (aliases, fuzzy)
+          if (!categoryId) {
+            const canonicalName = resolveCategoryName(
+              tx.suggestedCategoryName
+            );
+            if (canonicalName) {
+              categoryId =
+                categoryMap.get(canonicalName.toLowerCase()) || null;
+            }
+          }
+        }
+
+        // 3. Last resort: try auto-categorizer from vendor name
+        if (!categoryId && tx.vendor) {
+          const suggestion = autoCategorizer.suggestCategory(tx.vendor, {
+            amount: tx.amount ? Math.abs(tx.amount) : undefined,
+            type: tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest' | undefined,
+          });
+          if (suggestion) {
+            if (suggestion.learnedCategoryId) {
+              categoryId = suggestion.learnedCategoryId;
+            } else {
+              const resolved = resolveCategoryName(suggestion.categoryName);
+              if (resolved) {
+                categoryId =
+                  categoryMap.get(resolved.toLowerCase()) || null;
+              }
+            }
+          }
+        }
+
         return { ...tx, category: categoryId };
       });
+
+    const resolvedCount = finalTransactions.filter(
+      (tx) => tx.category
+    ).length;
+    console.log(
+      `[StatementReview] Category resolution: ${resolvedCount}/${finalTransactions.length} resolved (categoryMap has ${categoryMap.size} entries)`
+    );
 
     onConfirm(finalTransactions);
   }, [transactions, categoryMap, onConfirm]);

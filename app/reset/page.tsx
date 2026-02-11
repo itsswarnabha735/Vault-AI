@@ -13,42 +13,98 @@ export default function ResetPage() {
     const log = (msg: string) => setStatus((prev) => [...prev, msg]);
 
     try {
-      // 1. Delete from Supabase (cloud) FIRST
-      log('🌐 Deleting transactions from Supabase...');
-      const res = await fetch('/api/reset', { method: 'DELETE' });
-      const data = await res.json();
-      if (res.ok) {
-        log(
-          `✅ Supabase: deleted ${data.deleted?.transactions ?? 0} transactions`
-        );
-      } else {
-        log(`❌ Supabase error: ${data.error}`);
+      // 0. Close any open Dexie/IndexedDB connections first
+      log('🔌 Closing active database connections...');
+      try {
+        // Dynamically import db to close its connection
+        const { db } = await import('@/lib/storage/db');
+        db.close();
+        log('✅ Dexie connection closed');
+      } catch {
+        log('⚠️ No active Dexie connection to close (ok)');
       }
 
-      // 2. Delete IndexedDB
+      // Small delay to let connections fully release
+      await new Promise((r) => setTimeout(r, 500));
+
+      // 1. Delete from Supabase (cloud) FIRST
+      log('🌐 Deleting transactions from Supabase...');
+      try {
+        const res = await fetch('/api/reset', { method: 'DELETE' });
+        const data = await res.json();
+        if (res.ok) {
+          log(
+            `✅ Supabase: deleted ${data.deleted?.transactions ?? 0} transactions`
+          );
+        } else {
+          log(`⚠️ Supabase: ${data.error} (may already be cleared)`);
+        }
+      } catch (e: unknown) {
+        log(
+          `⚠️ Supabase API unreachable: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
+
+      // 2. Delete IndexedDB with retry
       log('💾 Deleting IndexedDB "VaultAI"...');
-      await new Promise<void>((resolve) => {
-        const req = indexedDB.deleteDatabase('VaultAI');
-        req.onsuccess = () => {
-          log('✅ IndexedDB deleted');
-          resolve();
-        };
-        req.onerror = () => {
-          log('⚠️ IndexedDB delete failed — try closing other Vault tabs');
-          resolve();
-        };
-        req.onblocked = () => {
-          log('⚠️ IndexedDB blocked — close ALL other Vault-AI tabs and retry');
-          resolve();
-        };
-      });
+      let dbDeleted = false;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        dbDeleted = await new Promise<boolean>((resolve) => {
+          const req = indexedDB.deleteDatabase('VaultAI');
+          req.onsuccess = () => {
+            log('✅ IndexedDB deleted successfully');
+            resolve(true);
+          };
+          req.onerror = () => {
+            log(
+              `⚠️ IndexedDB delete failed (attempt ${attempt}/3)`
+            );
+            resolve(false);
+          };
+          req.onblocked = () => {
+            log(
+              `⚠️ IndexedDB blocked (attempt ${attempt}/3) — waiting for connections to close...`
+            );
+            // Still resolves eventually when unblocked
+            req.onsuccess = () => {
+              log('✅ IndexedDB deleted (after unblock)');
+              resolve(true);
+            };
+            // Timeout after 3s if still blocked
+            setTimeout(() => resolve(false), 3000);
+          };
+        });
+        if (dbDeleted) break;
+        // Wait before retry
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (!dbDeleted) {
+        log(
+          '❌ IndexedDB could not be deleted — it will be cleared on next page load'
+        );
+        // Fallback: clear all object stores manually
+        try {
+          const { db } = await import('@/lib/storage/db');
+          await db.transactions.clear();
+          await db.categories.clear();
+          await db.searchHistory.clear();
+          await db.settings.clear();
+          log('✅ Fallback: cleared all IndexedDB tables manually');
+        } catch (clearErr: unknown) {
+          log(
+            `⚠️ Fallback clear also failed: ${clearErr instanceof Error ? clearErr.message : String(clearErr)}`
+          );
+        }
+      }
 
       // 3. Clear OPFS
       log('📁 Clearing OPFS (uploaded documents)...');
       try {
         const root = await navigator.storage.getDirectory();
         const entries: string[] = [];
-        for await (const name of (root as unknown as { keys(): AsyncIterable<string> }).keys()) {
+        for await (const name of (
+          root as unknown as { keys(): AsyncIterable<string> }
+        ).keys()) {
           entries.push(name);
         }
         for (const name of entries) {
@@ -95,6 +151,11 @@ export default function ResetPage() {
       }
       keysToRemove.forEach((k) => localStorage.removeItem(k));
       log(`✅ Removed ${keysToRemove.length} localStorage items`);
+
+      // 6. Clear sessionStorage
+      log('🗂️ Clearing sessionStorage...');
+      sessionStorage.clear();
+      log('✅ sessionStorage cleared');
 
       log('');
       log('🎉 All data cleared! You are still logged in.');

@@ -21,11 +21,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSpendingTrend } from '@/hooks/useDashboardData';
 import { formatCurrency } from '@/lib/utils';
 
+interface SpendingTrendChartProps {
+  /** Selected month — trend will show the 6 months ending at this month */
+  selectedMonth?: Date;
+}
+
 /**
- * Spending Trend Chart showing last 6 months of spending.
+ * Spending Trend Chart showing 6 months of spending ending at the selected month.
  */
-export function SpendingTrendChart() {
-  const { data, isLoading } = useSpendingTrend(6);
+export function SpendingTrendChart({ selectedMonth }: SpendingTrendChartProps = {}) {
+  const { data, isLoading } = useSpendingTrend(6, selectedMonth);
 
   if (isLoading) {
     return <SpendingTrendChartSkeleton />;
@@ -74,8 +79,17 @@ export function SpendingTrendChart() {
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 12, fill: '#5C6378' }}
-                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                width={50}
+                tickFormatter={(value) => {
+                  if (value >= 100000) {
+                    // Indian lakh notation: 1L, 2L, etc.
+                    return `₹${(value / 100000).toFixed(value >= 1000000 ? 0 : 1)}L`;
+                  }
+                  if (value >= 1000) {
+                    return `₹${(value / 1000).toFixed(0)}k`;
+                  }
+                  return `₹${value}`;
+                }}
+                width={60}
               />
               <Tooltip
                 content={<CustomTooltip />}

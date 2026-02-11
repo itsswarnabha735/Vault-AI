@@ -11,7 +11,8 @@ import { useCallback, useMemo } from 'react';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { SyncStatusBadge } from './DocumentCard';
-import type { LocalTransaction, TransactionId } from '@/types/database';
+import { Badge } from '@/components/ui/badge';
+import type { LocalTransaction, TransactionId, Category } from '@/types/database';
 
 // ============================================
 // Types
@@ -23,6 +24,9 @@ export type SortOrder = 'asc' | 'desc';
 export interface DocumentListProps {
   /** Transactions to display */
   transactions: LocalTransaction[];
+
+  /** Category lookup map (id → Category) for displaying category badges */
+  categories?: Map<string, Category>;
 
   /** Currently selected transaction IDs */
   selectedIds?: Set<TransactionId>;
@@ -73,6 +77,7 @@ export interface DocumentListProps {
  */
 export function DocumentList({
   transactions,
+  categories,
   selectedIds = new Set(),
   onSelect,
   onBulkSelect,
@@ -139,6 +144,9 @@ export function DocumentList({
                 Amount
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                Category
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                 Date
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
@@ -157,6 +165,9 @@ export function DocumentList({
                 )}
                 <td className="px-4 py-3">
                   <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="h-4 w-20 animate-pulse rounded bg-muted" />
                 </td>
                 <td className="px-4 py-3">
                   <div className="h-4 w-20 animate-pulse rounded bg-muted" />
@@ -249,6 +260,17 @@ export function DocumentList({
                 />
               </th>
 
+              {/* Category */}
+              <th className="px-4 py-3">
+                <SortButton
+                  label="Category"
+                  field="category"
+                  currentField={sortField}
+                  currentOrder={sortOrder}
+                  onClick={handleSort}
+                />
+              </th>
+
               {/* Date */}
               <th className="px-4 py-3">
                 <SortButton
@@ -274,6 +296,7 @@ export function DocumentList({
               <DocumentRow
                 key={tx.id}
                 transaction={tx}
+                category={tx.category ? categories?.get(tx.category) : undefined}
                 isSelected={selectedIds.has(tx.id)}
                 onSelect={() => onSelect?.(tx)}
                 onToggleSelect={() => {
@@ -309,6 +332,7 @@ export function DocumentList({
 
 interface DocumentRowProps {
   transaction: LocalTransaction;
+  category?: Category;
   isSelected: boolean;
   onSelect: () => void;
   onToggleSelect: () => void;
@@ -317,6 +341,7 @@ interface DocumentRowProps {
 
 function DocumentRow({
   transaction,
+  category,
   isSelected,
   onSelect,
   onToggleSelect,
@@ -382,6 +407,26 @@ function DocumentRow({
         >
           {formattedAmount}
         </span>
+      </td>
+
+      {/* Category */}
+      <td className="px-4 py-3">
+        {category ? (
+          <Badge
+            variant="secondary"
+            className="gap-1 text-xs font-medium"
+            style={{
+              backgroundColor: `${category.color}18`,
+              color: category.color,
+              borderColor: `${category.color}30`,
+            }}
+          >
+            <span>{category.icon}</span>
+            {category.name}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground/60">—</span>
+        )}
       </td>
 
       {/* Date */}

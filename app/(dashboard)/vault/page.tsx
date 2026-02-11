@@ -28,6 +28,7 @@ import {
 import {
   useTransactions,
   useTransactionActions,
+  useCategories,
   type TransactionFilters,
 } from '@/hooks/useLocalDB';
 import { useSemanticSearch } from '@/hooks/useVectorSearch';
@@ -124,6 +125,16 @@ export default function VaultPage() {
   const { data: allTransactions, isLoading } =
     useTransactions(transactionFilters);
   const { deleteTransaction, updateTransaction } = useTransactionActions();
+
+  // Categories lookup map for displaying category badges
+  const { data: categoriesList } = useCategories();
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, (typeof categoriesList)[number]>();
+    for (const cat of categoriesList) {
+      map.set(cat.id, cat);
+    }
+    return map;
+  }, [categoriesList]);
 
   // Filter transactions based on search results and document filter
   const transactions = useMemo(() => {
@@ -357,6 +368,7 @@ export default function VaultPage() {
             ) : (
               <DocumentList
                 transactions={transactions}
+                categories={categoryMap}
                 selectedIds={selectedIds}
                 onSelect={handleSelect}
                 onBulkSelect={handleBulkSelect}

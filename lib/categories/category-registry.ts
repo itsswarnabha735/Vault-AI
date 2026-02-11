@@ -1703,6 +1703,75 @@ export function getQueryAliasMap(): Record<string, string[]> {
 }
 
 /**
+ * Reverse-lookup map: alias (lowercase) → canonical category name.
+ * Built once from the registry. Includes:
+ * - Exact canonical names (e.g., "food & dining")
+ * - Query aliases (e.g., "dining", "restaurant", "food")
+ * - Slugs (e.g., "food-dining")
+ * - Common LLM variations (e.g., "food and dining", "food")
+ */
+const _aliasToCanonical = new Map<string, string>();
+for (const cat of CATEGORY_REGISTRY) {
+  const canonical = cat.name;
+  // Canonical name (lowercase)
+  _aliasToCanonical.set(canonical.toLowerCase(), canonical);
+  // Slug
+  _aliasToCanonical.set(cat.slug.toLowerCase(), canonical);
+  // Name without "&" → "and" and vice versa
+  _aliasToCanonical.set(canonical.toLowerCase().replace(/&/g, 'and'), canonical);
+  _aliasToCanonical.set(
+    canonical.toLowerCase().replace(/\band\b/g, '&'),
+    canonical
+  );
+  // Query aliases
+  for (const alias of cat.queryAliases) {
+    _aliasToCanonical.set(alias.toLowerCase(), canonical);
+  }
+}
+
+/**
+ * Resolve an arbitrary category name (from LLM, user input, etc.) to the
+ * canonical registry name. Uses exact match, alias match, and partial match.
+ *
+ * @param name - The category name to resolve (case-insensitive)
+ * @returns The canonical category name (e.g., "Food & Dining") or null if no match
+ */
+export function resolveCategoryName(name: string): string | null {
+  if (!name || name.trim().length === 0) return null;
+
+  const lower = name.toLowerCase().trim();
+
+  // 1. Exact match on canonical name or alias
+  const direct = _aliasToCanonical.get(lower);
+  if (direct) return direct;
+
+  // 2. Try stripping common prefixes/suffixes the LLM might add
+  const stripped = lower
+    .replace(/^(category:\s*|cat:\s*)/i, '')
+    .replace(/\s*\(.*\)\s*$/, '') // remove trailing parenthetical
+    .trim();
+  const strippedMatch = _aliasToCanonical.get(stripped);
+  if (strippedMatch) return strippedMatch;
+
+  // 3. Try partial match — if the input contains or is contained by a canonical name
+  for (const cat of CATEGORY_REGISTRY) {
+    const catLower = cat.name.toLowerCase();
+    // Input contains the full canonical name
+    if (lower.includes(catLower)) return cat.name;
+    // Canonical name contains the input (e.g., input="food" matches "food & dining")
+    if (catLower.includes(lower) && lower.length >= 3) return cat.name;
+  }
+
+  // 4. Try partial match against aliases
+  for (const [alias, canonical] of _aliasToCanonical.entries()) {
+    if (alias.includes(lower) && lower.length >= 3) return canonical;
+    if (lower.includes(alias) && alias.length >= 3) return canonical;
+  }
+
+  return null;
+}
+
+/**
  * Build the LLM category guidelines string for the statement parser prompt.
  * Returns a formatted string like:
  *   "Allowed categories: Food & Dining, Shopping, ...\n

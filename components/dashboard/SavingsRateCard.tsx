@@ -13,11 +13,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSavingsRate } from '@/hooks/useDashboardData';
 import { formatCurrency, cn } from '@/lib/utils';
 
+interface SavingsRateCardProps {
+  /** Selected month to display savings rate for */
+  selectedMonth?: Date;
+}
+
 /**
  * Savings Rate Card showing income, expenses, and savings rate.
  */
-export function SavingsRateCard() {
-  const { data, isLoading } = useSavingsRate();
+export function SavingsRateCard({ selectedMonth }: SavingsRateCardProps = {}) {
+  const { data, isLoading } = useSavingsRate(selectedMonth);
 
   if (isLoading) {
     return <SavingsRateCardSkeleton />;

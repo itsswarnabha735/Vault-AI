@@ -16,12 +16,17 @@ import { useCategorySpending } from '@/hooks/useDashboardData';
 import { useCategories } from '@/hooks/useLocalDB';
 import { formatCurrency, cn } from '@/lib/utils';
 
+interface CategoryBreakdownChartProps {
+  /** Selected month to show category breakdown for */
+  selectedMonth?: Date;
+}
+
 /**
  * Category Breakdown Chart with donut chart and interactive legend.
  * Aggregates sub-categories under their parent for a cleaner view.
  */
-export function CategoryBreakdownChart() {
-  const { data, isLoading } = useCategorySpending();
+export function CategoryBreakdownChart({ selectedMonth }: CategoryBreakdownChartProps = {}) {
+  const { data, isLoading } = useCategorySpending(selectedMonth);
   const { data: categories } = useCategories();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [drillDownParent, setDrillDownParent] = useState<string | null>(null);

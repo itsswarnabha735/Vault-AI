@@ -35,6 +35,7 @@ import { db } from '@/lib/storage/db';
 import { opfsService } from '@/lib/storage/opfs';
 import { processingWorkerClient } from '@/lib/processing/processing-worker-client';
 import { autoCategorizer } from '@/lib/processing/auto-categorizer';
+import { resolveCategoryName } from '@/lib/categories/category-registry';
 import { importDuplicateChecker } from '@/lib/anomaly/import-duplicate-checker';
 import type { ProcessedDocumentResult } from '@/lib/processing/processing-worker-client';
 import type { TransactionId, CategoryId } from '@/types/database';
@@ -498,8 +499,135 @@ export function ImportModal({
           categoryId: CategoryId;
         }> = [];
 
+        // ── Safety-net category resolution ──────────────────────────
+        // StatementReview.handleConfirm already tries to resolve
+        // suggestedCategoryName → CategoryId, but if it fails (e.g.
+        // empty categoryMap because initializeDefaults hadn't run yet),
+        // we do a SECOND resolution pass here using a fresh read from
+        // IndexedDB — and seed categories first if the table is empty.
+        let allCategories = await db.categories.toArray();
+
+        // If categories haven't been seeded yet, seed them now.
+        // This can happen if the dashboard layout's useDbInitialization
+        // hasn't completed before the user imports a statement.
+        if (allCategories.length === 0) {
+          console.warn(
+            '[ImportModal] Categories table is empty — seeding defaults inline'
+          );
+          try {
+            // Get userId from Supabase auth session (user is already logged in)
+            const { createClient } = await import('@/lib/supabase/client');
+            const supabase = createClient();
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (user?.id) {
+              await db.initializeDefaults(user.id as unknown as import('@/types/database').UserId);
+              allCategories = await db.categories.toArray();
+              console.log(
+                `[ImportModal] Seeded ${allCategories.length} default categories`
+              );
+            }
+          } catch (seedErr) {
+            console.error(
+              '[ImportModal] Failed to seed categories:',
+              seedErr
+            );
+          }
+        }
+
+        const catNameToId = new Map<string, CategoryId>();
+        for (const cat of allCategories) {
+          catNameToId.set(cat.name.toLowerCase(), cat.id);
+        }
+
+        let fallbackResolvedCount = 0;
+        const resolvedTransactions = transactions.map((tx) => {
+          if (tx.category) return tx; // already has a CategoryId
+
+          let categoryId: CategoryId | null = null;
+
+          if (tx.suggestedCategoryName) {
+            // Direct name match
+            categoryId =
+              catNameToId.get(tx.suggestedCategoryName.toLowerCase()) || null;
+
+            // Alias / fuzzy resolution via the canonical registry
+            if (!categoryId) {
+              const canonicalName = resolveCategoryName(
+                tx.suggestedCategoryName
+              );
+              if (canonicalName) {
+                categoryId =
+                  catNameToId.get(canonicalName.toLowerCase()) || null;
+              }
+            }
+          }
+
+          // Last resort: auto-categorizer from vendor name
+          if (!categoryId && tx.vendor) {
+            const suggestion = autoCategorizer.suggestCategory(tx.vendor, {
+              amount: tx.amount ? Math.abs(tx.amount) : undefined,
+              type: tx.type as
+                | 'debit'
+                | 'credit'
+                | 'fee'
+                | 'refund'
+                | 'payment'
+                | 'interest'
+                | undefined,
+            });
+            if (suggestion) {
+              if (suggestion.learnedCategoryId) {
+                categoryId = suggestion.learnedCategoryId;
+              } else {
+                const resolved = resolveCategoryName(
+                  suggestion.categoryName
+                );
+                if (resolved) {
+                  categoryId =
+                    catNameToId.get(resolved.toLowerCase()) || null;
+                }
+              }
+            }
+          }
+
+          if (categoryId) {
+            fallbackResolvedCount++;
+            return { ...tx, category: categoryId };
+          }
+          return tx;
+        });
+
+        // Log category resolution stats
+        const withCategory = resolvedTransactions.filter(
+          (tx) => tx.category
+        ).length;
+        const withoutCategory = resolvedTransactions.filter(
+          (tx) => !tx.category
+        ).length;
+        console.log(
+          `[ImportModal] Category resolution: ${withCategory} resolved, ${withoutCategory} unresolved` +
+            (fallbackResolvedCount > 0
+              ? ` (${fallbackResolvedCount} via safety-net fallback)`
+              : '') +
+            ` | DB has ${allCategories.length} categories`
+        );
+        if (withoutCategory > 0) {
+          console.warn(
+            '[ImportModal] Unresolved categories:',
+            resolvedTransactions
+              .filter((tx) => !tx.category)
+              .slice(0, 5)
+              .map((tx) => ({
+                vendor: tx.vendor,
+                suggestedCategoryName: tx.suggestedCategoryName,
+              }))
+          );
+        }
+
         // Save each transaction
-        for (const tx of transactions) {
+        for (const tx of resolvedTransactions) {
           // Determine credit/debit type from parsed transaction type field
           const CREDIT_TYPES_SET = new Set([
             'credit',

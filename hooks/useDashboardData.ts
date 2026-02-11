@@ -51,6 +51,8 @@ export interface MonthlyComparison {
   change: number;
   changePercent: number;
   isIncrease: boolean;
+  /** Label for the previous month (e.g. "Oct 2025") */
+  previousMonthLabel: string;
 }
 
 export interface SavingsData {
@@ -91,30 +93,85 @@ export interface DashboardData {
 // Helper Functions
 // ============================================
 
-function calculateMonthlySpending(
-  transactions: LocalTransaction[],
-  startDate: Date,
-  endDate: Date
-): number {
-  const start = format(startDate, 'yyyy-MM-dd');
-  const end = format(endDate, 'yyyy-MM-dd');
-
-  return transactions
-    .filter((tx) => tx.date >= start && tx.date <= end && tx.amount > 0)
-    .reduce((sum, tx) => sum + tx.amount, 0);
+/**
+ * Determine if a transaction is an expense (debit / money out).
+ *
+ * Uses the same logic as chat-service.ts:
+ * - `transactionType === 'credit'` → always income, never expense
+ * - `transactionType === 'debit'`  → always expense
+ * - `transactionType === null`     → fall back to amount sign (positive = expense)
+ *
+ * This correctly handles the legacy sign-convention bug where some credit
+ * transactions were stored with positive amounts.
+ */
+function isExpenseTransaction(tx: LocalTransaction): boolean {
+  if (tx.transactionType === 'credit') return false;
+  if (tx.transactionType === 'debit') return true;
+  // Legacy: no transactionType — use sign convention
+  return tx.amount > 0;
 }
 
-function calculateMonthlyIncome(
-  transactions: LocalTransaction[],
-  startDate: Date,
-  endDate: Date
-): number {
-  const start = format(startDate, 'yyyy-MM-dd');
-  const end = format(endDate, 'yyyy-MM-dd');
+/**
+ * Determine if a transaction is income (credit / money in).
+ */
+function isIncomeTransaction(tx: LocalTransaction): boolean {
+  if (tx.transactionType === 'credit') return true;
+  if (tx.transactionType === 'debit') return false;
+  // Legacy: no transactionType — use sign convention
+  return tx.amount < 0;
+}
+
+/**
+ * Get the absolute expense amount from a transaction.
+ * Handles both correct (positive) and wrong-sign (negative with debit type) cases.
+ */
+function getExpenseAmount(tx: LocalTransaction): number {
+  return Math.abs(tx.amount);
+}
+
+/**
+ * Get the absolute income amount from a transaction.
+ * Handles both correct (negative) and wrong-sign (positive with credit type) cases.
+ */
+function getIncomeAmount(tx: LocalTransaction): number {
+  return Math.abs(tx.amount);
+}
+
+/**
+ * Query transactions for a specific month from IndexedDB.
+ */
+async function queryMonthTransactions(monthDate: Date): Promise<LocalTransaction[]> {
+  const start = format(startOfMonth(monthDate), 'yyyy-MM-dd');
+  const end = format(endOfMonth(monthDate), 'yyyy-MM-dd');
+
+  return db.transactions
+    .where('date')
+    .between(start, end, true, true)
+    .toArray();
+}
+
+/**
+ * Query total expenses for a specific month from IndexedDB.
+ * Correctly uses transactionType when available, falling back to amount sign.
+ */
+async function queryMonthlyExpenses(monthDate: Date): Promise<number> {
+  const transactions = await queryMonthTransactions(monthDate);
 
   return transactions
-    .filter((tx) => tx.date >= start && tx.date <= end && tx.amount < 0)
-    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    .filter(isExpenseTransaction)
+    .reduce((sum, tx) => sum + getExpenseAmount(tx), 0);
+}
+
+/**
+ * Query total income for a specific month from IndexedDB.
+ * Correctly uses transactionType when available, falling back to amount sign.
+ */
+async function queryMonthlyIncome(monthDate: Date): Promise<number> {
+  const transactions = await queryMonthTransactions(monthDate);
+
+  return transactions
+    .filter(isIncomeTransaction)
+    .reduce((sum, tx) => sum + getIncomeAmount(tx), 0);
 }
 
 // ============================================
@@ -123,38 +180,77 @@ function calculateMonthlyIncome(
 
 /**
  * Hook to get aggregated budget status for the dashboard.
+ *
+ * @param selectedMonth - Optional month to compute budget status for (defaults to current month)
  */
-export function useBudgetStatus() {
+export function useBudgetStatus(selectedMonth?: Date) {
   const { data: budgets, isLoading: budgetsLoading } = useBudgets();
 
+  // Compute spending for the selected month
+  const monthStart = startOfMonth(selectedMonth ?? new Date());
+  const monthEnd = endOfMonth(selectedMonth ?? new Date());
+  const startStr = format(monthStart, 'yyyy-MM-dd');
+  const endStr = format(monthEnd, 'yyyy-MM-dd');
+
+  const monthlyTransactions = useLiveQuery(
+    async () => {
+      return db.transactions
+        .where('date')
+        .between(startStr, endStr, true, true)
+        .toArray();
+    },
+    [startStr, endStr]
+  );
+
   const status = useMemo(() => {
-    if (budgetsLoading || !budgets.length) {
+    if (budgetsLoading || !budgets.length || monthlyTransactions === undefined) {
       return {
         budgets: [],
         spending: [],
         totalBudget: 0,
         totalSpent: 0,
         percentage: 0,
-        isLoading: budgetsLoading,
+        isLoading: budgetsLoading || monthlyTransactions === undefined,
       };
     }
 
+    // Only count expenses — use transactionType-aware filter
+    const expenseTransactions = monthlyTransactions.filter(isExpenseTransaction);
+
     const totalBudget = budgets.reduce((sum, b) => sum + b.budget.amount, 0);
-    const totalSpent = budgets.reduce((sum, b) => sum + b.spent, 0);
+
+    // Calculate spending per budget, avoiding double-counting.
+    // If a budget has a categoryId, only count transactions in that category.
+    // If a budget has no categoryId (overall budget), sum ALL expenses but only once.
+    let totalSpent = 0;
+    const spendingByBudget = budgets.map((b) => {
+      let spent: number;
+      if (b.budget.categoryId) {
+        // Category-specific budget
+        spent = expenseTransactions
+          .filter((tx) => tx.category === b.budget.categoryId)
+          .reduce((sum, tx) => sum + getExpenseAmount(tx), 0);
+      } else {
+        // Overall budget — total of all expenses
+        spent = expenseTransactions.reduce((sum, tx) => sum + getExpenseAmount(tx), 0);
+      }
+      return { budgetId: b.budget.id, amount: spent };
+    });
+
+    // For totalSpent, use the sum of all expenses (not sum of budget-specific amounts)
+    totalSpent = expenseTransactions.reduce((sum, tx) => sum + getExpenseAmount(tx), 0);
+
     const percentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
     return {
       budgets: budgets.map((b) => b.budget),
-      spending: budgets.map((b) => ({
-        budgetId: b.budget.id,
-        amount: b.spent,
-      })),
+      spending: spendingByBudget,
       totalBudget,
       totalSpent,
       percentage,
       isLoading: false,
     };
-  }, [budgets, budgetsLoading]);
+  }, [budgets, budgetsLoading, monthlyTransactions]);
 
   return status;
 }
@@ -164,28 +260,21 @@ export function useBudgetStatus() {
 // ============================================
 
 /**
- * Hook to get spending trend data for the last N months.
+ * Hook to get spending trend data for the N months ending at the selected month.
  *
  * @param months - Number of months to include (default: 6)
+ * @param selectedMonth - Optional anchor month (defaults to current month)
  */
-export function useSpendingTrend(months: number = 6) {
+export function useSpendingTrend(months: number = 6, selectedMonth?: Date) {
+  const anchor = selectedMonth ?? new Date();
+  const anchorKey = format(anchor, 'yyyy-MM');
+
   const data = useLiveQuery(async () => {
-    const now = new Date();
     const trendData: SpendingTrendPoint[] = [];
 
     for (let i = months - 1; i >= 0; i--) {
-      const monthDate = subMonths(now, i);
-      const start = format(startOfMonth(monthDate), 'yyyy-MM-dd');
-      const end = format(endOfMonth(monthDate), 'yyyy-MM-dd');
-
-      const transactions = await db.transactions
-        .where('date')
-        .between(start, end, true, true)
-        .toArray();
-
-      const spending = transactions
-        .filter((tx) => tx.amount > 0)
-        .reduce((sum, tx) => sum + tx.amount, 0);
+      const monthDate = subMonths(anchor, i);
+      const spending = await queryMonthlyExpenses(monthDate);
 
       trendData.push({
         month: format(monthDate, 'MMM'),
@@ -195,7 +284,7 @@ export function useSpendingTrend(months: number = 6) {
     }
 
     return trendData;
-  }, [months]);
+  }, [months, anchorKey]);
 
   return {
     data: data ?? [],
@@ -208,24 +297,28 @@ export function useSpendingTrend(months: number = 6) {
 // ============================================
 
 /**
- * Hook to get spending breakdown by category for the current month.
+ * Hook to get spending breakdown by category for the selected month.
+ *
+ * @param selectedMonth - Optional month to compute category spending for (defaults to current month)
  */
-export function useCategorySpending() {
+export function useCategorySpending(selectedMonth?: Date) {
   const { data: categories, isLoading: categoriesLoading } = useCategories();
+
+  const anchor = selectedMonth ?? new Date();
+  const anchorKey = format(anchor, 'yyyy-MM');
 
   const data = useLiveQuery(
     async () => {
-      const now = new Date();
-      const start = format(startOfMonth(now), 'yyyy-MM-dd');
-      const end = format(endOfMonth(now), 'yyyy-MM-dd');
+      const start = format(startOfMonth(anchor), 'yyyy-MM-dd');
+      const end = format(endOfMonth(anchor), 'yyyy-MM-dd');
 
       const transactions = await db.transactions
         .where('date')
         .between(start, end, true, true)
         .toArray();
 
-      // Filter expenses only (positive amounts)
-      const expenses = transactions.filter((tx) => tx.amount > 0);
+      // Filter expenses only — use transactionType-aware filter
+      const expenses = transactions.filter(isExpenseTransaction);
 
       // Group by category
       const categoryMap = new Map<string | null, number>();
@@ -233,11 +326,11 @@ export function useCategorySpending() {
 
       for (const tx of expenses) {
         const key = tx.category;
-        categoryMap.set(key, (categoryMap.get(key) ?? 0) + tx.amount);
+        categoryMap.set(key, (categoryMap.get(key) ?? 0) + getExpenseAmount(tx));
         categoryCountMap.set(key, (categoryCountMap.get(key) ?? 0) + 1);
       }
 
-      const totalSpending = expenses.reduce((sum, tx) => sum + tx.amount, 0);
+      const totalSpending = expenses.reduce((sum, tx) => sum + getExpenseAmount(tx), 0);
 
       // Build category spending array
       const categorySpending: CategorySpending[] = [];
@@ -258,7 +351,7 @@ export function useCategorySpending() {
       // Sort by amount descending
       return categorySpending.sort((a, b) => b.amount - a.amount);
     },
-    [categories],
+    [categories, anchorKey],
     []
   );
 
@@ -273,46 +366,47 @@ export function useCategorySpending() {
 // ============================================
 
 /**
- * Hook to compare this month's spending with last month.
+ * Hook to compare the selected month's spending with the previous month.
+ * Uses targeted indexed queries (not full table scan).
+ *
+ * @param selectedMonth - Optional month to compare (defaults to current month)
  */
-export function useMonthlyComparison() {
+export function useMonthlyComparison(selectedMonth?: Date) {
+  const anchor = selectedMonth ?? new Date();
+  const anchorKey = format(anchor, 'yyyy-MM');
+
   const data = useLiveQuery(async () => {
-    const now = new Date();
+    // Query expenses for the selected month
+    const thisMonthTotal = await queryMonthlyExpenses(anchor);
 
-    // This month
-    const thisMonthStart = startOfMonth(now);
-    const thisMonthEnd = endOfMonth(now);
+    // Query expenses for the previous month
+    const lastMonthDate = subMonths(anchor, 1);
+    const lastMonthTotal = await queryMonthlyExpenses(lastMonthDate);
 
-    // Last month
-    const lastMonthDate = subMonths(now, 1);
-    const lastMonthStart = startOfMonth(lastMonthDate);
-    const lastMonthEnd = endOfMonth(lastMonthDate);
+    const change = thisMonthTotal - lastMonthTotal;
 
-    // Get all transactions for both months
-    const allTransactions = await db.transactions.toArray();
-
-    const thisMonth = calculateMonthlySpending(
-      allTransactions,
-      thisMonthStart,
-      thisMonthEnd
-    );
-    const lastMonth = calculateMonthlySpending(
-      allTransactions,
-      lastMonthStart,
-      lastMonthEnd
-    );
-
-    const change = thisMonth - lastMonth;
-    const changePercent = lastMonth > 0 ? (change / lastMonth) * 100 : 0;
+    // Calculate percentage change correctly:
+    // - If both months are 0: no change (0%)
+    // - If previous month is 0 but current has spending: 100% increase
+    // - Otherwise: normal percentage change
+    let changePercent: number;
+    if (lastMonthTotal === 0 && thisMonthTotal === 0) {
+      changePercent = 0;
+    } else if (lastMonthTotal === 0) {
+      changePercent = 100; // New spending — treat as 100% increase
+    } else {
+      changePercent = (change / lastMonthTotal) * 100;
+    }
 
     return {
-      thisMonth,
-      lastMonth,
+      thisMonth: thisMonthTotal,
+      lastMonth: lastMonthTotal,
       change,
       changePercent,
       isIncrease: change > 0,
+      previousMonthLabel: format(lastMonthDate, 'MMM yyyy'),
     };
-  }, []);
+  }, [anchorKey]);
 
   return {
     data: data ?? {
@@ -321,6 +415,7 @@ export function useMonthlyComparison() {
       change: 0,
       changePercent: 0,
       isIncrease: false,
+      previousMonthLabel: format(subMonths(anchor, 1), 'MMM yyyy'),
     },
     isLoading: data === undefined,
   };
@@ -331,44 +426,26 @@ export function useMonthlyComparison() {
 // ============================================
 
 /**
- * Hook to calculate savings rate (income vs expenses).
+ * Hook to calculate savings rate (income vs expenses) for the selected month.
+ * Uses targeted indexed queries (not full table scan).
+ *
+ * @param selectedMonth - Optional month to calculate for (defaults to current month)
  */
-export function useSavingsRate() {
+export function useSavingsRate(selectedMonth?: Date) {
+  const anchor = selectedMonth ?? new Date();
+  const anchorKey = format(anchor, 'yyyy-MM');
+
   const data = useLiveQuery(async () => {
-    const now = new Date();
-    const thisMonthStart = startOfMonth(now);
-    const thisMonthEnd = endOfMonth(now);
-    const lastMonthDate = subMonths(now, 1);
-    const lastMonthStart = startOfMonth(lastMonthDate);
-    const lastMonthEnd = endOfMonth(lastMonthDate);
-
-    const allTransactions = await db.transactions.toArray();
-
-    // This month
-    const income = calculateMonthlyIncome(
-      allTransactions,
-      thisMonthStart,
-      thisMonthEnd
-    );
-    const expenses = calculateMonthlySpending(
-      allTransactions,
-      thisMonthStart,
-      thisMonthEnd
-    );
+    // Selected month
+    const income = await queryMonthlyIncome(anchor);
+    const expenses = await queryMonthlyExpenses(anchor);
     const savings = income - expenses;
     const savingsRate = income > 0 ? (savings / income) * 100 : 0;
 
-    // Last month for trend
-    const lastMonthIncome = calculateMonthlyIncome(
-      allTransactions,
-      lastMonthStart,
-      lastMonthEnd
-    );
-    const lastMonthExpenses = calculateMonthlySpending(
-      allTransactions,
-      lastMonthStart,
-      lastMonthEnd
-    );
+    // Previous month for trend comparison
+    const lastMonthDate = subMonths(anchor, 1);
+    const lastMonthIncome = await queryMonthlyIncome(lastMonthDate);
+    const lastMonthExpenses = await queryMonthlyExpenses(lastMonthDate);
     const lastMonthSavingsRate =
       lastMonthIncome > 0
         ? ((lastMonthIncome - lastMonthExpenses) / lastMonthIncome) * 100
@@ -388,7 +465,7 @@ export function useSavingsRate() {
       savingsRate,
       trend,
     };
-  }, []);
+  }, [anchorKey]);
 
   return {
     data: data ?? {
@@ -407,16 +484,41 @@ export function useSavingsRate() {
 // ============================================
 
 /**
- * Hook to get recent transactions with category info.
+ * Hook to get recent transactions with category info, filtered to a month.
  *
  * @param limit - Maximum number of transactions (default: 10)
+ * @param selectedMonth - Optional month to filter transactions to
  */
-export function useRecentTransactions(limit: number = 10) {
+export function useRecentTransactions(limit: number = 10, selectedMonth?: Date) {
   const { data: categories, isLoading: categoriesLoading } = useCategories();
 
+  const anchorKey = selectedMonth ? format(selectedMonth, 'yyyy-MM') : 'all';
+
   const transactions = useLiveQuery(async () => {
-    return db.transactions.orderBy('date').reverse().limit(limit).toArray();
-  }, [limit]);
+    if (selectedMonth) {
+      const start = format(startOfMonth(selectedMonth), 'yyyy-MM-dd');
+      const end = format(endOfMonth(selectedMonth), 'yyyy-MM-dd');
+
+      // Fetch all transactions for the month, then sort and limit in JS
+      // (Dexie's .sortBy() is terminal and ignores .reverse()/.limit())
+      const allForMonth = await db.transactions
+        .where('date')
+        .between(start, end, true, true)
+        .toArray();
+
+      // Sort by date descending (most recent first), then limit
+      return allForMonth
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, limit);
+    }
+
+    // No month filter — get the most recent transactions overall
+    return db.transactions
+      .orderBy('date')
+      .reverse()
+      .limit(limit)
+      .toArray();
+  }, [limit, anchorKey]);
 
   const transactionsWithCategory = useMemo(() => {
     if (!transactions) {
@@ -441,14 +543,16 @@ export function useRecentTransactions(limit: number = 10) {
 /**
  * Main hook to get all dashboard data.
  * Combines all individual hooks for convenience.
+ *
+ * @param selectedMonth - Optional month to filter all data to (defaults to current month)
  */
-export function useDashboardData(): DashboardData {
-  const budgetStatus = useBudgetStatus();
-  const monthlyComparison = useMonthlyComparison();
-  const savingsRate = useSavingsRate();
-  const spendingTrend = useSpendingTrend(6);
-  const categorySpending = useCategorySpending();
-  const recentTransactions = useRecentTransactions(10);
+export function useDashboardData(selectedMonth?: Date): DashboardData {
+  const budgetStatus = useBudgetStatus(selectedMonth);
+  const monthlyComparison = useMonthlyComparison(selectedMonth);
+  const savingsRate = useSavingsRate(selectedMonth);
+  const spendingTrend = useSpendingTrend(6, selectedMonth);
+  const categorySpending = useCategorySpending(selectedMonth);
+  const recentTransactions = useRecentTransactions(10, selectedMonth);
 
   const isLoading =
     budgetStatus.isLoading ||

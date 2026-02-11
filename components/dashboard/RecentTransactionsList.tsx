@@ -27,11 +27,16 @@ interface TransactionWithCategory {
   categoryData?: Category;
 }
 
+interface RecentTransactionsListProps {
+  /** Selected month to filter transactions to */
+  selectedMonth?: Date;
+}
+
 /**
  * Recent Transactions List showing the last 10 transactions.
  */
-export function RecentTransactionsList() {
-  const { data, isLoading } = useRecentTransactions(10);
+export function RecentTransactionsList({ selectedMonth }: RecentTransactionsListProps = {}) {
+  const { data, isLoading } = useRecentTransactions(10, selectedMonth);
 
   if (isLoading) {
     return <RecentTransactionsListSkeleton />;

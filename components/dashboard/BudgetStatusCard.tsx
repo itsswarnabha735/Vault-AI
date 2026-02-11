@@ -14,11 +14,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useBudgetStatus } from '@/hooks/useDashboardData';
 import { formatCurrency, cn } from '@/lib/utils';
 
+interface BudgetStatusCardProps {
+  /** Selected month to display budget status for */
+  selectedMonth?: Date;
+}
+
 /**
  * Budget Status Card showing total budget usage.
  */
-export function BudgetStatusCard() {
-  const { totalBudget, totalSpent, percentage, isLoading } = useBudgetStatus();
+export function BudgetStatusCard({ selectedMonth }: BudgetStatusCardProps = {}) {
+  const { totalBudget, totalSpent, percentage, isLoading } = useBudgetStatus(selectedMonth);
 
   if (isLoading) {
     return <BudgetStatusCardSkeleton />;
