@@ -64,7 +64,9 @@ export function useAutoFixCategories(): AutoFixProgress {
   const runningRef = useRef(false);
 
   const runFix = useCallback(async () => {
-    if (runningRef.current) return;
+    if (runningRef.current) {
+      return;
+    }
     runningRef.current = true;
     setProgress((p) => ({ ...p, isRunning: true }));
 
@@ -105,10 +107,7 @@ export function useAutoFixCategories(): AutoFixProgress {
         }> = [];
 
         for (const tx of batch) {
-          const categoryId = resolveCategory(
-            tx,
-            categoryNameToId
-          );
+          const categoryId = resolveCategory(tx, categoryNameToId);
 
           if (categoryId) {
             updates.push({ id: tx.id, categoryId });
@@ -202,11 +201,7 @@ function resolveCategory(
   // Try the auto-categorizer (uses vendor patterns from the registry)
   const suggestion = autoCategorizer.suggestCategory(tx.vendor, {
     amount: tx.amount ? Math.abs(tx.amount) : undefined,
-    type:
-      (tx.transactionType as
-        | 'debit'
-        | 'credit'
-        | undefined) ?? undefined,
+    type: (tx.transactionType as 'debit' | 'credit' | undefined) ?? undefined,
   });
 
   if (!suggestion || suggestion.confidence < AUTO_ASSIGN_THRESHOLD) {
@@ -222,14 +217,16 @@ function resolveCategory(
   const canonicalName = resolveCategoryName(suggestion.categoryName);
   if (canonicalName) {
     const id = categoryNameToId.get(canonicalName.toLowerCase());
-    if (id) return id;
+    if (id) {
+      return id;
+    }
   }
 
   // Try direct name match as fallback
-  const directId = categoryNameToId.get(
-    suggestion.categoryName.toLowerCase()
-  );
-  if (directId) return directId;
+  const directId = categoryNameToId.get(suggestion.categoryName.toLowerCase());
+  if (directId) {
+    return directId;
+  }
 
   return null;
 }

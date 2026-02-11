@@ -411,7 +411,8 @@ class ProcessingWorker {
                 next &&
                 item.transform &&
                 next.transform &&
-                Math.abs((item.transform[5] ?? 0) - (next.transform[5] ?? 0)) > 2
+                Math.abs((item.transform[5] ?? 0) - (next.transform[5] ?? 0)) >
+                  2
               ) {
                 text += '\n';
               } else {

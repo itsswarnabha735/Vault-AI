@@ -29,7 +29,9 @@ interface SpendingTrendChartProps {
 /**
  * Spending Trend Chart showing 6 months of spending ending at the selected month.
  */
-export function SpendingTrendChart({ selectedMonth }: SpendingTrendChartProps = {}) {
+export function SpendingTrendChart({
+  selectedMonth,
+}: SpendingTrendChartProps = {}) {
   const { data, isLoading } = useSpendingTrend(6, selectedMonth);
 
   if (isLoading) {

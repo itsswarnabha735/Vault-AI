@@ -56,9 +56,7 @@ export default function ResetPage() {
             resolve(true);
           };
           req.onerror = () => {
-            log(
-              `⚠️ IndexedDB delete failed (attempt ${attempt}/3)`
-            );
+            log(`⚠️ IndexedDB delete failed (attempt ${attempt}/3)`);
             resolve(false);
           };
           req.onblocked = () => {
@@ -74,7 +72,9 @@ export default function ResetPage() {
             setTimeout(() => resolve(false), 3000);
           };
         });
-        if (dbDeleted) break;
+        if (dbDeleted) {
+          break;
+        }
         // Wait before retry
         await new Promise((r) => setTimeout(r, 1000));
       }

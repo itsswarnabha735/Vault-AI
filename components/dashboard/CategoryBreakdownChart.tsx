@@ -25,7 +25,9 @@ interface CategoryBreakdownChartProps {
  * Category Breakdown Chart with donut chart and interactive legend.
  * Aggregates sub-categories under their parent for a cleaner view.
  */
-export function CategoryBreakdownChart({ selectedMonth }: CategoryBreakdownChartProps = {}) {
+export function CategoryBreakdownChart({
+  selectedMonth,
+}: CategoryBreakdownChartProps = {}) {
   const { data, isLoading } = useCategorySpending(selectedMonth);
   const { data: categories } = useCategories();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);

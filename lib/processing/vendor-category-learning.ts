@@ -98,10 +98,8 @@ class VendorCategoryLearningService {
 
       for (const mapping of mappings) {
         if (
-          mapping.amountMin !== null &&
-          mapping.amountMin !== undefined ||
-          mapping.amountMax !== null &&
-          mapping.amountMax !== undefined
+          (mapping.amountMin !== null && mapping.amountMin !== undefined) ||
+          (mapping.amountMax !== null && mapping.amountMax !== undefined)
         ) {
           // Amount-ranged mapping
           this.amountRangedCache.set(mapping.id, mapping);
@@ -209,10 +207,18 @@ class VendorCategoryLearningService {
     amount: number,
     mapping: VendorCategoryMapping
   ): boolean {
-    if (mapping.amountMin !== null && mapping.amountMin !== undefined && amount < mapping.amountMin) {
+    if (
+      mapping.amountMin !== null &&
+      mapping.amountMin !== undefined &&
+      amount < mapping.amountMin
+    ) {
       return false;
     }
-    if (mapping.amountMax !== null && mapping.amountMax !== undefined && amount > mapping.amountMax) {
+    if (
+      mapping.amountMax !== null &&
+      mapping.amountMax !== undefined &&
+      amount > mapping.amountMax
+    ) {
       return false;
     }
     return true;

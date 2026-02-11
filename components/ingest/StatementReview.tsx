@@ -379,12 +379,9 @@ export function StatementReview({
 
           // If exact match fails, use the registry resolver (aliases, fuzzy)
           if (!categoryId) {
-            const canonicalName = resolveCategoryName(
-              tx.suggestedCategoryName
-            );
+            const canonicalName = resolveCategoryName(tx.suggestedCategoryName);
             if (canonicalName) {
-              categoryId =
-                categoryMap.get(canonicalName.toLowerCase()) || null;
+              categoryId = categoryMap.get(canonicalName.toLowerCase()) || null;
             }
           }
         }
@@ -393,7 +390,14 @@ export function StatementReview({
         if (!categoryId && tx.vendor) {
           const suggestion = autoCategorizer.suggestCategory(tx.vendor, {
             amount: tx.amount ? Math.abs(tx.amount) : undefined,
-            type: tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest' | undefined,
+            type: tx.type as
+              | 'debit'
+              | 'credit'
+              | 'fee'
+              | 'refund'
+              | 'payment'
+              | 'interest'
+              | undefined,
           });
           if (suggestion) {
             if (suggestion.learnedCategoryId) {
@@ -401,8 +405,7 @@ export function StatementReview({
             } else {
               const resolved = resolveCategoryName(suggestion.categoryName);
               if (resolved) {
-                categoryId =
-                  categoryMap.get(resolved.toLowerCase()) || null;
+                categoryId = categoryMap.get(resolved.toLowerCase()) || null;
               }
             }
           }
@@ -411,9 +414,7 @@ export function StatementReview({
         return { ...tx, category: categoryId };
       });
 
-    const resolvedCount = finalTransactions.filter(
-      (tx) => tx.category
-    ).length;
+    const resolvedCount = finalTransactions.filter((tx) => tx.category).length;
     console.log(
       `[StatementReview] Category resolution: ${resolvedCount}/${finalTransactions.length} resolved (categoryMap has ${categoryMap.size} entries)`
     );

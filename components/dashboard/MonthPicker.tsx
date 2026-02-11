@@ -55,7 +55,9 @@ export function MonthPicker({
   }, [selectedMonth, effectiveMaxMonth]);
 
   const canGoPrev = useMemo(() => {
-    if (!minMonth) return true;
+    if (!minMonth) {
+      return true;
+    }
     const prev = subMonths(selectedMonth, 1);
     return prev >= minMonth || isSameMonth(prev, minMonth);
   }, [selectedMonth, minMonth]);

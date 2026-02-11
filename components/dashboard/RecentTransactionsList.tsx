@@ -35,7 +35,9 @@ interface RecentTransactionsListProps {
 /**
  * Recent Transactions List showing the last 10 transactions.
  */
-export function RecentTransactionsList({ selectedMonth }: RecentTransactionsListProps = {}) {
+export function RecentTransactionsList({
+  selectedMonth,
+}: RecentTransactionsListProps = {}) {
   const { data, isLoading } = useRecentTransactions(10, selectedMonth);
 
   if (isLoading) {

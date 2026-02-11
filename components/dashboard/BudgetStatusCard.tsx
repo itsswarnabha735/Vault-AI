@@ -22,8 +22,11 @@ interface BudgetStatusCardProps {
 /**
  * Budget Status Card showing total budget usage.
  */
-export function BudgetStatusCard({ selectedMonth }: BudgetStatusCardProps = {}) {
-  const { totalBudget, totalSpent, percentage, isLoading } = useBudgetStatus(selectedMonth);
+export function BudgetStatusCard({
+  selectedMonth,
+}: BudgetStatusCardProps = {}) {
+  const { totalBudget, totalSpent, percentage, isLoading } =
+    useBudgetStatus(selectedMonth);
 
   if (isLoading) {
     return <BudgetStatusCardSkeleton />;

@@ -14,12 +14,7 @@
 
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import {
-  startOfMonth,
-  endOfMonth,
-  subMonths,
-  format,
-} from 'date-fns';
+import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
 
 import { db } from '@/lib/storage/db';
 import { useBudgets, useCategories } from './useLocalDB';
@@ -105,8 +100,12 @@ export interface DashboardData {
  * transactions were stored with positive amounts.
  */
 function isExpenseTransaction(tx: LocalTransaction): boolean {
-  if (tx.transactionType === 'credit') return false;
-  if (tx.transactionType === 'debit') return true;
+  if (tx.transactionType === 'credit') {
+    return false;
+  }
+  if (tx.transactionType === 'debit') {
+    return true;
+  }
   // Legacy: no transactionType — use sign convention
   return tx.amount > 0;
 }
@@ -115,8 +114,12 @@ function isExpenseTransaction(tx: LocalTransaction): boolean {
  * Determine if a transaction is income (credit / money in).
  */
 function isIncomeTransaction(tx: LocalTransaction): boolean {
-  if (tx.transactionType === 'credit') return true;
-  if (tx.transactionType === 'debit') return false;
+  if (tx.transactionType === 'credit') {
+    return true;
+  }
+  if (tx.transactionType === 'debit') {
+    return false;
+  }
   // Legacy: no transactionType — use sign convention
   return tx.amount < 0;
 }
@@ -140,7 +143,9 @@ function getIncomeAmount(tx: LocalTransaction): number {
 /**
  * Query transactions for a specific month from IndexedDB.
  */
-async function queryMonthTransactions(monthDate: Date): Promise<LocalTransaction[]> {
+async function queryMonthTransactions(
+  monthDate: Date
+): Promise<LocalTransaction[]> {
   const start = format(startOfMonth(monthDate), 'yyyy-MM-dd');
   const end = format(endOfMonth(monthDate), 'yyyy-MM-dd');
 
@@ -192,18 +197,19 @@ export function useBudgetStatus(selectedMonth?: Date) {
   const startStr = format(monthStart, 'yyyy-MM-dd');
   const endStr = format(monthEnd, 'yyyy-MM-dd');
 
-  const monthlyTransactions = useLiveQuery(
-    async () => {
-      return db.transactions
-        .where('date')
-        .between(startStr, endStr, true, true)
-        .toArray();
-    },
-    [startStr, endStr]
-  );
+  const monthlyTransactions = useLiveQuery(async () => {
+    return db.transactions
+      .where('date')
+      .between(startStr, endStr, true, true)
+      .toArray();
+  }, [startStr, endStr]);
 
   const status = useMemo(() => {
-    if (budgetsLoading || !budgets.length || monthlyTransactions === undefined) {
+    if (
+      budgetsLoading ||
+      !budgets.length ||
+      monthlyTransactions === undefined
+    ) {
       return {
         budgets: [],
         spending: [],
@@ -215,7 +221,8 @@ export function useBudgetStatus(selectedMonth?: Date) {
     }
 
     // Only count expenses — use transactionType-aware filter
-    const expenseTransactions = monthlyTransactions.filter(isExpenseTransaction);
+    const expenseTransactions =
+      monthlyTransactions.filter(isExpenseTransaction);
 
     const totalBudget = budgets.reduce((sum, b) => sum + b.budget.amount, 0);
 
@@ -232,13 +239,19 @@ export function useBudgetStatus(selectedMonth?: Date) {
           .reduce((sum, tx) => sum + getExpenseAmount(tx), 0);
       } else {
         // Overall budget — total of all expenses
-        spent = expenseTransactions.reduce((sum, tx) => sum + getExpenseAmount(tx), 0);
+        spent = expenseTransactions.reduce(
+          (sum, tx) => sum + getExpenseAmount(tx),
+          0
+        );
       }
       return { budgetId: b.budget.id, amount: spent };
     });
 
     // For totalSpent, use the sum of all expenses (not sum of budget-specific amounts)
-    totalSpent = expenseTransactions.reduce((sum, tx) => sum + getExpenseAmount(tx), 0);
+    totalSpent = expenseTransactions.reduce(
+      (sum, tx) => sum + getExpenseAmount(tx),
+      0
+    );
 
     const percentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
@@ -326,11 +339,17 @@ export function useCategorySpending(selectedMonth?: Date) {
 
       for (const tx of expenses) {
         const key = tx.category;
-        categoryMap.set(key, (categoryMap.get(key) ?? 0) + getExpenseAmount(tx));
+        categoryMap.set(
+          key,
+          (categoryMap.get(key) ?? 0) + getExpenseAmount(tx)
+        );
         categoryCountMap.set(key, (categoryCountMap.get(key) ?? 0) + 1);
       }
 
-      const totalSpending = expenses.reduce((sum, tx) => sum + getExpenseAmount(tx), 0);
+      const totalSpending = expenses.reduce(
+        (sum, tx) => sum + getExpenseAmount(tx),
+        0
+      );
 
       // Build category spending array
       const categorySpending: CategorySpending[] = [];
@@ -489,7 +508,10 @@ export function useSavingsRate(selectedMonth?: Date) {
  * @param limit - Maximum number of transactions (default: 10)
  * @param selectedMonth - Optional month to filter transactions to
  */
-export function useRecentTransactions(limit: number = 10, selectedMonth?: Date) {
+export function useRecentTransactions(
+  limit: number = 10,
+  selectedMonth?: Date
+) {
   const { data: categories, isLoading: categoriesLoading } = useCategories();
 
   const anchorKey = selectedMonth ? format(selectedMonth, 'yyyy-MM') : 'all';
@@ -513,11 +535,7 @@ export function useRecentTransactions(limit: number = 10, selectedMonth?: Date) 
     }
 
     // No month filter — get the most recent transactions overall
-    return db.transactions
-      .orderBy('date')
-      .reverse()
-      .limit(limit)
-      .toArray();
+    return db.transactions.orderBy('date').reverse().limit(limit).toArray();
   }, [limit, anchorKey]);
 
   const transactionsWithCategory = useMemo(() => {

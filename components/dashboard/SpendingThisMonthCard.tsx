@@ -25,10 +25,15 @@ interface SpendingThisMonthCardProps {
 /**
  * Spending This Month Card with comparison to previous month.
  */
-export function SpendingThisMonthCard({ selectedMonth }: SpendingThisMonthCardProps = {}) {
+export function SpendingThisMonthCard({
+  selectedMonth,
+}: SpendingThisMonthCardProps = {}) {
   const { data: comparison, isLoading: comparisonLoading } =
     useMonthlyComparison(selectedMonth);
-  const { data: trend, isLoading: trendLoading } = useSpendingTrend(4, selectedMonth);
+  const { data: trend, isLoading: trendLoading } = useSpendingTrend(
+    4,
+    selectedMonth
+  );
 
   const isLoading = comparisonLoading || trendLoading;
 
@@ -36,9 +41,16 @@ export function SpendingThisMonthCard({ selectedMonth }: SpendingThisMonthCardPr
     return <SpendingThisMonthCardSkeleton />;
   }
 
-  const { thisMonth, lastMonth, changePercent, isIncrease, previousMonthLabel } = comparison;
+  const {
+    thisMonth,
+    lastMonth,
+    changePercent,
+    isIncrease,
+    previousMonthLabel,
+  } = comparison;
   const hasChange = Math.abs(changePercent) > 0.1;
-  const isCurrentMonth = !selectedMonth || isSameMonth(selectedMonth, new Date());
+  const isCurrentMonth =
+    !selectedMonth || isSameMonth(selectedMonth, new Date());
   const cardTitle = isCurrentMonth
     ? 'Spending This Month'
     : `Spending in ${format(selectedMonth!, 'MMM yyyy')}`;

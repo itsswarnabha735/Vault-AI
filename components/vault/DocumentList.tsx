@@ -12,7 +12,11 @@ import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { SyncStatusBadge } from './DocumentCard';
 import { Badge } from '@/components/ui/badge';
-import type { LocalTransaction, TransactionId, Category } from '@/types/database';
+import type {
+  LocalTransaction,
+  TransactionId,
+  Category,
+} from '@/types/database';
 
 // ============================================
 // Types
@@ -296,7 +300,9 @@ export function DocumentList({
               <DocumentRow
                 key={tx.id}
                 transaction={tx}
-                category={tx.category ? categories?.get(tx.category) : undefined}
+                category={
+                  tx.category ? categories?.get(tx.category) : undefined
+                }
                 isSelected={selectedIds.has(tx.id)}
                 onSelect={() => onSelect?.(tx)}
                 onToggleSelect={() => {

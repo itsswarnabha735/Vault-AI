@@ -1718,7 +1718,10 @@ for (const cat of CATEGORY_REGISTRY) {
   // Slug
   _aliasToCanonical.set(cat.slug.toLowerCase(), canonical);
   // Name without "&" → "and" and vice versa
-  _aliasToCanonical.set(canonical.toLowerCase().replace(/&/g, 'and'), canonical);
+  _aliasToCanonical.set(
+    canonical.toLowerCase().replace(/&/g, 'and'),
+    canonical
+  );
   _aliasToCanonical.set(
     canonical.toLowerCase().replace(/\band\b/g, '&'),
     canonical
@@ -1737,13 +1740,17 @@ for (const cat of CATEGORY_REGISTRY) {
  * @returns The canonical category name (e.g., "Food & Dining") or null if no match
  */
 export function resolveCategoryName(name: string): string | null {
-  if (!name || name.trim().length === 0) return null;
+  if (!name || name.trim().length === 0) {
+    return null;
+  }
 
   const lower = name.toLowerCase().trim();
 
   // 1. Exact match on canonical name or alias
   const direct = _aliasToCanonical.get(lower);
-  if (direct) return direct;
+  if (direct) {
+    return direct;
+  }
 
   // 2. Try stripping common prefixes/suffixes the LLM might add
   const stripped = lower
@@ -1751,21 +1758,31 @@ export function resolveCategoryName(name: string): string | null {
     .replace(/\s*\(.*\)\s*$/, '') // remove trailing parenthetical
     .trim();
   const strippedMatch = _aliasToCanonical.get(stripped);
-  if (strippedMatch) return strippedMatch;
+  if (strippedMatch) {
+    return strippedMatch;
+  }
 
   // 3. Try partial match — if the input contains or is contained by a canonical name
   for (const cat of CATEGORY_REGISTRY) {
     const catLower = cat.name.toLowerCase();
     // Input contains the full canonical name
-    if (lower.includes(catLower)) return cat.name;
+    if (lower.includes(catLower)) {
+      return cat.name;
+    }
     // Canonical name contains the input (e.g., input="food" matches "food & dining")
-    if (catLower.includes(lower) && lower.length >= 3) return cat.name;
+    if (catLower.includes(lower) && lower.length >= 3) {
+      return cat.name;
+    }
   }
 
   // 4. Try partial match against aliases
   for (const [alias, canonical] of _aliasToCanonical.entries()) {
-    if (alias.includes(lower) && lower.length >= 3) return canonical;
-    if (lower.includes(alias) && alias.length >= 3) return canonical;
+    if (alias.includes(lower) && lower.length >= 3) {
+      return canonical;
+    }
+    if (lower.includes(alias) && alias.length >= 3) {
+      return canonical;
+    }
   }
 
   return null;

@@ -10,10 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  createTransaction,
-  createMockFile,
-} from '../factories';
+import { createTransaction, createMockFile } from '../factories';
 
 // ============================================
 // Mock Services

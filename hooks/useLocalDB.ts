@@ -860,7 +860,10 @@ export function useBudgetActions() {
 export function useAnomalyActions() {
   const resolveAnomaly = useCallback(
     async (id: string, action: 'confirmed' | 'dismissed') => {
-      await db.resolveAnomaly(id as unknown as Parameters<typeof db.resolveAnomaly>[0], action);
+      await db.resolveAnomaly(
+        id as unknown as Parameters<typeof db.resolveAnomaly>[0],
+        action
+      );
     },
     []
   );

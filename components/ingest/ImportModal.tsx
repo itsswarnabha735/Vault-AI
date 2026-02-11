@@ -522,17 +522,16 @@ export function ImportModal({
               data: { user },
             } = await supabase.auth.getUser();
             if (user?.id) {
-              await db.initializeDefaults(user.id as unknown as import('@/types/database').UserId);
+              await db.initializeDefaults(
+                user.id as unknown as import('@/types/database').UserId
+              );
               allCategories = await db.categories.toArray();
               console.log(
                 `[ImportModal] Seeded ${allCategories.length} default categories`
               );
             }
           } catch (seedErr) {
-            console.error(
-              '[ImportModal] Failed to seed categories:',
-              seedErr
-            );
+            console.error('[ImportModal] Failed to seed categories:', seedErr);
           }
         }
 
@@ -543,7 +542,9 @@ export function ImportModal({
 
         let fallbackResolvedCount = 0;
         const resolvedTransactions = transactions.map((tx) => {
-          if (tx.category) return tx; // already has a CategoryId
+          if (tx.category) {
+            return tx;
+          } // already has a CategoryId
 
           let categoryId: CategoryId | null = null;
 
@@ -581,12 +582,9 @@ export function ImportModal({
               if (suggestion.learnedCategoryId) {
                 categoryId = suggestion.learnedCategoryId;
               } else {
-                const resolved = resolveCategoryName(
-                  suggestion.categoryName
-                );
+                const resolved = resolveCategoryName(suggestion.categoryName);
                 if (resolved) {
-                  categoryId =
-                    catNameToId.get(resolved.toLowerCase()) || null;
+                  categoryId = catNameToId.get(resolved.toLowerCase()) || null;
                 }
               }
             }
@@ -607,11 +605,11 @@ export function ImportModal({
           (tx) => !tx.category
         ).length;
         console.log(
-          `[ImportModal] Category resolution: ${withCategory} resolved, ${withoutCategory} unresolved` +
-            (fallbackResolvedCount > 0
+          `[ImportModal] Category resolution: ${withCategory} resolved, ${withoutCategory} unresolved${
+            fallbackResolvedCount > 0
               ? ` (${fallbackResolvedCount} via safety-net fallback)`
-              : '') +
-            ` | DB has ${allCategories.length} categories`
+              : ''
+          } | DB has ${allCategories.length} categories`
         );
         if (withoutCategory > 0) {
           console.warn(
