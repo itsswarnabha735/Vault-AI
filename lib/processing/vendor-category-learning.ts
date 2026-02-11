@@ -97,7 +97,12 @@ class VendorCategoryLearningService {
       this.amountRangedCache.clear();
 
       for (const mapping of mappings) {
-        if (mapping.amountMin != null || mapping.amountMax != null) {
+        if (
+          mapping.amountMin !== null &&
+          mapping.amountMin !== undefined ||
+          mapping.amountMax !== null &&
+          mapping.amountMax !== undefined
+        ) {
           // Amount-ranged mapping
           this.amountRangedCache.set(mapping.id, mapping);
         } else {
@@ -141,7 +146,9 @@ class VendorCategoryLearningService {
     // 1. Check amount-ranged mappings first (most specific)
     if (absAmount !== undefined) {
       for (const [, mapping] of this.amountRangedCache) {
-        if (mapping.vendorPattern !== normalized) continue;
+        if (mapping.vendorPattern !== normalized) {
+          continue;
+        }
         if (this.amountInRange(absAmount, mapping)) {
           return {
             categoryId: mapping.categoryId,
@@ -198,9 +205,16 @@ class VendorCategoryLearningService {
   /**
    * Check if an amount falls within a mapping's range.
    */
-  private amountInRange(amount: number, mapping: VendorCategoryMapping): boolean {
-    if (mapping.amountMin != null && amount < mapping.amountMin) return false;
-    if (mapping.amountMax != null && amount > mapping.amountMax) return false;
+  private amountInRange(
+    amount: number,
+    mapping: VendorCategoryMapping
+  ): boolean {
+    if (mapping.amountMin !== null && mapping.amountMin !== undefined && amount < mapping.amountMin) {
+      return false;
+    }
+    if (mapping.amountMax !== null && mapping.amountMax !== undefined && amount > mapping.amountMax) {
+      return false;
+    }
     return true;
   }
 
@@ -250,7 +264,7 @@ class VendorCategoryLearningService {
             vendorPattern: normalized,
             categoryId,
             usageCount: 1,
-            amountMin: Math.max(0, absAmount * 0.5),  // ±50% tolerance
+            amountMin: Math.max(0, absAmount * 0.5), // ±50% tolerance
             amountMax: absAmount * 1.5,
             createdAt: now,
             updatedAt: now,
@@ -379,85 +393,85 @@ class VendorCategoryLearningService {
 export function normalizeVendor(vendor: string): string {
   let v = vendor.toLowerCase().trim();
 
-    // ---- Strip structured transaction prefixes ----
+  // ---- Strip structured transaction prefixes ----
 
-    // UPI format: UPI/merchant@bank/... → extract merchant
-    const upiMatch = v.match(/^upi\/([^/@]+)/);
-    if (upiMatch?.[1]) {
-      v = upiMatch[1]
-        .replace(/\.\w+$/, '')    // Remove trailing .razorpay etc.
-        .replace(/[._-]/g, ' ')   // Convert separators to spaces
-        .replace(/\d{5,}/g, '')   // Remove long number sequences
-        .trim();
-    }
+  // UPI format: UPI/merchant@bank/... → extract merchant
+  const upiMatch = v.match(/^upi\/([^/@]+)/);
+  if (upiMatch?.[1]) {
+    v = upiMatch[1]
+      .replace(/\.\w+$/, '') // Remove trailing .razorpay etc.
+      .replace(/[._-]/g, ' ') // Convert separators to spaces
+      .replace(/\d{5,}/g, '') // Remove long number sequences
+      .trim();
+  }
 
-    // NEFT dash format: NEFT-REF-COMPANY NAME123-... → extract company
-    if (v.startsWith('neft-') || v.startsWith('rtgs-')) {
-      const parts = v.split('-');
-      for (let i = 2; i < parts.length; i++) {
-        const part = (parts[i] || '').trim();
-        if (/^[a-z]/i.test(part) && part.length > 2) {
-          v = part.replace(/\d{3,}.*$/, '').trim();
-          break;
-        }
+  // NEFT dash format: NEFT-REF-COMPANY NAME123-... → extract company
+  if (v.startsWith('neft-') || v.startsWith('rtgs-')) {
+    const parts = v.split('-');
+    for (let i = 2; i < parts.length; i++) {
+      const part = (parts[i] || '').trim();
+      if (/^[a-z]/i.test(part) && part.length > 2) {
+        v = part.replace(/\d{3,}.*$/, '').trim();
+        break;
       }
     }
+  }
 
-    // NEFT/IMPS/ACH slash format: PREFIX/entity/ref → extract entity
-    if (/^(?:neft|imps|ach|rtgs)\//.test(v)) {
-      const parts = v.split('/');
-      v = (parts[1] || '').trim() || v;
-    }
+  // NEFT/IMPS/ACH slash format: PREFIX/entity/ref → extract entity
+  if (/^(?:neft|imps|ach|rtgs)\//.test(v)) {
+    const parts = v.split('/');
+    v = (parts[1] || '').trim() || v;
+  }
 
-    // Strip remaining prefix markers
-    v = v.replace(
-      /^(?:pos|ecom|imps|neft|rtgs|upi|nach|ecs|ach|atm|bil|onl)\s*[-/]?\s*/i,
-      ''
-    );
+  // Strip remaining prefix markers
+  v = v.replace(
+    /^(?:pos|ecom|imps|neft|rtgs|upi|nach|ecs|ach|atm|bil|onl)\s*[-/]?\s*/i,
+    ''
+  );
 
-    // ---- Handle known abbreviation patterns ----
+  // ---- Handle known abbreviation patterns ----
 
-    // Amazon variants: "AMZN MKTP", "AMZN.COM", "AMZ*"
-    if (/\bamzn\b|amazon/i.test(v)) {
-      v = v
-        .replace(/\bamzn\s*mktp\b/gi, 'amazon')
-        .replace(/\bamzn\.?com?\b/gi, 'amazon')
-        .replace(/\bamzn\b/gi, 'amazon');
-    }
-
-    // Uber variants: "UBER *TRIP", "UBER   EATS", "UBER.COM"
-    if (/\buber\b/i.test(v)) {
-      v = v.replace(/\buber\s*\*\s*/gi, 'uber ');
-    }
-
-    // ---- General cleanup ----
-
+  // Amazon variants: "AMZN MKTP", "AMZN.COM", "AMZ*"
+  if (/\bamzn\b|amazon/i.test(v)) {
     v = v
-      // Remove UPI VPA patterns (name@bank)
-      .replace(/\S+@\S+/g, '')
-      // Remove store/location numbers: #1234, *5678, T-2341
-      .replace(/[#*]\s*\d+/g, '')
-      .replace(/\bT-?\d{3,}/g, '')
-      // Remove card references: XXXX1234, Card 5678
-      .replace(/(?:xxxx|card)\s*\d{4}/gi, '')
-      // Remove reference/auth codes
-      .replace(/\s+(?:ref|auth|conf|txn|id|arn)[\s#:]*[\w-]+$/i, '')
-      // Remove long alphanumeric strings (12+ chars, likely IDs)
-      .replace(/\b[a-z0-9]{12,}\b/gi, '')
-      // Remove trailing numeric sequences (9+ digits)
-      .replace(/\b\d{9,}\b/g, '')
-      // Remove trailing country/state codes (2 uppercase letters at end)
-      .replace(/\s+[a-z]{2}\s*$/i, '')
-      // Remove city/zip at end
-      .replace(/\s+[a-z]{2}\s+\d{5}(-\d{4})?\s*$/i, '')
-      // Remove trailing asterisks, hashes, slashes
-      .replace(/[*#/\-.,;:!]+$/g, '')
-      .replace(/^[*#/\-.,;:!]+/g, '')
-      // Collapse whitespace
-      .replace(/\s+/g, ' ')
-      .trim();
+      .replace(/\bamzn\s*mktp\b/gi, 'amazon')
+      .replace(/\bamzn\.?com?\b/gi, 'amazon')
+      .replace(/\bamzn\b/gi, 'amazon');
+  }
 
-    return v;
+  // Uber variants: "UBER *TRIP", "UBER   EATS", "UBER.COM"
+  if (/\buber\b/i.test(v)) {
+    v = v.replace(/\buber\s*\*\s*/gi, 'uber ');
+  }
+
+  // ---- General cleanup ----
+
+  v = v
+    // Remove UPI VPA patterns (name@bank)
+    .replace(/\S+@\S+/g, '')
+    // Remove store/location numbers: #1234, *5678, T-2341
+    .replace(/[#*]\s*\d+/g, '')
+    .replace(/\bT-?\d{3,}/g, '')
+    // Remove card references: XXXX1234, Card 5678
+    .replace(/(?:xxxx|card)\s*\d{4}/gi, '')
+    // Remove reference/auth codes
+    .replace(/\s+(?:ref|auth|conf|txn|id|arn)[\s#:]*[\w-]+$/i, '')
+    // Remove long alphanumeric strings (12+ chars, likely IDs)
+    .replace(/\b[a-z0-9]{12,}\b/gi, '')
+    // Remove trailing numeric sequences (9+ digits)
+    .replace(/\b\d{9,}\b/g, '')
+    // Remove trailing country/state codes (2 uppercase letters at end)
+    .replace(/\s+[a-z]{2}\s*$/i, '')
+    // Remove city/zip at end
+    .replace(/\s+[a-z]{2}\s+\d{5}(-\d{4})?\s*$/i, '')
+    // Remove trailing asterisks, hashes, slashes
+    .replace(/[*#/\-.,;:!]+$/g, '')
+    .replace(/^[*#/\-.,;:!]+/g, '')
+    // Collapse whitespace
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return v;
 }
 
 // ============================================

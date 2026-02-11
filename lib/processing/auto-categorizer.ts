@@ -16,8 +16,16 @@
  */
 
 import { vendorCategoryLearning } from './vendor-category-learning';
-import { getVendorRulesMap, getAmountHintMap, getPreferredTypeMap } from '@/lib/categories/category-registry';
-import type { VendorKeyword, VendorPattern, AmountHint } from '@/lib/categories/category-registry';
+import {
+  getVendorRulesMap,
+  getAmountHintMap,
+  getPreferredTypeMap,
+} from '@/lib/categories/category-registry';
+import type {
+  VendorKeyword,
+  VendorPattern,
+  AmountHint,
+} from '@/lib/categories/category-registry';
 import type { CategoryId } from '@/types/database';
 
 // ============================================
@@ -47,7 +55,7 @@ export interface CategorySuggestion {
   signals?: {
     vendorMatch: boolean;
     amountInRange: boolean | null; // null = no hint available
-    typeMatch: boolean | null;     // null = no hint available
+    typeMatch: boolean | null; // null = no hint available
   };
 }
 
@@ -90,7 +98,10 @@ function matchesKeyword(vendorLower: string, keyword: VendorKeyword): boolean {
     // Match only at word boundaries
     // Build a regex: \bkeyword\b (escape special regex chars in keyword)
     const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(?:^|[\\s\\-/,.()])${escaped}(?:$|[\\s\\-/,.()])`, 'i');
+    const regex = new RegExp(
+      `(?:^|[\\s\\-/,.()])${escaped}(?:$|[\\s\\-/,.()])`,
+      'i'
+    );
     // Also match if the keyword IS the entire string
     if (vendorLower === kw) {
       // exact match, proceed to exclusion check
@@ -181,10 +192,15 @@ class AutoCategorizerService {
    * Check whether an amount falls within a category's typical range.
    * Returns: true = in range (boost), false = out of range (penalise), null = no hint.
    */
-  private checkAmountRange(categoryName: string, amount: number): boolean | null {
+  private checkAmountRange(
+    categoryName: string,
+    amount: number
+  ): boolean | null {
     const hints = this.getAmountHints();
     const hint = hints[categoryName];
-    if (!hint) return null;
+    if (!hint) {
+      return null;
+    }
 
     const absAmount = Math.abs(amount);
     const inRange =
@@ -200,7 +216,9 @@ class AutoCategorizerService {
   private checkTypeMatch(categoryName: string, txType: string): boolean | null {
     const types = this.getPreferredTypes();
     const preferred = types[categoryName];
-    if (!preferred || preferred.length === 0) return null;
+    if (!preferred || preferred.length === 0) {
+      return null;
+    }
     return preferred.includes(txType);
   }
 
@@ -215,7 +233,10 @@ class AutoCategorizerService {
    * @param context - Optional transaction context (amount, type) for multi-signal scoring
    * @returns CategorySuggestion or null if no match
    */
-  suggestCategory(vendor: string, context?: TransactionContext): CategorySuggestion | null {
+  suggestCategory(
+    vendor: string,
+    context?: TransactionContext
+  ): CategorySuggestion | null {
     if (!vendor || vendor.trim().length === 0) {
       return null;
     }
@@ -241,7 +262,10 @@ class AutoCategorizerService {
    * Suggest a category using only the registry keyword rules (no learning).
    * Optionally applies multi-signal scoring when context is provided.
    */
-  suggestCategoryFromRules(vendor: string, context?: TransactionContext): CategorySuggestion | null {
+  suggestCategoryFromRules(
+    vendor: string,
+    context?: TransactionContext
+  ): CategorySuggestion | null {
     if (!vendor || vendor.trim().length === 0) {
       return null;
     }
@@ -338,7 +362,10 @@ class AutoCategorizerService {
 
       if (classifierResult && classifierResult.confidence >= 0.6) {
         // If we had a low-confidence sync result, pick the higher confidence one
-        if (syncResult && syncResult.confidence >= classifierResult.confidence) {
+        if (
+          syncResult &&
+          syncResult.confidence >= classifierResult.confidence
+        ) {
           return syncResult;
         }
 
@@ -356,12 +383,16 @@ class AutoCategorizerService {
         };
       }
     } catch (error) {
-      console.warn('[AutoCategorizer] Local classifier fallback failed:', error);
+      console.warn(
+        '[AutoCategorizer] Local classifier fallback failed:',
+        error
+      );
     }
 
     // 4: k-NN fallback (broader, slower)
     try {
-      const { embeddingClassifier } = await import('@/lib/ai/embedding-classifier');
+      const { embeddingClassifier } =
+        await import('@/lib/ai/embedding-classifier');
       const knnResult = await embeddingClassifier.classify(context.embedding);
 
       if (knnResult) {

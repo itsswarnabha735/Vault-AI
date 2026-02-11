@@ -206,8 +206,7 @@ const TIME_PERIOD_PATTERNS: Record<TimePeriod, RegExp[]> = {
  *
  * @see lib/categories/category-registry.ts
  */
-export const CATEGORY_KEYWORDS: Record<string, string[]> =
-  getQueryAliasMap();
+export const CATEGORY_KEYWORDS: Record<string, string[]> = getQueryAliasMap();
 
 // Note: Amount and date extraction patterns are used inline in the extraction functions
 // via regex literals for better readability and maintenance.
@@ -506,7 +505,27 @@ export async function classifyQueryAsync(
   const entities = extractEntities(query, intent);
 
   // #region agent log
-  fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'query-router.ts:classifyQueryAsync',message:'Full classification details',data:{query,embeddingIntent:embeddingResult?.intent||null,embeddingConfidence:embeddingResult?.confidence||null,finalIntent:intent,finalConfidence:confidence,direction:entities.transactionDirection,dateRange:entities.dateRange,categories:entities.categories,keywords:entities.keywords},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
+  fetch('/api/debug-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'query-router.ts:classifyQueryAsync',
+      message: 'Full classification details',
+      data: {
+        query,
+        embeddingIntent: embeddingResult?.intent || null,
+        embeddingConfidence: embeddingResult?.confidence || null,
+        finalIntent: intent,
+        finalConfidence: confidence,
+        direction: entities.transactionDirection,
+        dateRange: entities.dateRange,
+        categories: entities.categories,
+        keywords: entities.keywords,
+      },
+      timestamp: Date.now(),
+      hypothesisId: 'E',
+    }),
+  }).catch(() => {});
   // #endregion
 
   const isQuestion =

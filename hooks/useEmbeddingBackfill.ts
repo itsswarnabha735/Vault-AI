@@ -33,7 +33,9 @@ export function useEmbeddingBackfill(): UseEmbeddingBackfillReturn {
 
   // Auto-trigger once per session on mount
   useEffect(() => {
-    if (startedRef.current) return;
+    if (startedRef.current) {
+      return;
+    }
     startedRef.current = true;
 
     void embeddingBackfill.runOncePerSession(setProgress);
@@ -45,7 +47,8 @@ export function useEmbeddingBackfill(): UseEmbeddingBackfillReturn {
 
   return {
     progress,
-    isRunning: progress.status === 'running' || progress.status === 'initializing',
+    isRunning:
+      progress.status === 'running' || progress.status === 'initializing',
     runBackfill,
   };
 }

@@ -15,8 +15,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '@/lib/storage/db';
 import { useCategories } from '@/hooks/useLocalDB';
-import { getSubcategoryMap } from '@/lib/categories/category-registry';
-import type { LocalTransaction, CategoryId, TransactionId } from '@/types/database';
+import type {
+  CategoryId,
+  TransactionId,
+} from '@/types/database';
 
 // ============================================
 // Types
@@ -44,7 +46,10 @@ export interface UseSubcategorySuggestionsReturn {
   /** Loading state */
   isLoading: boolean;
   /** Apply a single suggestion */
-  applySuggestion: (transactionId: TransactionId, subcategoryId: CategoryId) => Promise<void>;
+  applySuggestion: (
+    transactionId: TransactionId,
+    subcategoryId: CategoryId
+  ) => Promise<void>;
   /** Apply all suggestions */
   applyAll: () => Promise<number>;
   /** Dismiss a suggestion */
@@ -62,35 +67,173 @@ export interface UseSubcategorySuggestionsReturn {
  */
 const SUBCATEGORY_KEYWORDS: Record<string, string[]> = {
   // Food & Dining sub-categories
-  Restaurants: ['restaurant', 'cafe', 'diner', 'bistro', 'pizz', 'burger', 'sushi', 'wok', 'grill', 'kitchen', 'dhaba', 'biryani', 'dosa'],
-  Groceries: ['grocery', 'grocer', 'supermarket', 'mart', 'fresh', 'organic', 'bigbasket', 'blinkit', 'zepto', 'instamart', 'dmart', 'reliance fresh', 'more supermarket'],
-  'Food Delivery': ['swiggy', 'zomato', 'uber eats', 'doordash', 'grubhub', 'food delivery', 'dunzo'],
-  'Coffee & Drinks': ['starbucks', 'coffee', 'tea', 'chai', 'juice', 'smoothie', 'cafe coffee day', 'ccd', 'barista'],
+  Restaurants: [
+    'restaurant',
+    'cafe',
+    'diner',
+    'bistro',
+    'pizz',
+    'burger',
+    'sushi',
+    'wok',
+    'grill',
+    'kitchen',
+    'dhaba',
+    'biryani',
+    'dosa',
+  ],
+  Groceries: [
+    'grocery',
+    'grocer',
+    'supermarket',
+    'mart',
+    'fresh',
+    'organic',
+    'bigbasket',
+    'blinkit',
+    'zepto',
+    'instamart',
+    'dmart',
+    'reliance fresh',
+    'more supermarket',
+  ],
+  'Food Delivery': [
+    'swiggy',
+    'zomato',
+    'uber eats',
+    'doordash',
+    'grubhub',
+    'food delivery',
+    'dunzo',
+  ],
+  'Coffee & Drinks': [
+    'starbucks',
+    'coffee',
+    'tea',
+    'chai',
+    'juice',
+    'smoothie',
+    'cafe coffee day',
+    'ccd',
+    'barista',
+  ],
 
   // Shopping sub-categories
-  'Online Shopping': ['amazon', 'flipkart', 'myntra', 'ajio', 'meesho', 'nykaa', 'ebay', 'shopify'],
-  Clothing: ['clothing', 'apparel', 'fashion', 'zara', 'h&m', 'uniqlo', 'pantaloons', 'lifestyle'],
-  Electronics: ['electronic', 'croma', 'reliance digital', 'vijay sales', 'apple store', 'samsung'],
+  'Online Shopping': [
+    'amazon',
+    'flipkart',
+    'myntra',
+    'ajio',
+    'meesho',
+    'nykaa',
+    'ebay',
+    'shopify',
+  ],
+  Clothing: [
+    'clothing',
+    'apparel',
+    'fashion',
+    'zara',
+    'h&m',
+    'uniqlo',
+    'pantaloons',
+    'lifestyle',
+  ],
+  Electronics: [
+    'electronic',
+    'croma',
+    'reliance digital',
+    'vijay sales',
+    'apple store',
+    'samsung',
+  ],
 
   // Transportation sub-categories
   'Ride Sharing': ['uber', 'ola', 'lyft', 'rapido', 'grab'],
   'Public Transit': ['metro', 'bus', 'train', 'railway', 'irctc', 'transit'],
-  Fuel: ['petrol', 'diesel', 'fuel', 'gas station', 'shell', 'hp', 'bharat petroleum', 'indian oil'],
+  Fuel: [
+    'petrol',
+    'diesel',
+    'fuel',
+    'gas station',
+    'shell',
+    'hp',
+    'bharat petroleum',
+    'indian oil',
+  ],
   Parking: ['parking', 'park plus', 'parkwhiz'],
 
   // Entertainment sub-categories
-  'Movies & Shows': ['movie', 'cinema', 'pvr', 'inox', 'bookmyshow', 'theatre', 'theater'],
-  'Streaming Services': ['netflix', 'spotify', 'hotstar', 'prime video', 'youtube premium', 'apple tv', 'jio cinema'],
-  Gaming: ['game', 'gaming', 'steam', 'playstation', 'xbox', 'nintendo', 'epic games'],
+  'Movies & Shows': [
+    'movie',
+    'cinema',
+    'pvr',
+    'inox',
+    'bookmyshow',
+    'theatre',
+    'theater',
+  ],
+  'Streaming Services': [
+    'netflix',
+    'spotify',
+    'hotstar',
+    'prime video',
+    'youtube premium',
+    'apple tv',
+    'jio cinema',
+  ],
+  Gaming: [
+    'game',
+    'gaming',
+    'steam',
+    'playstation',
+    'xbox',
+    'nintendo',
+    'epic games',
+  ],
 
   // Healthcare sub-categories
-  Pharmacy: ['pharmacy', 'pharma', 'medical store', 'medplus', 'apollo pharmacy', 'netmeds', 'pharmeasy', '1mg'],
-  'Doctor Visits': ['doctor', 'clinic', 'hospital', 'consultation', 'practo', 'apollo'],
+  Pharmacy: [
+    'pharmacy',
+    'pharma',
+    'medical store',
+    'medplus',
+    'apollo pharmacy',
+    'netmeds',
+    'pharmeasy',
+    '1mg',
+  ],
+  'Doctor Visits': [
+    'doctor',
+    'clinic',
+    'hospital',
+    'consultation',
+    'practo',
+    'apollo',
+  ],
   Fitness: ['gym', 'fitness', 'yoga', 'cult.fit', 'crossfit', 'gold gym'],
 
   // Travel sub-categories
-  Flights: ['flight', 'airline', 'airways', 'indigo', 'air india', 'spicejet', 'makemytrip', 'cleartrip'],
-  Hotels: ['hotel', 'resort', 'lodge', 'oyo', 'airbnb', 'booking.com', 'trivago', 'goibibo'],
+  Flights: [
+    'flight',
+    'airline',
+    'airways',
+    'indigo',
+    'air india',
+    'spicejet',
+    'makemytrip',
+    'cleartrip',
+  ],
+  Hotels: [
+    'hotel',
+    'resort',
+    'lodge',
+    'oyo',
+    'airbnb',
+    'booking.com',
+    'trivago',
+    'goibibo',
+  ],
 };
 
 // ============================================
@@ -106,7 +249,10 @@ export function useSubcategorySuggestions(): UseSubcategorySuggestionsReturn {
   // Build lookups
   const { parentIdsWithChildren, subcatByName, catNameById } = useMemo(() => {
     const parentIds = new Set<string>();
-    const subcatMap = new Map<string, { id: CategoryId; name: string; icon: string; parentId: string }>();
+    const subcatMap = new Map<
+      string,
+      { id: CategoryId; name: string; icon: string; parentId: string }
+    >();
     const nameMap = new Map<CategoryId, string>();
 
     for (const cat of categories) {
@@ -131,7 +277,9 @@ export function useSubcategorySuggestions(): UseSubcategorySuggestionsReturn {
 
   // Scan transactions
   useEffect(() => {
-    if (catsLoading || categories.length === 0) return;
+    if (catsLoading || categories.length === 0) {
+      return;
+    }
 
     void (async () => {
       setIsLoading(true);
@@ -141,8 +289,7 @@ export function useSubcategorySuggestions(): UseSubcategorySuggestionsReturn {
         // Find transactions at parent level where sub-categories exist
         const eligible = transactions.filter(
           (tx) =>
-            tx.category &&
-            parentIdsWithChildren.has(tx.category as string)
+            tx.category && parentIdsWithChildren.has(tx.category as string)
         );
 
         setTotalEligible(eligible.length);
@@ -151,22 +298,32 @@ export function useSubcategorySuggestions(): UseSubcategorySuggestionsReturn {
         const results: SubcategorySuggestion[] = [];
 
         for (const tx of eligible) {
-          if (!tx.vendor || results.length >= 50) break;
+          if (!tx.vendor || results.length >= 50) {
+            break;
+          }
 
           const vendorLower = tx.vendor.toLowerCase();
           const parentName = catNameById.get(tx.category!) || '';
 
           // Search keyword map for a matching sub-category
-          for (const [subcatName, keywords] of Object.entries(SUBCATEGORY_KEYWORDS)) {
+          for (const [subcatName, keywords] of Object.entries(
+            SUBCATEGORY_KEYWORDS
+          )) {
             const matched = keywords.some((kw) => vendorLower.includes(kw));
-            if (!matched) continue;
+            if (!matched) {
+              continue;
+            }
 
             // Find the actual sub-category in the DB
             const subcat = subcatByName.get(subcatName.toLowerCase());
-            if (!subcat) continue;
+            if (!subcat) {
+              continue;
+            }
 
             // Verify this sub-category belongs to the current parent
-            if (subcat.parentId !== (tx.category as string)) continue;
+            if (subcat.parentId !== (tx.category as string)) {
+              continue;
+            }
 
             results.push({
               transactionId: tx.id,
@@ -190,7 +347,13 @@ export function useSubcategorySuggestions(): UseSubcategorySuggestionsReturn {
         setIsLoading(false);
       }
     })();
-  }, [categories, catsLoading, parentIdsWithChildren, subcatByName, catNameById]);
+  }, [
+    categories,
+    catsLoading,
+    parentIdsWithChildren,
+    subcatByName,
+    catNameById,
+  ]);
 
   const applySuggestion = useCallback(
     async (transactionId: TransactionId, subcategoryId: CategoryId) => {
@@ -198,7 +361,9 @@ export function useSubcategorySuggestions(): UseSubcategorySuggestionsReturn {
         category: subcategoryId,
         updatedAt: new Date(),
       });
-      setSuggestions((prev) => prev.filter((s) => s.transactionId !== transactionId));
+      setSuggestions((prev) =>
+        prev.filter((s) => s.transactionId !== transactionId)
+      );
       setTotalEligible((prev) => Math.max(0, prev - 1));
     },
     []
@@ -211,14 +376,20 @@ export function useSubcategorySuggestions(): UseSubcategorySuggestionsReturn {
         await applySuggestion(s.transactionId, s.suggestedSubcategoryId);
         applied++;
       } catch (error) {
-        console.error('[SubcategorySuggestions] Apply failed:', s.transactionId, error);
+        console.error(
+          '[SubcategorySuggestions] Apply failed:',
+          s.transactionId,
+          error
+        );
       }
     }
     return applied;
   }, [suggestions, applySuggestion]);
 
   const dismiss = useCallback((transactionId: TransactionId) => {
-    setSuggestions((prev) => prev.filter((s) => s.transactionId !== transactionId));
+    setSuggestions((prev) =>
+      prev.filter((s) => s.transactionId !== transactionId)
+    );
   }, []);
 
   return {

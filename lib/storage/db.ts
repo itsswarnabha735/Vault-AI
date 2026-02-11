@@ -213,22 +213,18 @@ export class VaultDatabase extends Dexie {
         statementFingerprints: 'id, issuer, periodStart',
       })
       .upgrade(async (tx) => {
-        const { CATEGORY_RENAME_MAP, NEW_DEFAULT_CATEGORIES } = await import(
-          '@/lib/categories/category-registry'
-        );
+        const { CATEGORY_RENAME_MAP, NEW_DEFAULT_CATEGORIES } =
+          await import('@/lib/categories/category-registry');
 
         // 1. Rename existing categories to match canonical names
         const cats = tx.table('categories');
-        await cats.toCollection().modify(
-          (cat: Record<string, unknown>) => {
-            const newName =
-              CATEGORY_RENAME_MAP[cat.name as string];
-            if (newName) {
-              cat.name = newName;
-              cat.updatedAt = new Date();
-            }
+        await cats.toCollection().modify((cat: Record<string, unknown>) => {
+          const newName = CATEGORY_RENAME_MAP[cat.name as string];
+          if (newName) {
+            cat.name = newName;
+            cat.updatedAt = new Date();
           }
-        );
+        });
 
         // 2. Add missing default categories
         // First check which categories already exist
@@ -282,9 +278,8 @@ export class VaultDatabase extends Dexie {
         statementFingerprints: 'id, issuer, periodStart',
       })
       .upgrade(async (tx) => {
-        const { getSubcategorySeeds } = await import(
-          '@/lib/categories/category-registry'
-        );
+        const { getSubcategorySeeds } =
+          await import('@/lib/categories/category-registry');
 
         const cats = tx.table('categories');
         const allCats = await cats.toArray();
@@ -292,17 +287,16 @@ export class VaultDatabase extends Dexie {
         // Build a name → id lookup for parent categories
         const nameToId = new Map<string, string>();
         for (const cat of allCats) {
-          nameToId.set(
-            (cat.name as string).toLowerCase(),
-            cat.id as string
-          );
+          nameToId.set((cat.name as string).toLowerCase(), cat.id as string);
         }
 
         // Get userId from existing categories
         const sampleCat = allCats[0] as Record<string, unknown> | undefined;
         const userId = sampleCat?.userId;
 
-        if (!userId) return; // No categories yet — initializeDefaults will handle it
+        if (!userId) {
+          return;
+        } // No categories yet — initializeDefaults will handle it
 
         // Check which sub-categories already exist
         const existingNames = new Set(
@@ -317,11 +311,15 @@ export class VaultDatabase extends Dexie {
 
         for (const seed of seeds) {
           // Skip if already exists
-          if (existingNames.has(seed.name.toLowerCase())) continue;
+          if (existingNames.has(seed.name.toLowerCase())) {
+            continue;
+          }
 
           // Find parent ID
           const parentId = nameToId.get(seed.parentName.toLowerCase());
-          if (!parentId) continue; // Parent doesn't exist yet
+          if (!parentId) {
+            continue;
+          } // Parent doesn't exist yet
 
           await cats.add({
             id: uuidv4(),
@@ -377,9 +375,8 @@ export class VaultDatabase extends Dexie {
         kvStore: 'key',
       })
       .upgrade(async (tx) => {
-        const { normalizeVendor } = await import(
-          '@/lib/processing/vendor-category-learning'
-        );
+        const { normalizeVendor } =
+          await import('@/lib/processing/vendor-category-learning');
 
         const vcTable = tx.table('vendorCategories');
         const allMappings = await vcTable.toArray();
@@ -387,7 +384,10 @@ export class VaultDatabase extends Dexie {
         // Re-normalize each vendor pattern
         // If the new normalization produces a different key, update the row.
         // If two rows end up with the same key, keep the one with higher usageCount.
-        const seen = new Map<string, { id: string; usageCount: number; categoryId: unknown }>();
+        const seen = new Map<
+          string,
+          { id: string; usageCount: number; categoryId: unknown }
+        >();
 
         for (const mapping of allMappings) {
           const oldPattern = mapping.vendorPattern as string;
@@ -396,7 +396,10 @@ export class VaultDatabase extends Dexie {
           if (newPattern === oldPattern) {
             // No change needed, but track for dedup
             const existing = seen.get(newPattern);
-            if (!existing || (mapping.usageCount as number) > existing.usageCount) {
+            if (
+              !existing ||
+              (mapping.usageCount as number) > existing.usageCount
+            ) {
               seen.set(newPattern, {
                 id: mapping.id as string,
                 usageCount: mapping.usageCount as number,
@@ -473,7 +476,7 @@ export class VaultDatabase extends Dexie {
         const incomeCategoryIds = new Set<string>();
 
         for (const cat of allCategories) {
-          const name = (cat.name as string || '').toLowerCase();
+          const name = ((cat.name as string) || '').toLowerCase();
           // "Income" is the primary income category.
           // Also include any sub-categories of Income (parentId matches).
           if (name === 'income' || name === 'salary') {
@@ -489,7 +492,9 @@ export class VaultDatabase extends Dexie {
         }
 
         if (incomeCategoryIds.size === 0) {
-          console.log('[DB v9] No income categories found — skipping migration');
+          console.log(
+            '[DB v9] No income categories found — skipping migration'
+          );
           return;
         }
 
@@ -556,7 +561,9 @@ export class VaultDatabase extends Dexie {
           await txTable.update(transaction.id as string, {
             transactionType: inferredType,
           });
-          if (inferredType) setCount++;
+          if (inferredType) {
+            setCount++;
+          }
         }
 
         console.log(
@@ -1006,9 +1013,8 @@ export class VaultDatabase extends Dexie {
       const now = new Date();
 
       // Derive default categories from the Category Registry (single source of truth)
-      const { getDefaultCategorySeeds, getSubcategorySeeds } = await import(
-        '@/lib/categories/category-registry'
-      );
+      const { getDefaultCategorySeeds, getSubcategorySeeds } =
+        await import('@/lib/categories/category-registry');
       const seeds = getDefaultCategorySeeds();
 
       const defaultCategories: Category[] = seeds.map((seed) => ({
@@ -1037,7 +1043,9 @@ export class VaultDatabase extends Dexie {
 
       for (const sub of subSeeds) {
         const parentId = parentNameToId.get(sub.parentName.toLowerCase());
-        if (!parentId) continue;
+        if (!parentId) {
+          continue;
+        }
 
         subCategories.push({
           id: uuidv4() as CategoryId,

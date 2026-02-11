@@ -31,7 +31,9 @@ export interface UseLLMCategorizeReturn {
   /** Whether an LLM request is in flight */
   isLoading: boolean;
   /** Request LLM categorization for a transaction */
-  requestLLM: (input: CategorizationInput) => Promise<LLMCategorySuggestion | null>;
+  requestLLM: (
+    input: CategorizationInput
+  ) => Promise<LLMCategorySuggestion | null>;
   /** Clear the current suggestion */
   clearSuggestion: () => void;
   /** Confidence threshold that triggers LLM fallback */
@@ -45,7 +47,9 @@ export function useLLMCategorize(): UseLLMCategorizeReturn {
   const lastRequestRef = useRef<string>('');
 
   const requestLLM = useCallback(
-    async (input: CategorizationInput): Promise<LLMCategorySuggestion | null> => {
+    async (
+      input: CategorizationInput
+    ): Promise<LLMCategorySuggestion | null> => {
       // Deduplicate by vendor
       const key = input.vendor.toLowerCase().trim();
       if (key === lastRequestRef.current && llmSuggestion) {
@@ -101,7 +105,9 @@ export function useBatchLLMCategorize(): UseBatchLLMCategorizeReturn {
   const [isLoading, setIsLoading] = useState(false);
 
   const requestBatch = useCallback(async (inputs: CategorizationInput[]) => {
-    if (inputs.length === 0) return;
+    if (inputs.length === 0) {
+      return;
+    }
 
     setIsLoading(true);
     try {

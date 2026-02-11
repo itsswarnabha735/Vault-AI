@@ -16,7 +16,11 @@
  */
 
 import { db } from '@/lib/storage/db';
-import type { LocalTransaction, CategoryId, TransactionId } from '@/types/database';
+import type {
+  LocalTransaction,
+  CategoryId,
+  TransactionId,
+} from '@/types/database';
 
 // ============================================
 // Types
@@ -95,11 +99,41 @@ interface FrequencyRange {
 
 const FREQUENCY_RANGES: FrequencyRange[] = [
   { frequency: 'weekly', idealDays: 7, minDays: 5, maxDays: 9, tolerance: 0.3 },
-  { frequency: 'biweekly', idealDays: 14, minDays: 12, maxDays: 17, tolerance: 0.2 },
-  { frequency: 'monthly', idealDays: 30, minDays: 26, maxDays: 35, tolerance: 0.15 },
-  { frequency: 'quarterly', idealDays: 91, minDays: 80, maxDays: 100, tolerance: 0.1 },
-  { frequency: 'semi-annual', idealDays: 182, minDays: 165, maxDays: 200, tolerance: 0.1 },
-  { frequency: 'annual', idealDays: 365, minDays: 340, maxDays: 395, tolerance: 0.08 },
+  {
+    frequency: 'biweekly',
+    idealDays: 14,
+    minDays: 12,
+    maxDays: 17,
+    tolerance: 0.2,
+  },
+  {
+    frequency: 'monthly',
+    idealDays: 30,
+    minDays: 26,
+    maxDays: 35,
+    tolerance: 0.15,
+  },
+  {
+    frequency: 'quarterly',
+    idealDays: 91,
+    minDays: 80,
+    maxDays: 100,
+    tolerance: 0.1,
+  },
+  {
+    frequency: 'semi-annual',
+    idealDays: 182,
+    minDays: 165,
+    maxDays: 200,
+    tolerance: 0.1,
+  },
+  {
+    frequency: 'annual',
+    idealDays: 365,
+    minDays: 340,
+    maxDays: 395,
+    tolerance: 0.08,
+  },
 ];
 
 /** Minimum transactions required to detect a pattern */
@@ -130,9 +164,13 @@ function daysBetween(a: Date, b: Date): number {
  * Compute mean and standard deviation of an array.
  */
 function meanStdDev(values: number[]): { mean: number; stdDev: number } {
-  if (values.length === 0) return { mean: 0, stdDev: 0 };
+  if (values.length === 0) {
+    return { mean: 0, stdDev: 0 };
+  }
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  if (values.length === 1) return { mean, stdDev: 0 };
+  if (values.length === 1) {
+    return { mean, stdDev: 0 };
+  }
   const variance =
     values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (values.length - 1);
   return { mean, stdDev: Math.sqrt(variance) };
@@ -147,7 +185,10 @@ function normaliseVendorForGrouping(vendor: string): string {
   // Strip UPI prefix
   const upiMatch = v.match(/^upi\/([^/@]+)/);
   if (upiMatch?.[1]) {
-    v = upiMatch[1].replace(/\.\w+$/, '').replace(/[._-]/g, ' ').trim();
+    v = upiMatch[1]
+      .replace(/\.\w+$/, '')
+      .replace(/[._-]/g, ' ')
+      .trim();
   }
 
   // Strip NEFT/RTGS/IMPS
@@ -161,7 +202,9 @@ function normaliseVendorForGrouping(vendor: string): string {
     .trim();
 
   // Truncate to first 30 chars for grouping
-  if (v.length > 30) v = v.slice(0, 30).trim();
+  if (v.length > 30) {
+    v = v.slice(0, 30).trim();
+  }
 
   return v;
 }
@@ -212,16 +255,24 @@ class RecurringDetectorService {
    * Detect patterns from a given set of transactions (pure function).
    */
   analyseTransactions(transactions: LocalTransaction[]): RecurringPattern[] {
-    if (transactions.length < MIN_TRANSACTIONS) return [];
+    if (transactions.length < MIN_TRANSACTIONS) {
+      return [];
+    }
 
     // 1. Group by normalised vendor
     const groups = new Map<string, LocalTransaction[]>();
     for (const tx of transactions) {
-      if (!tx.vendor || tx.vendor.trim().length === 0) continue;
+      if (!tx.vendor || tx.vendor.trim().length === 0) {
+        continue;
+      }
       const key = normaliseVendorForGrouping(tx.vendor);
-      if (key.length < 2) continue;
+      if (key.length < 2) {
+        continue;
+      }
 
-      if (!groups.has(key)) groups.set(key, []);
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
       groups.get(key)!.push(tx);
     }
 
@@ -229,7 +280,9 @@ class RecurringDetectorService {
     const patterns: RecurringPattern[] = [];
 
     for (const [vendorKey, txs] of groups) {
-      if (txs.length < MIN_TRANSACTIONS) continue;
+      if (txs.length < MIN_TRANSACTIONS) {
+        continue;
+      }
 
       // Sort by date ascending
       txs.sort(
@@ -243,10 +296,14 @@ class RecurringDetectorService {
           parseDate(txs[i]!.date),
           parseDate(txs[i - 1]!.date)
         );
-        if (days > 0) intervals.push(days);
+        if (days > 0) {
+          intervals.push(days);
+        }
       }
 
-      if (intervals.length === 0) continue;
+      if (intervals.length === 0) {
+        continue;
+      }
 
       // Detect best frequency match
       const pattern = this.detectFrequency(vendorKey, txs, intervals);
@@ -285,9 +342,7 @@ class RecurringDetectorService {
   /**
    * Check if a specific vendor has a recurring pattern.
    */
-  async getPatternForVendor(
-    vendor: string
-  ): Promise<RecurringPattern | null> {
+  async getPatternForVendor(vendor: string): Promise<RecurringPattern | null> {
     const patterns = await this.detectPatterns();
     const key = normaliseVendorForGrouping(vendor);
     return patterns.find((p) => p.vendor === key) || null;
@@ -320,13 +375,20 @@ class RecurringDetectorService {
 
     for (const range of FREQUENCY_RANGES) {
       // Check if average interval falls within this frequency's range
-      if (avgInterval < range.minDays || avgInterval > range.maxDays) continue;
+      if (avgInterval < range.minDays || avgInterval > range.maxDays) {
+        continue;
+      }
 
       // Score: how consistent are the intervals relative to the ideal?
-      const deviation = Math.abs(avgInterval - range.idealDays) / range.idealDays;
+      const deviation =
+        Math.abs(avgInterval - range.idealDays) / range.idealDays;
       const consistency =
         intervalStdDev > 0
-          ? 1 - Math.min(1, intervalStdDev / (range.idealDays * range.tolerance * 2))
+          ? 1 -
+            Math.min(
+              1,
+              intervalStdDev / (range.idealDays * range.tolerance * 2)
+            )
           : 1;
 
       const score = (1 - deviation) * 0.4 + consistency * 0.6;
@@ -336,7 +398,9 @@ class RecurringDetectorService {
       }
     }
 
-    if (!bestMatch || bestMatch.score < 0.3) return null;
+    if (!bestMatch || bestMatch.score < 0.3) {
+      return null;
+    }
 
     // Amount analysis
     const amounts = txs.map((tx) => Math.abs(tx.amount));

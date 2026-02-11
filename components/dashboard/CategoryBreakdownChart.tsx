@@ -43,15 +43,26 @@ export function CategoryBreakdownChart() {
       // Show only children of the drilled-down parent + the parent itself
       return data.filter((item) => {
         const catId = item.categoryId as string | null;
-        if (!catId) return false;
-        return catId === drillDownParent || parentLookup.get(catId) === drillDownParent;
+        if (!catId) {
+          return false;
+        }
+        return (
+          catId === drillDownParent ||
+          parentLookup.get(catId) === drillDownParent
+        );
       });
     }
 
     // Aggregate: merge children into parent totals
     const parentTotals = new Map<
       string | null,
-      { amount: number; count: number; name: string; icon: string; color: string }
+      {
+        amount: number;
+        count: number;
+        name: string;
+        icon: string;
+        color: string;
+      }
     >();
 
     for (const item of data) {
@@ -66,7 +77,9 @@ export function CategoryBreakdownChart() {
       } else {
         // Use parent category info if aggregating
         if (parentId) {
-          const parentCat = categories.find((c) => (c.id as string) === parentId);
+          const parentCat = categories.find(
+            (c) => (c.id as string) === parentId
+          );
           parentTotals.set(effectiveId, {
             amount: item.amount,
             count: item.transactionCount,
@@ -86,7 +99,10 @@ export function CategoryBreakdownChart() {
       }
     }
 
-    const total = Array.from(parentTotals.values()).reduce((s, v) => s + v.amount, 0);
+    const total = Array.from(parentTotals.values()).reduce(
+      (s, v) => s + v.amount,
+      0
+    );
 
     return Array.from(parentTotals.entries())
       .map(([categoryId, info]) => ({
@@ -122,7 +138,9 @@ export function CategoryBreakdownChart() {
 
   // Check if any category has children (for drill-down)
   const hasChildren = (categoryId: string | null) => {
-    if (!categoryId) return false;
+    if (!categoryId) {
+      return false;
+    }
     return categories.some((c) => (c.parentId as string) === categoryId);
   };
 
@@ -145,7 +163,10 @@ export function CategoryBreakdownChart() {
         {drillDownParent && (
           <button
             type="button"
-            onClick={() => { setDrillDownParent(null); setActiveIndex(null); }}
+            onClick={() => {
+              setDrillDownParent(null);
+              setActiveIndex(null);
+            }}
             className="text-xs text-vault-text-secondary hover:text-vault-text-primary"
           >
             &larr; Back to all
@@ -206,7 +227,8 @@ export function CategoryBreakdownChart() {
             {/* Legend */}
             <div className="flex-1 space-y-2">
               {chartData.slice(0, 6).map((item, index) => {
-                const canDrill = !drillDownParent && hasChildren(item.categoryId as string);
+                const canDrill =
+                  !drillDownParent && hasChildren(item.categoryId as string);
 
                 const innerContent = (
                   <>
@@ -218,7 +240,9 @@ export function CategoryBreakdownChart() {
                       <span className="text-sm">{item.icon}</span>
                       <span className="text-sm font-medium">{item.name}</span>
                       {canDrill && (
-                        <span className="text-[10px] text-vault-text-secondary">&rsaquo;</span>
+                        <span className="text-[10px] text-vault-text-secondary">
+                          &rsaquo;
+                        </span>
                       )}
                     </div>
                     <div className="text-right">
@@ -241,7 +265,10 @@ export function CategoryBreakdownChart() {
                   <button
                     key={item.categoryId ?? 'uncategorized'}
                     type="button"
-                    onClick={() => { setDrillDownParent(item.categoryId as string); setActiveIndex(null); }}
+                    onClick={() => {
+                      setDrillDownParent(item.categoryId as string);
+                      setActiveIndex(null);
+                    }}
                     className={sharedClassName}
                     onMouseEnter={() => setActiveIndex(index)}
                     onMouseLeave={() => setActiveIndex(null)}

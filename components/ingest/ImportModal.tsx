@@ -501,9 +501,17 @@ export function ImportModal({
         // Save each transaction
         for (const tx of transactions) {
           // Determine credit/debit type from parsed transaction type field
-          const CREDIT_TYPES_SET = new Set(['credit', 'payment', 'refund', 'interest']);
-          const transactionType: 'debit' | 'credit' =
-            CREDIT_TYPES_SET.has(tx.type) ? 'credit' : 'debit';
+          const CREDIT_TYPES_SET = new Set([
+            'credit',
+            'payment',
+            'refund',
+            'interest',
+          ]);
+          const transactionType: 'debit' | 'credit' = CREDIT_TYPES_SET.has(
+            tx.type
+          )
+            ? 'credit'
+            : 'debit';
 
           const transaction = {
             date: tx.date,

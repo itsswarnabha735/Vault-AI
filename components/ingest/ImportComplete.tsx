@@ -95,7 +95,9 @@ export function ImportComplete({
 
   // Handle retroactive re-categorization
   const handleRetroApply = async () => {
-    if (!retroactiveSuggestion) return;
+    if (!retroactiveSuggestion) {
+      return;
+    }
     setRetroApplying(true);
     try {
       const updated = await retroactiveSuggestion.onApply();
@@ -192,8 +194,8 @@ export function ImportComplete({
                   <span className="font-semibold">
                     {retroactiveSuggestion.vendorCount}
                   </span>{' '}
-                  vendor{retroactiveSuggestion.vendorCount !== 1 ? 's' : ''} that
-                  can be re-categorized to match your corrections.
+                  vendor{retroactiveSuggestion.vendorCount !== 1 ? 's' : ''}{' '}
+                  that can be re-categorized to match your corrections.
                 </p>
                 <div className="mt-3 flex gap-2">
                   <Button

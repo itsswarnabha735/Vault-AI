@@ -15,10 +15,17 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '@/lib/storage/db';
-import { llmCategorizer, type LLMCategorySuggestion } from '@/lib/ai/llm-categorizer';
-import { embeddingClassifier, isRealEmbedding } from '@/lib/ai/embedding-classifier';
+import { llmCategorizer } from '@/lib/ai/llm-categorizer';
+import {
+  embeddingClassifier,
+  isRealEmbedding,
+} from '@/lib/ai/embedding-classifier';
 import { autoCategorizer } from '@/lib/processing/auto-categorizer';
-import type { LocalTransaction, CategoryId, TransactionId } from '@/types/database';
+import type {
+  LocalTransaction,
+  CategoryId,
+  TransactionId,
+} from '@/types/database';
 
 // ============================================
 // Types
@@ -44,7 +51,10 @@ export interface UseBatchRecategorizeReturn {
   /** Number of uncategorised transactions found */
   uncategorizedCount: number;
   /** Apply a single suggestion */
-  applySuggestion: (transactionId: TransactionId, categoryName: string) => Promise<void>;
+  applySuggestion: (
+    transactionId: TransactionId,
+    categoryName: string
+  ) => Promise<void>;
   /** Apply all suggestions at once */
   applyAll: () => Promise<number>;
   /** Dismiss a suggestion */
@@ -82,12 +92,12 @@ export function useBatchRecategorize(): UseBatchRecategorizeReturn {
   /**
    * Find uncategorised transactions.
    */
-  const getUncategorized = useCallback(async (): Promise<LocalTransaction[]> => {
+  const getUncategorized = useCallback(async (): Promise<
+    LocalTransaction[]
+  > => {
     const all = await db.transactions.toArray();
     return all.filter(
-      (tx) =>
-        !tx.category ||
-        tx.category === ('other' as CategoryId)
+      (tx) => !tx.category || tx.category === ('other' as CategoryId)
     );
   }, []);
 
@@ -97,7 +107,9 @@ export function useBatchRecategorize(): UseBatchRecategorizeReturn {
    * 2. LLM for remaining (low k-NN confidence or no embedding)
    */
   const runBatch = useCallback(async () => {
-    if (runningRef.current) return;
+    if (runningRef.current) {
+      return;
+    }
     runningRef.current = true;
     setIsProcessing(true);
 
@@ -122,7 +134,8 @@ export function useBatchRecategorize(): UseBatchRecategorizeReturn {
       }
 
       if (knnEmbeddings.size > 0) {
-        const knnResults = await embeddingClassifier.classifyBatch(knnEmbeddings);
+        const knnResults =
+          await embeddingClassifier.classifyBatch(knnEmbeddings);
         for (const tx of batch) {
           const knnResult = knnResults.get(tx.id);
           if (knnResult && knnResult.confidence >= 0.6) {
@@ -244,7 +257,9 @@ export function useBatchRecategorize(): UseBatchRecategorizeReturn {
       }
 
       // Remove from suggestions
-      setSuggestions((prev) => prev.filter((s) => s.transactionId !== transactionId));
+      setSuggestions((prev) =>
+        prev.filter((s) => s.transactionId !== transactionId)
+      );
       setUncategorizedCount((prev) => Math.max(0, prev - 1));
     },
     []
@@ -260,7 +275,11 @@ export function useBatchRecategorize(): UseBatchRecategorizeReturn {
         await applySuggestion(s.transactionId, s.suggestedCategory);
         applied++;
       } catch (error) {
-        console.error('[BatchRecategorize] Failed to apply:', s.transactionId, error);
+        console.error(
+          '[BatchRecategorize] Failed to apply:',
+          s.transactionId,
+          error
+        );
       }
     }
     return applied;
@@ -270,7 +289,9 @@ export function useBatchRecategorize(): UseBatchRecategorizeReturn {
    * Dismiss a single suggestion.
    */
   const dismiss = useCallback((transactionId: TransactionId) => {
-    setSuggestions((prev) => prev.filter((s) => s.transactionId !== transactionId));
+    setSuggestions((prev) =>
+      prev.filter((s) => s.transactionId !== transactionId)
+    );
   }, []);
 
   /**

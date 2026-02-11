@@ -9,7 +9,7 @@
 
 'use client';
 
-import { RefreshCw, CalendarClock, TrendingUp, ArrowRight } from 'lucide-react';
+import { RefreshCw, CalendarClock, TrendingUp } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -44,18 +44,26 @@ const FREQUENCY_COLORS: Record<RecurrenceFrequency, string> = {
 function daysUntil(dateStr: string): number {
   const target = new Date(dateStr);
   const now = new Date();
-  return Math.ceil(
-    (target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function formatRelativeDate(dateStr: string): string {
   const days = daysUntil(dateStr);
-  if (days < 0) return `${Math.abs(days)}d overdue`;
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Tomorrow';
-  if (days <= 7) return `In ${days} days`;
-  if (days <= 14) return 'Next week';
+  if (days < 0) {
+    return `${Math.abs(days)}d overdue`;
+  }
+  if (days === 0) {
+    return 'Today';
+  }
+  if (days === 1) {
+    return 'Tomorrow';
+  }
+  if (days <= 7) {
+    return `In ${days} days`;
+  }
+  if (days <= 14) {
+    return 'Next week';
+  }
   return `In ${Math.ceil(days / 7)} weeks`;
 }
 
@@ -179,9 +187,7 @@ export function RecurringTransactionsCard() {
             </p>
             <div className="space-y-1">
               {activePatterns
-                .filter(
-                  (p) => !upcoming.some((u) => u.id === p.id)
-                )
+                .filter((p) => !upcoming.some((u) => u.id === p.id))
                 .slice(0, 3)
                 .map((pattern) => {
                   const cat = pattern.categoryId
@@ -195,7 +201,9 @@ export function RecurringTransactionsCard() {
                     >
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <span>{cat?.icon || '📦'}</span>
-                        <span className="truncate">{pattern.displayVendor}</span>
+                        <span className="truncate">
+                          {pattern.displayVendor}
+                        </span>
                         <Badge
                           variant="outline"
                           className={cn(
@@ -207,7 +215,10 @@ export function RecurringTransactionsCard() {
                         </Badge>
                       </div>
                       <span className="ml-2 shrink-0 font-mono text-[11px]">
-                        {formatCurrency(pattern.averageAmount, pattern.currency)}
+                        {formatCurrency(
+                          pattern.averageAmount,
+                          pattern.currency
+                        )}
                       </span>
                     </div>
                   );

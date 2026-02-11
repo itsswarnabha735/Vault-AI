@@ -14,7 +14,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { buildLLMCategoryBlock, getAllCategoryNames } from '@/lib/categories/category-registry';
+import {
+  buildLLMCategoryBlock,
+  getAllCategoryNames,
+} from '@/lib/categories/category-registry';
 
 // ============================================
 // Types

@@ -1007,7 +1007,11 @@ class ChatServiceImpl implements ChatService {
       }
 
       // Fall back to cloud aggregates only when local aggregates aren't available
-      if (!verifiedData && effectiveClassification.needsCloudData && searchResults.length > 0) {
+      if (
+        !verifiedData &&
+        effectiveClassification.needsCloudData &&
+        searchResults.length > 0
+      ) {
         verifiedData = await this.fetchVerifiedData(
           allSearchResults.map((r) => r.transactionId),
           effectiveEntities
@@ -1015,7 +1019,31 @@ class ChatServiceImpl implements ChatService {
       }
 
       // #region agent log
-      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:processQuery:afterAggregates',message:'Final verifiedData in processQuery',data:{hasVerifiedData:!!verifiedData,verifiedDataSummary:verifiedData?{total:verifiedData.total,totalExpenses:verifiedData.totalExpenses,totalIncome:verifiedData.totalIncome,count:verifiedData.count}:null,searchResultsCount:searchResults.length,allSearchResultsCount:allSearchResults.length,intent:effectiveClassification.intent,direction:effectiveEntities.transactionDirection},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+      fetch('/api/debug-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'chat-service.ts:processQuery:afterAggregates',
+          message: 'Final verifiedData in processQuery',
+          data: {
+            hasVerifiedData: !!verifiedData,
+            verifiedDataSummary: verifiedData
+              ? {
+                  total: verifiedData.total,
+                  totalExpenses: verifiedData.totalExpenses,
+                  totalIncome: verifiedData.totalIncome,
+                  count: verifiedData.count,
+                }
+              : null,
+            searchResultsCount: searchResults.length,
+            allSearchResultsCount: allSearchResults.length,
+            intent: effectiveClassification.intent,
+            direction: effectiveEntities.transactionDirection,
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'D',
+        }),
+      }).catch(() => {});
       // #endregion
 
       // 4. Build citations
@@ -1176,7 +1204,25 @@ class ChatServiceImpl implements ChatService {
       const classification = await classifyQueryAsync(effectiveQuery);
 
       // #region agent log
-      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:classifyQueryAsync',message:'Intent classification result',data:{query:effectiveQuery,intent:classification.intent,confidence:classification.confidence,direction:classification.entities.transactionDirection,dateRange:classification.entities.dateRange,needsCloudData:classification.needsCloudData,needsLocalSearch:classification.needsLocalSearch},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
+      fetch('/api/debug-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'chat-service.ts:classifyQueryAsync',
+          message: 'Intent classification result',
+          data: {
+            query: effectiveQuery,
+            intent: classification.intent,
+            confidence: classification.confidence,
+            direction: classification.entities.transactionDirection,
+            dateRange: classification.entities.dateRange,
+            needsCloudData: classification.needsCloudData,
+            needsLocalSearch: classification.needsLocalSearch,
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'E',
+        }),
+      }).catch(() => {});
       // #endregion
 
       // 1b. For follow-up queries, merge entities with previous context
@@ -1203,7 +1249,27 @@ class ChatServiceImpl implements ChatService {
       );
 
       // #region agent log
-      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:afterSearch',message:'Search results before selection',data:{allSearchResultsCount:allSearchResults.length,sampleResults:allSearchResults.slice(0,5).map(r=>({id:r.transactionId,amount:r.transaction.amount,vendor:r.transaction.vendor,date:r.transaction.date,category:r.transaction.category,score:r.score}))},timestamp:Date.now(),hypothesisId:'A,D'})}).catch(()=>{});
+      fetch('/api/debug-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'chat-service.ts:afterSearch',
+          message: 'Search results before selection',
+          data: {
+            allSearchResultsCount: allSearchResults.length,
+            sampleResults: allSearchResults.slice(0, 5).map((r) => ({
+              id: r.transactionId,
+              amount: r.transaction.amount,
+              vendor: r.transaction.vendor,
+              date: r.transaction.date,
+              category: r.transaction.category,
+              score: r.score,
+            })),
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'A,D',
+        }),
+      }).catch(() => {});
       // #endregion
 
       // 2b. Intent-aware transaction selection
@@ -1226,7 +1292,11 @@ class ChatServiceImpl implements ChatService {
       }
 
       // Fall back to cloud aggregates only when local aggregates aren't available
-      if (!verifiedData && effectiveClassification.needsCloudData && searchResults.length > 0) {
+      if (
+        !verifiedData &&
+        effectiveClassification.needsCloudData &&
+        searchResults.length > 0
+      ) {
         verifiedData = await this.fetchVerifiedData(
           allSearchResults.map((r) => r.transactionId),
           effectiveEntities
@@ -1234,7 +1304,33 @@ class ChatServiceImpl implements ChatService {
       }
 
       // #region agent log
-      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:processQueryStream:afterAggregates',message:'Final verifiedData in streaming path',data:{hasVerifiedData:!!verifiedData,verifiedDataSummary:verifiedData?{total:verifiedData.total,totalExpenses:verifiedData.totalExpenses,totalIncome:verifiedData.totalIncome,count:verifiedData.count,expenseCount:verifiedData.expenseCount,incomeCount:verifiedData.incomeCount}:null,searchResultsCount:searchResults.length,allSearchResultsCount:allSearchResults.length,intent:effectiveClassification.intent,direction:effectiveEntities.transactionDirection},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+      fetch('/api/debug-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'chat-service.ts:processQueryStream:afterAggregates',
+          message: 'Final verifiedData in streaming path',
+          data: {
+            hasVerifiedData: !!verifiedData,
+            verifiedDataSummary: verifiedData
+              ? {
+                  total: verifiedData.total,
+                  totalExpenses: verifiedData.totalExpenses,
+                  totalIncome: verifiedData.totalIncome,
+                  count: verifiedData.count,
+                  expenseCount: verifiedData.expenseCount,
+                  incomeCount: verifiedData.incomeCount,
+                }
+              : null,
+            searchResultsCount: searchResults.length,
+            allSearchResultsCount: allSearchResults.length,
+            intent: effectiveClassification.intent,
+            direction: effectiveEntities.transactionDirection,
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'D',
+        }),
+      }).catch(() => {});
       // #endregion
 
       // 4. Build citations
@@ -1582,7 +1678,23 @@ class ChatServiceImpl implements ChatService {
 
     if (entities.transactionDirection === 'income' && !isCredit) {
       // #region agent log
-      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:matchesFilters:incomeReject',message:'Rejecting tx: wants income but not credit',data:{txId:transaction.id,amount:transaction.amount,vendor:transaction.vendor,date:transaction.date,transactionType:transaction.transactionType},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      fetch('/api/debug-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'chat-service.ts:matchesFilters:incomeReject',
+          message: 'Rejecting tx: wants income but not credit',
+          data: {
+            txId: transaction.id,
+            amount: transaction.amount,
+            vendor: transaction.vendor,
+            date: transaction.date,
+            transactionType: transaction.transactionType,
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'A',
+        }),
+      }).catch(() => {});
       // #endregion
       return false; // User wants income, this is an expense
     }
@@ -1729,7 +1841,34 @@ class ChatServiceImpl implements ChatService {
       }
 
       // #region agent log
-      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:computeLocalAggregates:beforeFilter',message:'All transactions in date range BEFORE direction filter',data:{totalCount:transactions.length,direction:entities.transactionDirection,dateRange:entities.dateRange,amountDistribution:{positiveCount:transactions.filter(t=>t.amount>=0).length,negativeCount:transactions.filter(t=>t.amount<0).length,zeroCount:transactions.filter(t=>t.amount===0).length},sampleWithRawText:transactions.slice(0,10).map(t=>({id:t.id,amount:t.amount,vendor:t.vendor,date:t.date,rawTextPrefix:t.rawText?.substring(0,120)||'(empty)'}))},timestamp:Date.now(),runId:'post-fix',hypothesisId:'A,C'})}).catch(()=>{});
+      fetch('/api/debug-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'chat-service.ts:computeLocalAggregates:beforeFilter',
+          message: 'All transactions in date range BEFORE direction filter',
+          data: {
+            totalCount: transactions.length,
+            direction: entities.transactionDirection,
+            dateRange: entities.dateRange,
+            amountDistribution: {
+              positiveCount: transactions.filter((t) => t.amount >= 0).length,
+              negativeCount: transactions.filter((t) => t.amount < 0).length,
+              zeroCount: transactions.filter((t) => t.amount === 0).length,
+            },
+            sampleWithRawText: transactions.slice(0, 10).map((t) => ({
+              id: t.id,
+              amount: t.amount,
+              vendor: t.vendor,
+              date: t.date,
+              rawTextPrefix: t.rawText?.substring(0, 120) || '(empty)',
+            })),
+          },
+          timestamp: Date.now(),
+          runId: 'post-fix',
+          hypothesisId: 'A,C',
+        }),
+      }).catch(() => {});
       // #endregion
 
       // Apply direction filter — use transactionType when available, fallback to amount sign
@@ -1746,7 +1885,25 @@ class ChatServiceImpl implements ChatService {
       }
 
       // #region agent log
-      fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'chat-service.ts:computeLocalAggregates:afterFilter',message:'Transactions AFTER direction filter',data:{remainingCount:transactions.length,direction:entities.transactionDirection,sampleTypes:transactions.slice(0,5).map(t=>({id:t.id,amount:t.amount,type:t.transactionType}))},timestamp:Date.now(),hypothesisId:'A,C,D'})}).catch(()=>{});
+      fetch('/api/debug-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'chat-service.ts:computeLocalAggregates:afterFilter',
+          message: 'Transactions AFTER direction filter',
+          data: {
+            remainingCount: transactions.length,
+            direction: entities.transactionDirection,
+            sampleTypes: transactions.slice(0, 5).map((t) => ({
+              id: t.id,
+              amount: t.amount,
+              type: t.transactionType,
+            })),
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'A,C,D',
+        }),
+      }).catch(() => {});
       // #endregion
 
       // Apply category filter — critical for queries like "investments in January"
@@ -1809,8 +1966,7 @@ class ChatServiceImpl implements ChatService {
     for (const tx of transactions) {
       const amount = tx.amount;
       // Use transactionType when available; fall back to amount sign
-      const isCredit =
-        tx.transactionType === 'credit' || tx.amount < 0;
+      const isCredit = tx.transactionType === 'credit' || tx.amount < 0;
 
       if (isCredit) {
         totalIncome += Math.abs(amount);

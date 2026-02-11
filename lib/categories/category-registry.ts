@@ -124,7 +124,9 @@ export interface CategoryDefinition {
    * Used as a secondary signal: if the transaction type matches,
    * confidence is boosted; if it contradicts, confidence is unchanged.
    */
-  preferredTypes?: Array<'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest'>;
+  preferredTypes?: Array<
+    'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest'
+  >;
 
   /**
    * Optional sub-categories for two-level hierarchy.
@@ -260,7 +262,11 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
       'boulangerie',
       'trattoria',
       'tavern',
-      { keyword: 'pub', wordBoundary: true, exclude: ['public', 'publish', 'republic'] },
+      {
+        keyword: 'pub',
+        wordBoundary: true,
+        exclude: ['public', 'publish', 'republic'],
+      },
       'bar & grill',
       'tapas',
       'kebab',
@@ -293,8 +299,18 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
     preferredTypes: ['debit'],
     subcategories: [
       { slug: 'restaurants', name: 'Restaurants', icon: '🍴', sortOrder: 1 },
-      { slug: 'coffee-cafes', name: 'Coffee & Cafes', icon: '☕', sortOrder: 2 },
-      { slug: 'food-delivery', name: 'Food Delivery', icon: '🛵', sortOrder: 3 },
+      {
+        slug: 'coffee-cafes',
+        name: 'Coffee & Cafes',
+        icon: '☕',
+        sortOrder: 2,
+      },
+      {
+        slug: 'food-delivery',
+        name: 'Food Delivery',
+        icon: '🛵',
+        sortOrder: 3,
+      },
       { slug: 'fast-food', name: 'Fast Food', icon: '🍔', sortOrder: 4 },
       { slug: 'bars-pubs', name: 'Bars & Pubs', icon: '🍻', sortOrder: 5 },
     ],
@@ -333,7 +349,11 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
       'winn dixie',
       'grocery',
       'supermarket',
-      { keyword: 'market', wordBoundary: true, exclude: ['stock market', 'marketing', 'marketplace'] },
+      {
+        keyword: 'market',
+        wordBoundary: true,
+        exclude: ['stock market', 'marketing', 'marketplace'],
+      },
       'farm stand',
       'big bazaar',
       'reliance fresh',
@@ -451,7 +471,11 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
       'gift shop',
       'souvenir',
       'boutique',
-      { keyword: 'store', wordBoundary: true, exclude: ['app store', 'play store'] },
+      {
+        keyword: 'store',
+        wordBoundary: true,
+        exclude: ['app store', 'play store'],
+      },
     ],
     queryAliases: [
       'shopping',
@@ -468,8 +492,18 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
     amountHints: { typicalMin: 5, typicalMax: 50000 },
     preferredTypes: ['debit'],
     subcategories: [
-      { slug: 'online-shopping', name: 'Online Shopping', icon: '📦', sortOrder: 1 },
-      { slug: 'clothing', name: 'Clothing & Apparel', icon: '👕', sortOrder: 2 },
+      {
+        slug: 'online-shopping',
+        name: 'Online Shopping',
+        icon: '📦',
+        sortOrder: 1,
+      },
+      {
+        slug: 'clothing',
+        name: 'Clothing & Apparel',
+        icon: '👕',
+        sortOrder: 2,
+      },
       { slug: 'electronics', name: 'Electronics', icon: '📱', sortOrder: 3 },
       { slug: 'home-garden', name: 'Home & Garden', icon: '🏡', sortOrder: 4 },
     ],
@@ -541,8 +575,18 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
     preferredTypes: ['debit'],
     subcategories: [
       { slug: 'ride-hailing', name: 'Ride-hailing', icon: '🚕', sortOrder: 1 },
-      { slug: 'public-transit', name: 'Public Transit', icon: '🚇', sortOrder: 2 },
-      { slug: 'parking-tolls', name: 'Parking & Tolls', icon: '🅿️', sortOrder: 3 },
+      {
+        slug: 'public-transit',
+        name: 'Public Transit',
+        icon: '🚇',
+        sortOrder: 2,
+      },
+      {
+        slug: 'parking-tolls',
+        name: 'Parking & Tolls',
+        icon: '🅿️',
+        sortOrder: 3,
+      },
       { slug: 'car-rental', name: 'Car Rental', icon: '🚙', sortOrder: 4 },
     ],
   },
@@ -558,14 +602,22 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
     sortOrder: 5,
     isDefault: true,
     vendorPatterns: [
-      { keyword: 'shell', wordBoundary: true, exclude: ['hotel', 'beach', 'resort', 'sea'] },
+      {
+        keyword: 'shell',
+        wordBoundary: true,
+        exclude: ['hotel', 'beach', 'resort', 'sea'],
+      },
       'exxon',
       'mobil',
       'chevron',
       { keyword: 'bp', wordBoundary: true },
       'citgo',
       'sunoco',
-      { keyword: 'marathon', wordBoundary: true, exclude: ['marathon sports', 'marathon run'] },
+      {
+        keyword: 'marathon',
+        wordBoundary: true,
+        exclude: ['marathon sports', 'marathon run'],
+      },
       'valero',
       'phillips 66',
       'speedway',
@@ -612,7 +664,11 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
       'disney+',
       'disney plus',
       'hbo',
-      { keyword: 'max', wordBoundary: true, exclude: ['max life', 'max healthcare', 'max bupa'] },
+      {
+        keyword: 'max',
+        wordBoundary: true,
+        exclude: ['max life', 'max healthcare', 'max bupa'],
+      },
       'paramount',
       'peacock',
       'apple tv',
@@ -667,10 +723,25 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
     amountHints: { typicalMin: 2, typicalMax: 5000 },
     preferredTypes: ['debit'],
     subcategories: [
-      { slug: 'streaming', name: 'Streaming Services', icon: '📺', sortOrder: 1 },
-      { slug: 'movies-shows', name: 'Movies & Shows', icon: '🎥', sortOrder: 2 },
+      {
+        slug: 'streaming',
+        name: 'Streaming Services',
+        icon: '📺',
+        sortOrder: 1,
+      },
+      {
+        slug: 'movies-shows',
+        name: 'Movies & Shows',
+        icon: '🎥',
+        sortOrder: 2,
+      },
       { slug: 'gaming', name: 'Gaming', icon: '🎮', sortOrder: 3 },
-      { slug: 'events-concerts', name: 'Events & Concerts', icon: '🎫', sortOrder: 4 },
+      {
+        slug: 'events-concerts',
+        name: 'Events & Concerts',
+        icon: '🎫',
+        sortOrder: 4,
+      },
     ],
   },
 
@@ -698,7 +769,16 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
       'urgent care',
       { keyword: 'emergency', wordBoundary: true },
       'medical',
-      { keyword: 'health', wordBoundary: true, exclude: ['health insurance', 'star health', 'niva bupa', 'care health'] },
+      {
+        keyword: 'health',
+        wordBoundary: true,
+        exclude: [
+          'health insurance',
+          'star health',
+          'niva bupa',
+          'care health',
+        ],
+      },
       'labcorp',
       'quest diagnostics',
       { keyword: 'lab', wordBoundary: true, exclude: ['lab grown', 'collab'] },
@@ -727,7 +807,12 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
     preferredTypes: ['debit'],
     subcategories: [
       { slug: 'pharmacy', name: 'Pharmacy', icon: '💊', sortOrder: 1 },
-      { slug: 'doctor-visits', name: 'Doctor Visits', icon: '👨‍⚕️', sortOrder: 2 },
+      {
+        slug: 'doctor-visits',
+        name: 'Doctor Visits',
+        icon: '👨‍⚕️',
+        sortOrder: 2,
+      },
       { slug: 'hospital', name: 'Hospital', icon: '🏥', sortOrder: 3 },
       { slug: 'lab-tests', name: 'Lab Tests', icon: '🔬', sortOrder: 4 },
     ],
@@ -879,8 +964,18 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
     preferredTypes: ['debit'],
     subcategories: [
       { slug: 'flights', name: 'Flights', icon: '✈️', sortOrder: 1 },
-      { slug: 'hotels-lodging', name: 'Hotels & Lodging', icon: '🏨', sortOrder: 2 },
-      { slug: 'travel-booking', name: 'Travel Booking', icon: '🗺️', sortOrder: 3 },
+      {
+        slug: 'hotels-lodging',
+        name: 'Hotels & Lodging',
+        icon: '🏨',
+        sortOrder: 2,
+      },
+      {
+        slug: 'travel-booking',
+        name: 'Travel Booking',
+        icon: '🗺️',
+        sortOrder: 3,
+      },
     ],
   },
 
@@ -934,7 +1029,11 @@ export const CATEGORY_REGISTRY: readonly CategoryDefinition[] = [
       'insurance premium',
       'policy renewal',
       { keyword: 'insurance', wordBoundary: true },
-      { keyword: 'premium', wordBoundary: true, exclude: ['youtube premium', 'spotify premium', 'linkedin premium'] },
+      {
+        keyword: 'premium',
+        wordBoundary: true,
+        exclude: ['youtube premium', 'spotify premium', 'linkedin premium'],
+      },
       { keyword: 'policy', wordBoundary: true },
       'coverage',
     ],

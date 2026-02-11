@@ -117,10 +117,14 @@ class EmbeddingBackfillService {
   async run(
     onProgress?: (progress: BackfillProgress) => void
   ): Promise<number> {
-    if (this.running) return 0;
+    if (this.running) {
+      return 0;
+    }
     this.running = true;
 
-    const report = (p: Partial<BackfillProgress> & { status: BackfillProgress['status'] }) => {
+    const report = (
+      p: Partial<BackfillProgress> & { status: BackfillProgress['status'] }
+    ) => {
       onProgress?.({ total: 0, completed: 0, ...p });
     };
 
@@ -162,9 +166,10 @@ class EmbeddingBackfillService {
           try {
             // Generate embedding from structured fields
             // (rawText may be empty for statement/CSV imports)
-            const text = tx.rawText && tx.rawText.trim().length > 10
-              ? tx.rawText
-              : buildSearchText(tx, categoryNames);
+            const text =
+              tx.rawText && tx.rawText.trim().length > 10
+                ? tx.rawText
+                : buildSearchText(tx, categoryNames);
 
             const embedding = await embeddingService.embedText(text);
 
@@ -172,10 +177,7 @@ class EmbeddingBackfillService {
             await db.transactions.update(tx.id, { embedding });
             completed++;
           } catch (error) {
-            console.warn(
-              `[EmbeddingBackfill] Failed for ${tx.id}:`,
-              error
-            );
+            console.warn(`[EmbeddingBackfill] Failed for ${tx.id}:`, error);
           }
         }
 

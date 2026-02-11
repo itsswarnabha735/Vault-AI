@@ -18,7 +18,11 @@
 
 import { useState, useCallback } from 'react';
 import { db } from '@/lib/storage/db';
-import type { CategoryId, TransactionId, LocalTransaction } from '@/types/database';
+import type {
+  CategoryId,
+  TransactionId,
+  LocalTransaction,
+} from '@/types/database';
 
 // ============================================
 // Types

@@ -14,8 +14,6 @@
  * No raw text, embeddings, or documents.
  */
 
-import type { CategoryId } from '@/types/database';
-
 // ============================================
 // Types
 // ============================================
@@ -76,7 +74,10 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
 
 class LLMCategorizerService {
   /** In-memory cache: vendor (lowercase) → suggestion */
-  private cache = new Map<string, { result: LLMCategorySuggestion; timestamp: number }>();
+  private cache = new Map<
+    string,
+    { result: LLMCategorySuggestion; timestamp: number }
+  >();
 
   /** In-flight request deduplication */
   private inflight = new Map<string, Promise<LLMCategorySuggestion | null>>();
@@ -151,7 +152,10 @@ class LLMCategorizerService {
           const input = batch.find((b) => b.id === id);
           if (input) {
             const cacheKey = input.vendor.toLowerCase().trim();
-            this.cache.set(cacheKey, { result: suggestion, timestamp: Date.now() });
+            this.cache.set(cacheKey, {
+              result: suggestion,
+              timestamp: Date.now(),
+            });
           }
         }
       } catch (error) {
@@ -222,7 +226,9 @@ class LLMCategorizerService {
 
       const data = (await response.json()) as APIResponse;
       const result = data.results[0];
-      if (!result) return null;
+      if (!result) {
+        return null;
+      }
 
       return {
         categoryName: result.category,

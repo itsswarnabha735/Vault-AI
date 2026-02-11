@@ -85,17 +85,17 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 export function isRealEmbedding(
   embedding: Float32Array | number[] | null | undefined
 ): embedding is Float32Array | number[] {
-  if (!embedding || embedding.length !== 384) return false;
+  if (!embedding || embedding.length !== 384) {
+    return false;
+  }
 
   // Quick check: if the first, middle, and last values are all 0 do a full scan
-  if (
-    embedding[0] === 0 &&
-    embedding[191] === 0 &&
-    embedding[383] === 0
-  ) {
+  if (embedding[0] === 0 && embedding[191] === 0 && embedding[383] === 0) {
     // Full scan — reject if every element is 0
     for (let i = 0; i < embedding.length; i++) {
-      if (embedding[i] !== 0) return true;
+      if (embedding[i] !== 0) {
+        return true;
+      }
     }
     return false;
   }
@@ -130,7 +130,9 @@ class EmbeddingClassifierService {
     }
 
     // Reject zero-filled query embeddings
-    if (!isRealEmbedding(embedding)) return null;
+    if (!isRealEmbedding(embedding)) {
+      return null;
+    }
 
     const queryVec =
       embedding instanceof Float32Array
@@ -191,12 +193,16 @@ class EmbeddingClassifierService {
       }
     }
 
-    if (!winner) return null;
+    if (!winner) {
+      return null;
+    }
 
     const avgSimilarity = winner.totalSimilarity / winner.count;
 
     // Reject if similarity is too low
-    if (avgSimilarity < MIN_SIMILARITY) return null;
+    if (avgSimilarity < MIN_SIMILARITY) {
+      return null;
+    }
 
     // Confidence = f(vote proportion, average similarity)
     const voteProportion = winner.count / topK.length;

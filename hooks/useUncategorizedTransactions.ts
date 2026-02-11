@@ -11,9 +11,16 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/storage/db';
-import { autoCategorizer, type CategorySuggestion } from '@/lib/processing/auto-categorizer';
+import {
+  autoCategorizer,
+  type CategorySuggestion,
+} from '@/lib/processing/auto-categorizer';
 import { useCategories } from '@/hooks/useLocalDB';
-import type { LocalTransaction, CategoryId, TransactionId } from '@/types/database';
+import type {
+  LocalTransaction,
+  CategoryId,
+  TransactionId,
+} from '@/types/database';
 
 export interface UncategorizedSuggestion {
   /** Transaction */
@@ -36,7 +43,10 @@ export interface UseUncategorizedTransactionsReturn {
   /** Whether the data is still loading */
   isLoading: boolean;
   /** Apply a suggestion (update transaction category in DB) */
-  applySuggestion: (transactionId: TransactionId, categoryId: CategoryId) => Promise<void>;
+  applySuggestion: (
+    transactionId: TransactionId,
+    categoryId: CategoryId
+  ) => Promise<void>;
   /** Apply all suggestions at once */
   applyAll: () => Promise<number>;
   /** Dismiss a transaction (assign to "Other" so it's no longer flagged) */
@@ -97,7 +107,9 @@ export function useUncategorizedTransactions(): UseUncategorizedTransactionsRetu
 
   // Generate suggestions for each uncategorized transaction
   const items = useMemo<UncategorizedSuggestion[]>(() => {
-    if (!rawTransactions || rawTransactions.length === 0) return [];
+    if (!rawTransactions || rawTransactions.length === 0) {
+      return [];
+    }
 
     return rawTransactions.slice(0, MAX_DISPLAY).map((tx) => {
       const suggestion = tx.vendor
@@ -112,7 +124,9 @@ export function useUncategorizedTransactions(): UseUncategorizedTransactionsRetu
       if (suggestion) {
         if (suggestion.isLearned && suggestion.learnedCategoryId) {
           suggestedCategoryId = suggestion.learnedCategoryId;
-          const cat = categories.find((c) => c.id === suggestion.learnedCategoryId);
+          const cat = categories.find(
+            (c) => c.id === suggestion.learnedCategoryId
+          );
           suggestedCategoryName = cat?.name || null;
         } else {
           suggestedCategoryId =
@@ -131,7 +145,9 @@ export function useUncategorizedTransactions(): UseUncategorizedTransactionsRetu
   }, [rawTransactions, categories, categoryNameToId]);
 
   const totalCount = rawTransactions?.length || 0;
-  const suggestableCount = items.filter((i) => i.suggestedCategoryId !== null).length;
+  const suggestableCount = items.filter(
+    (i) => i.suggestedCategoryId !== null
+  ).length;
 
   // Apply a single suggestion
   const applySuggestion = async (
@@ -147,7 +163,9 @@ export function useUncategorizedTransactions(): UseUncategorizedTransactionsRetu
   // Apply all suggestions at once
   const applyAll = async (): Promise<number> => {
     const applicable = items.filter((i) => i.suggestedCategoryId !== null);
-    if (applicable.length === 0) return 0;
+    if (applicable.length === 0) {
+      return 0;
+    }
 
     await db.transaction('rw', db.transactions, async () => {
       for (const item of applicable) {

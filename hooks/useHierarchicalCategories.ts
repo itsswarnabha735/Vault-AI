@@ -48,7 +48,10 @@ export function useHierarchicalCategories(): UseHierarchicalCategoriesReturn {
 
   const { groups, flatList } = useMemo(() => {
     if (categories.length === 0) {
-      return { groups: [] as CategoryGroup[], flatList: [] as CategoryOption[] };
+      return {
+        groups: [] as CategoryGroup[],
+        flatList: [] as CategoryOption[],
+      };
     }
 
     // Separate root and child categories

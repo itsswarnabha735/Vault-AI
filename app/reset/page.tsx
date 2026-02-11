@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 export default function ResetPage() {
   const [status, setStatus] = useState<string[]>([]);
@@ -38,9 +38,7 @@ export default function ResetPage() {
           resolve();
         };
         req.onblocked = () => {
-          log(
-            '⚠️ IndexedDB blocked — close ALL other Vault-AI tabs and retry'
-          );
+          log('⚠️ IndexedDB blocked — close ALL other Vault-AI tabs and retry');
           resolve();
         };
       });
@@ -50,15 +48,15 @@ export default function ResetPage() {
       try {
         const root = await navigator.storage.getDirectory();
         const entries: string[] = [];
-        for await (const name of (root as any).keys()) {
+        for await (const name of (root as unknown as { keys(): AsyncIterable<string> }).keys()) {
           entries.push(name);
         }
         for (const name of entries) {
           await root.removeEntry(name, { recursive: true });
         }
         log(`✅ OPFS cleared (${entries.length} entries removed)`);
-      } catch (e: any) {
-        log(`⚠️ OPFS: ${e.message}`);
+      } catch (e: unknown) {
+        log(`⚠️ OPFS: ${e instanceof Error ? e.message : String(e)}`);
       }
 
       // 4. Clear transformer/model caches
@@ -77,8 +75,8 @@ export default function ResetPage() {
           }
         }
         log(`✅ Cleared ${cleared} model cache(s)`);
-      } catch (e: any) {
-        log(`⚠️ Cache: ${e.message}`);
+      } catch (e: unknown) {
+        log(`⚠️ Cache: ${e instanceof Error ? e.message : String(e)}`);
       }
 
       // 5. Clear localStorage (keep auth)
@@ -101,8 +99,8 @@ export default function ResetPage() {
       log('');
       log('🎉 All data cleared! You are still logged in.');
       log('Click the button below to start fresh.');
-    } catch (e: any) {
-      log(`❌ Error: ${e.message}`);
+    } catch (e: unknown) {
+      log(`❌ Error: ${e instanceof Error ? e.message : String(e)}`);
     }
     setDone(true);
   }

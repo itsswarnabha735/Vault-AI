@@ -92,7 +92,9 @@ function softmax(logits: Float32Array): Float32Array {
   // Numerical stability: subtract max
   let max = -Infinity;
   for (let i = 0; i < logits.length; i++) {
-    if (logits[i]! > max) max = logits[i]!;
+    if (logits[i]! > max) {
+      max = logits[i]!;
+    }
   }
   let sum = 0;
   for (let i = 0; i < logits.length; i++) {
@@ -160,7 +162,8 @@ function sgdStep(
     // Update weights with L2 regularisation
     for (let d = 0; d < EMBED_DIM; d++) {
       weights[offset + d] =
-        weights[offset + d]! - lr * (grad * embedding[d]! + L2_LAMBDA * weights[offset + d]!);
+        weights[offset + d]! -
+        lr * (grad * embedding[d]! + L2_LAMBDA * weights[offset + d]!);
     }
 
     // Update bias
@@ -191,7 +194,9 @@ class LocalClassifierService {
    * Load persisted weights from IndexedDB.
    */
   async loadWeights(): Promise<boolean> {
-    if (this.loaded && this.weights) return true;
+    if (this.loaded && this.weights) {
+      return true;
+    }
 
     try {
       const stored = await db.kvStore.get(WEIGHTS_STORAGE_KEY);
@@ -227,7 +232,9 @@ class LocalClassifierService {
    * Persist current weights to IndexedDB.
    */
   private async saveWeights(): Promise<void> {
-    if (!this.weights) return;
+    if (!this.weights) {
+      return;
+    }
 
     try {
       await db.kvStore.put({
@@ -281,7 +288,9 @@ class LocalClassifierService {
 
     // Build class label mapping
     const classSet = new Set<CategoryId>();
-    for (const s of samples) classSet.add(s.categoryId);
+    for (const s of samples) {
+      classSet.add(s.categoryId);
+    }
     const classLabels = Array.from(classSet);
     const classIndex = new Map<CategoryId, number>();
     classLabels.forEach((label, idx) => classIndex.set(label, idx));
@@ -352,16 +361,16 @@ class LocalClassifierService {
    * Much faster than full retrain — only runs a few SGD epochs
    * on the new data.
    */
-  async incrementalUpdate(
-    newSamples: TrainingSample[]
-  ): Promise<boolean> {
+  async incrementalUpdate(newSamples: TrainingSample[]): Promise<boolean> {
     if (!this.weights) {
       // Need to do a full train first
       const result = await this.train();
       return result !== null;
     }
 
-    if (newSamples.length === 0) return true;
+    if (newSamples.length === 0) {
+      return true;
+    }
 
     const { weights, biases, classLabels } = this.weights;
     const classIndex = new Map<CategoryId, number>();
@@ -419,10 +428,14 @@ class LocalClassifierService {
     embedding: Float32Array | number[]
   ): Promise<ClassifierPrediction | null> {
     await this.loadWeights();
-    if (!this.weights) return null;
+    if (!this.weights) {
+      return null;
+    }
 
     // Reject zero-filled embeddings
-    if (!isRealEmbedding(embedding)) return null;
+    if (!isRealEmbedding(embedding)) {
+      return null;
+    }
 
     const vec =
       embedding instanceof Float32Array

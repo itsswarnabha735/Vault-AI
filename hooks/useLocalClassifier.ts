@@ -45,7 +45,9 @@ export function useLocalClassifier(): UseLocalClassifierReturn {
 
   // Load stats and auto-train on mount
   useEffect(() => {
-    if (initRef.current) return;
+    if (initRef.current) {
+      return;
+    }
     initRef.current = true;
 
     void (async () => {
@@ -114,7 +116,9 @@ export function useLocalClassifier(): UseLocalClassifierReturn {
       embedding: Float32Array | number[]
     ): Promise<{ categoryId: string; confidence: number } | null> => {
       const result = await localClassifier.predict(embedding);
-      if (!result) return null;
+      if (!result) {
+        return null;
+      }
       return {
         categoryId: result.categoryId as string,
         confidence: result.confidence,

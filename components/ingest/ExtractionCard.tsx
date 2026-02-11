@@ -156,7 +156,9 @@ export function ExtractionCard({
   // Track whether category was auto-set and its confidence level
   const [categoryAutoSet, setCategoryAutoSet] = useState(!!initialAutoCategory);
   const [categoryConfidence, setCategoryConfidence] = useState<number>(() => {
-    if (!initialVendor) return 0;
+    if (!initialVendor) {
+      return 0;
+    }
     const s = autoCategorizer.suggestCategory(initialVendor, {
       amount: initialAmount || undefined,
     });
@@ -331,7 +333,10 @@ export function ExtractionCard({
               <span className="ml-1.5">
                 • {selectedCategory.icon} {selectedCategory.name}
                 {categoryAutoSet && (
-                  <CategoryConfidenceBadge tier={categoryConfidenceTier} className="ml-1" />
+                  <CategoryConfidenceBadge
+                    tier={categoryConfidenceTier}
+                    className="ml-1"
+                  />
                 )}
               </span>
             )}
@@ -425,19 +430,22 @@ export function ExtractionCard({
                 }
                 className={cn(
                   'mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-                  categoryAutoSet && editedValues.category && (
-                    categoryConfidenceTier === 'high'
+                  categoryAutoSet &&
+                    editedValues.category &&
+                    (categoryConfidenceTier === 'high'
                       ? 'border-emerald-500/50'
                       : categoryConfidenceTier === 'medium'
                         ? 'border-amber-500/50'
-                        : 'border-orange-500/50'
-                  )
+                        : 'border-orange-500/50')
                 )}
               >
                 <option value="">Select category</option>
-                {categoryGroups.map((group) => (
+                {categoryGroups.map((group) =>
                   group.children.length > 0 ? (
-                    <optgroup key={group.parent.id} label={`${group.parent.icon} ${group.parent.name}`}>
+                    <optgroup
+                      key={group.parent.id}
+                      label={`${group.parent.icon} ${group.parent.name}`}
+                    >
                       <option value={group.parent.id}>
                         {group.parent.icon} {group.parent.name} (General)
                       </option>
@@ -452,7 +460,7 @@ export function ExtractionCard({
                       {group.parent.icon} {group.parent.name}
                     </option>
                   )
-                ))}
+                )}
               </select>
             </div>
 
@@ -498,8 +506,13 @@ interface CategoryConfidenceBadgeProps {
   className?: string;
 }
 
-function CategoryConfidenceBadge({ tier, className }: CategoryConfidenceBadgeProps) {
-  if (tier === 'none') return null;
+function CategoryConfidenceBadge({
+  tier,
+  className,
+}: CategoryConfidenceBadgeProps) {
+  if (tier === 'none') {
+    return null;
+  }
 
   const config = {
     high: {

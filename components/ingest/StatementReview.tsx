@@ -24,11 +24,11 @@ import {
   type ImportDuplicateResult,
 } from '@/lib/anomaly/import-duplicate-checker';
 import { autoCategorizer } from '@/lib/processing/auto-categorizer';
-import { useHierarchicalCategories, type CategoryGroup } from '@/hooks/useHierarchicalCategories';
 import {
-  useBatchLLMCategorize,
-  type UseBatchLLMCategorizeReturn,
-} from '@/hooks/useLLMCategorize';
+  useHierarchicalCategories,
+  type CategoryGroup,
+} from '@/hooks/useHierarchicalCategories';
+import { useBatchLLMCategorize } from '@/hooks/useLLMCategorize';
 import { LLM_CATEGORIZE_THRESHOLD } from '@/lib/ai/llm-categorizer';
 import type {
   StatementParseResult,
@@ -194,15 +194,26 @@ export function StatementReview({
   const llmEligibleCount = useMemo(() => {
     let count = 0;
     for (const tx of transactions) {
-      if (llmSuggestions.has(tx.id)) continue; // Already have LLM suggestion
+      if (llmSuggestions.has(tx.id)) {
+        continue;
+      } // Already have LLM suggestion
       const suggestion = tx.vendor
         ? autoCategorizer.suggestCategory(tx.vendor, {
             amount: tx.amount ? Math.abs(tx.amount) : undefined,
-            type: (tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest') || undefined,
+            type:
+              (tx.type as
+                | 'debit'
+                | 'credit'
+                | 'fee'
+                | 'refund'
+                | 'payment'
+                | 'interest') || undefined,
           })
         : null;
       const conf = suggestion?.confidence || 0;
-      if (conf < LLM_CATEGORIZE_THRESHOLD) count++;
+      if (conf < LLM_CATEGORIZE_THRESHOLD) {
+        count++;
+      }
     }
     return count;
   }, [transactions, llmSuggestions]);
@@ -210,17 +221,28 @@ export function StatementReview({
   // Handle "Get AI Suggestions" button
   const handleRequestLLM = useCallback(() => {
     const eligible = transactions.filter((tx) => {
-      if (llmSuggestions.has(tx.id)) return false;
+      if (llmSuggestions.has(tx.id)) {
+        return false;
+      }
       const suggestion = tx.vendor
         ? autoCategorizer.suggestCategory(tx.vendor, {
             amount: tx.amount ? Math.abs(tx.amount) : undefined,
-            type: (tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest') || undefined,
+            type:
+              (tx.type as
+                | 'debit'
+                | 'credit'
+                | 'fee'
+                | 'refund'
+                | 'payment'
+                | 'interest') || undefined,
           })
         : null;
       return (suggestion?.confidence || 0) < LLM_CATEGORIZE_THRESHOLD;
     });
 
-    if (eligible.length === 0) return;
+    if (eligible.length === 0) {
+      return;
+    }
 
     void requestLLMBatch(
       eligible.map((tx) => ({
@@ -228,18 +250,29 @@ export function StatementReview({
         vendor: tx.vendor,
         amount: Math.abs(tx.amount),
         date: tx.date,
-        type: (tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest') || 'debit',
+        type:
+          (tx.type as
+            | 'debit'
+            | 'credit'
+            | 'fee'
+            | 'refund'
+            | 'payment'
+            | 'interest') || 'debit',
       }))
     );
   }, [transactions, llmSuggestions, requestLLMBatch]);
 
   // Apply LLM suggestions to transactions that don't have a category yet
   useEffect(() => {
-    if (llmSuggestions.size === 0) return;
+    if (llmSuggestions.size === 0) {
+      return;
+    }
 
     let hasUpdates = false;
     const updated = transactions.map((tx) => {
-      if (tx.category) return tx; // Already has a category set
+      if (tx.category) {
+        return tx;
+      } // Already has a category set
       const llmResult = llmSuggestions.get(tx.id);
       if (llmResult) {
         const catId = categoryMap.get(llmResult.categoryName.toLowerCase());
@@ -274,13 +307,24 @@ export function StatementReview({
         const suggestion = tx.vendor
           ? autoCategorizer.suggestCategory(tx.vendor, {
               amount: tx.amount ? Math.abs(tx.amount) : undefined,
-              type: (tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest') || undefined,
+              type:
+                (tx.type as
+                  | 'debit'
+                  | 'credit'
+                  | 'fee'
+                  | 'refund'
+                  | 'payment'
+                  | 'interest') || undefined,
             })
           : null;
         const conf = suggestion?.confidence || 0;
-        if (conf >= 0.85) high++;
-        else if (conf >= 0.6) medium++;
-        else low++;
+        if (conf >= 0.85) {
+          high++;
+        } else if (conf >= 0.6) {
+          medium++;
+        } else {
+          low++;
+        }
       } else {
         uncategorized++;
       }
@@ -542,7 +586,8 @@ export function StatementReview({
               ) : (
                 <>
                   <SparklesIcon className="h-3 w-3" />
-                  AI-categorize {llmEligibleCount} transaction{llmEligibleCount !== 1 ? 's' : ''}
+                  AI-categorize {llmEligibleCount} transaction
+                  {llmEligibleCount !== 1 ? 's' : ''}
                 </>
               )}
             </Button>
@@ -685,18 +730,26 @@ function TransactionRow({
   const catSuggestion = tx.vendor
     ? autoCategorizer.suggestCategory(tx.vendor, {
         amount: tx.amount ? Math.abs(tx.amount) : undefined,
-        type: (tx.type as 'debit' | 'credit' | 'fee' | 'refund' | 'payment' | 'interest') || undefined,
+        type:
+          (tx.type as
+            | 'debit'
+            | 'credit'
+            | 'fee'
+            | 'refund'
+            | 'payment'
+            | 'interest') || undefined,
       })
     : null;
   const catConfidence = catSuggestion?.confidence || 0;
   type CatTier = 'high' | 'medium' | 'low' | 'none';
-  const catTier: CatTier = !matchedCategory && !tx.suggestedCategoryName
-    ? 'none'
-    : catConfidence >= 0.85
-      ? 'high'
-      : catConfidence >= 0.6
-        ? 'medium'
-        : 'low';
+  const catTier: CatTier =
+    !matchedCategory && !tx.suggestedCategoryName
+      ? 'none'
+      : catConfidence >= 0.85
+        ? 'high'
+        : catConfidence >= 0.6
+          ? 'medium'
+          : 'low';
 
   if (isEditing) {
     return (
@@ -746,9 +799,12 @@ function TransactionRow({
             className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
           >
             <option value="">Uncategorized</option>
-            {categoryGroups.map((group) => (
+            {categoryGroups.map((group) =>
               group.children.length > 0 ? (
-                <optgroup key={group.parent.id} label={`${group.parent.icon} ${group.parent.name}`}>
+                <optgroup
+                  key={group.parent.id}
+                  label={`${group.parent.icon} ${group.parent.name}`}
+                >
                   <option value={group.parent.id}>
                     {group.parent.icon} {group.parent.name} (General)
                   </option>
@@ -763,7 +819,7 @@ function TransactionRow({
                   {group.parent.icon} {group.parent.name}
                 </option>
               )
-            ))}
+            )}
           </select>
         </td>
         <td className="px-3 py-2 text-right">
@@ -865,13 +921,22 @@ function TransactionRow({
           ) : (
             <>
               {catTier === 'high' && (
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" title="Auto-categorized (high confidence)" />
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
+                  title="Auto-categorized (high confidence)"
+                />
               )}
               {catTier === 'medium' && (
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Suggested (medium confidence)" />
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"
+                  title="Suggested (medium confidence)"
+                />
               )}
               {catTier === 'low' && (
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" title="Low confidence" />
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500"
+                  title="Low confidence"
+                />
               )}
             </>
           )}

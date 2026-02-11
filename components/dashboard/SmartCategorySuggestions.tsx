@@ -11,7 +11,15 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Tag, Sparkles, Check, X, ChevronRight, Wand2, FolderTree } from 'lucide-react';
+import {
+  Tag,
+  Sparkles,
+  Check,
+  X,
+  ChevronRight,
+  Wand2,
+  FolderTree,
+} from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -122,7 +130,8 @@ export function SmartCategorySuggestions() {
           </div>
           <div>
             <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-              {appliedCount} transaction{appliedCount !== 1 ? 's' : ''} categorized
+              {appliedCount} transaction{appliedCount !== 1 ? 's' : ''}{' '}
+              categorized
             </p>
             <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">
               Nice work keeping your finances organized!
@@ -164,7 +173,8 @@ export function SmartCategorySuggestions() {
       </CardHeader>
       <CardContent className="space-y-1 pt-0">
         <p className="mb-3 text-xs text-muted-foreground">
-          {totalCount} uncategorized transaction{totalCount !== 1 ? 's' : ''} found.
+          {totalCount} uncategorized transaction{totalCount !== 1 ? 's' : ''}{' '}
+          found.
           {suggestableCount > 0
             ? ` We have suggestions for ${suggestableCount}.`
             : ' Review them to keep your finances organized.'}
@@ -197,17 +207,19 @@ export function SmartCategorySuggestions() {
             AI is analysing uncategorized transactions...
           </div>
         )}
-        {!batchRecat.hasRunThisSession && totalCount >= 3 && !batchRecat.isProcessing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void batchRecat.triggerRecategorize()}
-            className="mb-2 h-7 w-full gap-1 text-xs text-muted-foreground"
-          >
-            <Wand2 className="h-3 w-3" />
-            Run AI batch categorization
-          </Button>
-        )}
+        {!batchRecat.hasRunThisSession &&
+          totalCount >= 3 &&
+          !batchRecat.isProcessing && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void batchRecat.triggerRecategorize()}
+              className="mb-2 h-7 w-full gap-1 text-xs text-muted-foreground"
+            >
+              <Wand2 className="h-3 w-3" />
+              Run AI batch categorization
+            </Button>
+          )}
 
         {/* Suggestion rows */}
         <div className="space-y-1.5">
@@ -258,14 +270,22 @@ export function SmartCategorySuggestions() {
                   className="flex items-center gap-2 rounded-md border border-border bg-muted/20 px-2 py-1"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] font-medium">{s.vendor}</p>
+                    <p className="truncate text-[11px] font-medium">
+                      {s.vendor}
+                    </p>
                     <p className="text-[9px] text-muted-foreground">
-                      {s.currentCategoryName} → {s.suggestedSubcategoryIcon} {s.suggestedSubcategoryName}
+                      {s.currentCategoryName} → {s.suggestedSubcategoryIcon}{' '}
+                      {s.suggestedSubcategoryName}
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => void subcatSuggestions.applySuggestion(s.transactionId, s.suggestedSubcategoryId)}
+                    onClick={() =>
+                      void subcatSuggestions.applySuggestion(
+                        s.transactionId,
+                        s.suggestedSubcategoryId
+                      )
+                    }
                     className="rounded p-0.5 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
                     title="Accept"
                   >
@@ -283,7 +303,8 @@ export function SmartCategorySuggestions() {
               ))}
               {subcatSuggestions.suggestions.length > 3 && (
                 <p className="text-center text-[10px] text-muted-foreground">
-                  +{subcatSuggestions.suggestions.length - 3} more refinements available
+                  +{subcatSuggestions.suggestions.length - 3} more refinements
+                  available
                 </p>
               )}
             </div>
@@ -320,7 +341,12 @@ interface SuggestionRowProps {
   suggestedCategoryId: CategoryId | null;
   confidence: number;
   transactionId: TransactionId;
-  categories: Array<{ id: CategoryId; name: string; icon: string; color: string }>;
+  categories: Array<{
+    id: CategoryId;
+    name: string;
+    icon: string;
+    color: string;
+  }>;
   onAccept: (transactionId: TransactionId, categoryId: CategoryId) => void;
   onDismiss: (transactionId: TransactionId) => void;
 }
@@ -338,7 +364,9 @@ function SuggestionRow({
   onAccept,
   onDismiss,
 }: SuggestionRowProps) {
-  const [manualCategoryId, setManualCategoryId] = useState<CategoryId | null>(null);
+  const [manualCategoryId, setManualCategoryId] = useState<CategoryId | null>(
+    null
+  );
 
   const suggestedCat = suggestedCategoryId
     ? categories.find((c) => c.id === suggestedCategoryId)
