@@ -17,7 +17,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '@/lib/storage/db';
 import { autoCategorizer } from '@/lib/processing/auto-categorizer';
 import { resolveCategoryName } from '@/lib/categories/category-registry';
-import type { CategoryId, LocalTransaction } from '@/types/database';
+import type { CategoryId, LocalTransaction, TransactionId } from '@/types/database';
 
 // ============================================
 // Types
@@ -102,7 +102,7 @@ export function useAutoFixCategories(): AutoFixProgress {
       for (let i = 0; i < uncategorized.length; i += BATCH_SIZE) {
         const batch = uncategorized.slice(i, i + BATCH_SIZE);
         const updates: Array<{
-          id: string;
+          id: TransactionId;
           categoryId: CategoryId;
         }> = [];
 
