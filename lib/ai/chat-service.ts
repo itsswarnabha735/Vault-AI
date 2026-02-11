@@ -720,6 +720,12 @@ class ChatServiceImpl implements ChatService {
   private initialized = false;
   private categoryCache: Map<CategoryId, string> = new Map();
 
+  /** Last query classification per session — used for follow-up context inheritance */
+  private lastClassification: Map<string, QueryClassification> = new Map();
+
+  /** Last extracted entities per session — used for entity merging on follow-ups */
+  private lastEntities: Map<string, ExtractedQueryEntities> = new Map();
+
   /**
    * Initialize the chat service.
    * Loads the embedding model, vector index, and category cache.
@@ -948,10 +954,40 @@ class ChatServiceImpl implements ChatService {
       // 1. Classify intent and extract entities (embedding-based with regex fallback)
       const classification = await classifyQueryAsync(effectiveQuery);
 
-      // 2. Search local context
-      const searchResults = await this.searchLocalContext(
+      // 1b. For follow-up queries, merge entities with previous context
+      //     so filters like date range and categories carry forward.
+      let effectiveEntities = classification.entities;
+      if (wasReformulated) {
+        const prev = this.getPreviousQueryContext(context.sessionId);
+        if (prev.entities) {
+          effectiveEntities = this.mergeEntities(
+            classification.entities,
+            prev.entities
+          );
+          console.log(
+            `[ChatService] Merged follow-up entities with previous context`
+          );
+        }
+      }
+
+      // Use effective entities for the rest of the pipeline
+      const effectiveClassification: QueryClassification = {
+        ...classification,
+        entities: effectiveEntities,
+      };
+
+      // 2. Search local context (returns all matching results, uncapped)
+      const allSearchResults = await this.searchLocalContext(
         effectiveQuery,
-        classification
+        effectiveClassification
+      );
+
+      // 2b. Intent-aware transaction selection: pick the best diverse
+      //     subset for the LLM context based on query type
+      const searchResults = this.selectContextTransactions(
+        allSearchResults,
+        effectiveClassification.intent,
+        effectiveEntities
       );
 
       // 3. Compute aggregates — always provide accurate pre-computed totals
@@ -959,20 +995,18 @@ class ChatServiceImpl implements ChatService {
       let verifiedData: VerifiedFinancialData | undefined;
 
       // Try cloud first for verified totals
-      if (classification.needsCloudData && searchResults.length > 0) {
+      if (effectiveClassification.needsCloudData && searchResults.length > 0) {
         verifiedData = await this.fetchVerifiedData(
           searchResults.map((r) => r.transactionId),
-          classification.entities
+          effectiveEntities
         );
       }
 
       // Fall back to local aggregates when cloud data isn't available,
       // or when we have a date range (to get totals over the FULL dataset,
       // not just the 20 transactions in context).
-      if (!verifiedData && classification.entities.dateRange) {
-        verifiedData = await this.computeLocalAggregates(
-          classification.entities
-        );
+      if (!verifiedData && effectiveEntities.dateRange) {
+        verifiedData = await this.computeLocalAggregates(effectiveEntities);
       }
 
       // 4. Build citations
@@ -980,6 +1014,13 @@ class ChatServiceImpl implements ChatService {
 
       // 5. Prepare safe transaction data
       const safeTransactions = this.prepareTransactionsForPrompt(searchResults);
+
+      // 5b. Store query context for follow-up inheritance
+      this.storeQueryContext(
+        context.sessionId,
+        effectiveClassification,
+        effectiveEntities
+      );
 
       // 6. Build privacy-safe prompt
       // Use the original query for the prompt so the LLM sees what the user actually typed,
@@ -995,7 +1036,7 @@ class ChatServiceImpl implements ChatService {
 
       const promptContext: PromptContext = {
         query: effectiveQuery,
-        intent: classification.intent,
+        intent: effectiveClassification.intent,
         transactions: safeTransactions,
         verifiedData,
         history: context.history.slice(-DEFAULT_CONFIG.maxHistoryMessages),
@@ -1015,7 +1056,9 @@ class ChatServiceImpl implements ChatService {
 
       if (isLLMAvailable()) {
         const structured = buildStructuredPrompt(promptContext);
-        const overrides = getGenerationOverrides(classification.intent);
+        const overrides = getGenerationOverrides(
+          effectiveClassification.intent
+        );
         const llmResponse = await getLLMClient().generateStructured(
           structured,
           overrides
@@ -1036,7 +1079,7 @@ class ChatServiceImpl implements ChatService {
       const verification = verifyResponseAmounts(
         responseText,
         verifiedData,
-        classification.intent,
+        effectiveClassification.intent,
         inferredCurrency
       );
       if (verification.wasCorrected) {
@@ -1064,7 +1107,7 @@ class ChatServiceImpl implements ChatService {
         content: query,
         timestamp: new Date(),
         citations: null,
-        intent: classification.intent,
+        intent: effectiveClassification.intent,
       });
 
       this.addToHistory(context.sessionId, {
@@ -1123,26 +1166,48 @@ class ChatServiceImpl implements ChatService {
       // 1. Classify intent and extract entities (embedding-based with regex fallback)
       const classification = await classifyQueryAsync(effectiveQuery);
 
-      // 2. Search local context
-      const searchResults = await this.searchLocalContext(
+      // 1b. For follow-up queries, merge entities with previous context
+      let effectiveEntities = classification.entities;
+      if (wasReformulated) {
+        const prev = this.getPreviousQueryContext(context.sessionId);
+        if (prev.entities) {
+          effectiveEntities = this.mergeEntities(
+            classification.entities,
+            prev.entities
+          );
+        }
+      }
+
+      const effectiveClassification: QueryClassification = {
+        ...classification,
+        entities: effectiveEntities,
+      };
+
+      // 2. Search local context (returns all matching results, uncapped)
+      const allSearchResults = await this.searchLocalContext(
         effectiveQuery,
-        classification
+        effectiveClassification
+      );
+
+      // 2b. Intent-aware transaction selection
+      const searchResults = this.selectContextTransactions(
+        allSearchResults,
+        effectiveClassification.intent,
+        effectiveEntities
       );
 
       // 3. Compute aggregates — always provide accurate pre-computed totals
       let verifiedData: VerifiedFinancialData | undefined;
 
-      if (classification.needsCloudData && searchResults.length > 0) {
+      if (effectiveClassification.needsCloudData && searchResults.length > 0) {
         verifiedData = await this.fetchVerifiedData(
           searchResults.map((r) => r.transactionId),
-          classification.entities
+          effectiveEntities
         );
       }
 
-      if (!verifiedData && classification.entities.dateRange) {
-        verifiedData = await this.computeLocalAggregates(
-          classification.entities
-        );
+      if (!verifiedData && effectiveEntities.dateRange) {
+        verifiedData = await this.computeLocalAggregates(effectiveEntities);
       }
 
       // 4. Build citations
@@ -1150,6 +1215,13 @@ class ChatServiceImpl implements ChatService {
 
       // 5. Prepare safe transaction data
       const safeTransactions = this.prepareTransactionsForPrompt(searchResults);
+
+      // 5b. Store query context for follow-up inheritance
+      this.storeQueryContext(
+        context.sessionId,
+        effectiveClassification,
+        effectiveEntities
+      );
 
       // 6. Build privacy-safe prompt
 
@@ -1161,7 +1233,7 @@ class ChatServiceImpl implements ChatService {
 
       const promptContext: PromptContext = {
         query: effectiveQuery,
-        intent: classification.intent,
+        intent: effectiveClassification.intent,
         transactions: safeTransactions,
         verifiedData,
         history: context.history.slice(-DEFAULT_CONFIG.maxHistoryMessages),
@@ -1178,7 +1250,7 @@ class ChatServiceImpl implements ChatService {
       // 7. Stream response
       let _fullText = '';
       const llmClient = getLLMClient();
-      const overrides = getGenerationOverrides(classification.intent);
+      const overrides = getGenerationOverrides(effectiveClassification.intent);
 
       if (llmClient.isReady()) {
         const structured = buildStructuredPrompt(promptContext);
@@ -1197,7 +1269,7 @@ class ChatServiceImpl implements ChatService {
         const verification = verifyResponseAmounts(
           llmResponse.text,
           verifiedData,
-          classification.intent,
+          effectiveClassification.intent,
           inferredCurrency
         );
         if (verification.wasCorrected) {
@@ -1233,7 +1305,7 @@ class ChatServiceImpl implements ChatService {
           content: query,
           timestamp: new Date(),
           citations: null,
-          intent: classification.intent,
+          intent: effectiveClassification.intent,
         });
 
         this.addToHistory(context.sessionId, {
@@ -1291,6 +1363,9 @@ class ChatServiceImpl implements ChatService {
    */
   clearHistory(sessionId: string): void {
     this.sessionHistories.delete(sessionId);
+    // Also clear stored query context for follow-up inheritance
+    this.lastClassification.delete(sessionId);
+    this.lastEntities.delete(sessionId);
   }
 
   /**
@@ -1377,10 +1452,10 @@ class ChatServiceImpl implements ChatService {
       }
     }
 
-    // ── Merge, sort, and cap ─────────────────────────────────────────
+    // ── Merge and sort by score ────────────────────────────────────────
     const results = Array.from(resultMap.values());
     results.sort((a, b) => b.score - a.score);
-    return results.slice(0, DEFAULT_CONFIG.maxContextTransactions);
+    return results;
   }
 
   /**
@@ -1726,6 +1801,227 @@ class ChatServiceImpl implements ChatService {
         vendor: tx.vendor,
       };
     });
+  }
+
+  // ============================================
+  // Phase 4: Intent-Aware Transaction Selection
+  // ============================================
+
+  /**
+   * Select the best subset of transactions for the LLM context based on
+   * the query intent and extracted entities.
+   *
+   * For aggregate queries (spending, income, budget): prioritize category
+   * diversity so the LLM sees examples from every category.
+   *
+   * For superlative queries ("biggest", "smallest"): sort by amount.
+   *
+   * For search queries: prioritize relevance score (semantic match).
+   *
+   * For trend/comparison queries: prioritize date spread.
+   */
+  private selectContextTransactions(
+    allResults: LocalSearchResult[],
+    intent: QueryIntent,
+    entities: ExtractedQueryEntities
+  ): LocalSearchResult[] {
+    const MAX = DEFAULT_CONFIG.maxContextTransactions;
+
+    // If we have fewer results than the cap, return them all
+    if (allResults.length <= MAX) {
+      return allResults;
+    }
+
+    // Superlative queries: sort by absolute amount
+    if (entities.superlative) {
+      const sorted = [...allResults].sort((a, b) => {
+        if (entities.superlative === 'largest') {
+          return (
+            Math.abs(b.transaction.amount) - Math.abs(a.transaction.amount)
+          );
+        }
+        return Math.abs(a.transaction.amount) - Math.abs(b.transaction.amount);
+      });
+      return sorted.slice(0, MAX);
+    }
+
+    // Aggregate queries: diversify by category
+    if (['spending_query', 'income_query', 'budget_query'].includes(intent)) {
+      return this.selectDiverseByCategory(allResults, MAX);
+    }
+
+    // Trend/comparison queries: prioritize date spread
+    if (['trend_query', 'comparison_query'].includes(intent)) {
+      return this.selectByDateSpread(allResults, MAX);
+    }
+
+    // Search / general queries: keep relevance-based (already sorted by score)
+    return allResults.slice(0, MAX);
+  }
+
+  /**
+   * Select a diverse sample of transactions ensuring representation from
+   * each category. Picks up to 3 transactions per category in a round-robin
+   * fashion, then fills remaining slots with the highest-scoring results.
+   */
+  private selectDiverseByCategory(
+    results: LocalSearchResult[],
+    maxCount: number
+  ): LocalSearchResult[] {
+    // Group by category
+    const byCat = new Map<string, LocalSearchResult[]>();
+    for (const r of results) {
+      const catName =
+        this.categoryCache.get(r.transaction.category!) || 'Uncategorized';
+      if (!byCat.has(catName)) {
+        byCat.set(catName, []);
+      }
+      byCat.get(catName)!.push(r);
+    }
+
+    const selected = new Set<string>();
+    const output: LocalSearchResult[] = [];
+
+    // Round-robin: pick up to 3 from each category (sorted by amount desc within category)
+    const MAX_PER_CATEGORY = 3;
+    for (
+      let round = 0;
+      round < MAX_PER_CATEGORY && output.length < maxCount;
+      round++
+    ) {
+      for (const [, catResults] of byCat) {
+        if (output.length >= maxCount) {
+          break;
+        }
+        // Sort each category by absolute amount descending (show the biggest items first)
+        if (round === 0) {
+          catResults.sort(
+            (a, b) =>
+              Math.abs(b.transaction.amount) - Math.abs(a.transaction.amount)
+          );
+        }
+        const item = catResults[round];
+        if (item && !selected.has(item.transactionId)) {
+          selected.add(item.transactionId);
+          output.push(item);
+        }
+      }
+    }
+
+    // Fill remaining slots with highest-scored results not yet included
+    if (output.length < maxCount) {
+      for (const r of results) {
+        if (output.length >= maxCount) {
+          break;
+        }
+        if (!selected.has(r.transactionId)) {
+          selected.add(r.transactionId);
+          output.push(r);
+        }
+      }
+    }
+
+    return output;
+  }
+
+  /**
+   * Select transactions with good date spread for trend/comparison queries.
+   * Ensures we don't over-sample from a single day/week.
+   */
+  private selectByDateSpread(
+    results: LocalSearchResult[],
+    maxCount: number
+  ): LocalSearchResult[] {
+    // Sort by date
+    const sorted = [...results].sort((a, b) =>
+      a.transaction.date.localeCompare(b.transaction.date)
+    );
+
+    // If small enough, return everything
+    if (sorted.length <= maxCount) {
+      return sorted;
+    }
+
+    // Evenly sample across the date range
+    const step = sorted.length / maxCount;
+    const output: LocalSearchResult[] = [];
+    for (let i = 0; i < maxCount; i++) {
+      const idx = Math.min(Math.floor(i * step), sorted.length - 1);
+      const item = sorted[idx];
+      if (item) {
+        output.push(item);
+      }
+    }
+
+    return output;
+  }
+
+  // ============================================
+  // Phase 5: Follow-up Entity Merging
+  // ============================================
+
+  /**
+   * Merge entities from a follow-up query with the previous query's entities.
+   *
+   * Logic:
+   * - If the follow-up has a new date range, use it; otherwise inherit previous.
+   * - If the follow-up has new categories, use them; otherwise inherit previous.
+   * - If the follow-up has new vendors, use them; otherwise inherit previous.
+   * - Transaction direction: use follow-up's if not 'all'; otherwise inherit.
+   * - Superlative: use follow-up's if set; otherwise inherit.
+   * - Amount range: use follow-up's if set; otherwise inherit.
+   */
+  private mergeEntities(
+    current: ExtractedQueryEntities,
+    previous: ExtractedQueryEntities
+  ): ExtractedQueryEntities {
+    return {
+      dateRange: current.dateRange || previous.dateRange,
+      categories:
+        current.categories.length > 0
+          ? current.categories
+          : previous.categories,
+      amountRange: current.amountRange || previous.amountRange,
+      vendors: current.vendors.length > 0 ? current.vendors : previous.vendors,
+      locations:
+        current.locations.length > 0 ? current.locations : previous.locations,
+      timePeriod: current.timePeriod || previous.timePeriod,
+      comparisonType: current.comparisonType || previous.comparisonType,
+      keywords:
+        current.keywords.length > 0 ? current.keywords : previous.keywords,
+      transactionDirection:
+        current.transactionDirection !== 'all'
+          ? current.transactionDirection
+          : previous.transactionDirection,
+      superlative: current.superlative || previous.superlative,
+    };
+  }
+
+  /**
+   * Store the classification and entities from the current query
+   * so follow-ups in the same session can inherit context.
+   */
+  private storeQueryContext(
+    sessionId: string,
+    classification: QueryClassification,
+    entities: ExtractedQueryEntities
+  ): void {
+    this.lastClassification.set(sessionId, classification);
+    this.lastEntities.set(sessionId, entities);
+  }
+
+  /**
+   * Retrieve the stored classification and entities from the previous query
+   * in the same session.
+   */
+  private getPreviousQueryContext(sessionId: string): {
+    classification: QueryClassification | null;
+    entities: ExtractedQueryEntities | null;
+  } {
+    return {
+      classification: this.lastClassification.get(sessionId) || null,
+      entities: this.lastEntities.get(sessionId) || null,
+    };
   }
 
   /**
