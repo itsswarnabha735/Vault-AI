@@ -798,6 +798,21 @@ const MONTH_NAMES: Record<string, number> = {
 };
 
 /**
+ * Format a Date as YYYY-MM-DD in the local timezone.
+ *
+ * IMPORTANT: Do NOT use `date.toISOString().split('T')[0]` for calendar dates!
+ * toISOString() converts to UTC, which shifts the date backward in timezones
+ * ahead of UTC (e.g., IST). For example, Jan 1 2026 00:00 IST becomes
+ * 2025-12-31T18:30:00Z, yielding "2025-12-31" instead of "2026-01-01".
+ */
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Extract a date range from a specific month name in the query.
  * Handles patterns like "in January", "for February", "January 2026", etc.
  * Assumes the current year if no year is specified.
@@ -833,8 +848,8 @@ function extractMonthNameDateRange(
   const end = new Date(year, monthIndex + 1, 0); // Last day of the month
 
   return {
-    start: start.toISOString().split('T')[0]!,
-    end: end.toISOString().split('T')[0]!,
+    start: toLocalDateString(start),
+    end: toLocalDateString(end),
   };
 }
 
@@ -925,8 +940,8 @@ function getDateRangeFromPeriod(period: TimePeriod): {
   }
 
   return {
-    start: start.toISOString().split('T')[0]!,
-    end: end.toISOString().split('T')[0]!,
+    start: toLocalDateString(start),
+    end: toLocalDateString(end),
   };
 }
 
