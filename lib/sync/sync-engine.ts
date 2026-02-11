@@ -824,6 +824,7 @@ class SyncEngineImpl implements SyncEngine {
         category: remote.category_id as CategoryId | null,
         note: remote.note || '',
         currency: remote.currency || 'INR',
+        transactionType: null,
         confidence: 0,
         isManuallyEdited: false,
         createdAt: new Date(remote.client_created_at),
